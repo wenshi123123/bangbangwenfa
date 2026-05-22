@@ -1,0 +1,9 @@
+{
+  "database": {
+    "autoMigrate": false,
+    "syncSchema": false
+  },
+  "build": {
+    "skipDatabaseMigration": true
+  }
+}

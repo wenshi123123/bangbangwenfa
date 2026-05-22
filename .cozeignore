@@ -1,0 +1,6 @@
+# 排除数据库 schema 文件，不进行自动迁移
+# 数据库变更已手动管理
+src/storage/database/shared/schema.ts
+drizzle.config.ts
+**/drizzle/**
+**/migrations/**

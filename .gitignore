@@ -1,0 +1,38 @@
+# 核心安全忽略（必须严格保留）
+.env
+.env.local
+.env.production
+.env*.local
+*.pem
+*.p12
+*.key
+
+# Sentry
+.sentryclirc
+
+# 精确忽略 assets 目录下的证书文件
+assets/*.pem
+assets/*.p12
+assets/*.key
+
+# 常规忽略
+.next
+node_modules/
+.DS_Store
+.vscode/
+.idea/
+*.log
+coverage/
+dist/
+build/
+out/
+.turbo/
+.vercel/
+.coze-logs
+public/download/
+
+# 部署包和临时文件
+deploy-package.zip
+assets/bangbangwenfa-deploy.zip
+assets/image_*.png
+*.zip

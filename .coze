@@ -1,0 +1,11 @@
+[project]
+requires = ["nodejs-24"]
+skipDatabaseMigration = true
+
+[dev]
+build = ["pnpm", "install"]
+run = ["pnpm", "run", "dev"]
+
+[deploy]
+build = ["pnpm", "run", "build"]
+run = ["pnpm", "run", "start"]
