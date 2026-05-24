@@ -5,7 +5,8 @@
   "scripts": {
     "build": "bash ./scripts/build.sh",
     "deploy:package": "node scripts/create-deploy-package.js",
-    "dev": "bash ./scripts/dev.sh",
+    "dev": "next dev --port 5000",
+    "dev:bash": "bash ./scripts/dev.sh",
     "preinstall": "npx only-allow pnpm",
     "lint": "eslint",
     "start": "bash ./scripts/start.sh",
