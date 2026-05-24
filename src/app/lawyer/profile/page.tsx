@@ -17,11 +17,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import { useLawyerAuth } from '@/hooks/use-lawyer-auth';
 import { LawyerBottomNav } from '@/components/lawyer/lawyer-bottom-nav';
 
 interface LawyerProfile {
-  id: number;
+  id: string;
   name: string;
   phone: string;
   email: string;
@@ -32,12 +33,17 @@ interface LawyerProfile {
   specialties: string[];
   license_no: string;
   working_years: number;
+  city: string;
   avatar_url: string;
   status: string;
+  gender?: string;
+  law_firm?: string;
+  education?: string;
+  graduated_school?: string;
 }
 
 interface PendingRevision {
-  id: number;
+  id: string;
   revision_type: string;
   old_value: string;
   new_value: string;
@@ -52,8 +58,13 @@ const fieldConfig = {
     color: '#C47353',
     fields: [
       { key: 'name', label: '姓名', type: 'text' },
-      { key: 'working_years', label: '从业年限', type: 'number' },
+      { key: 'gender', label: '性别', type: 'gender' },
+      { key: 'law_firm', label: '所属律所', type: 'text' },
       { key: 'license_no', label: '执业证号', type: 'text' },
+      { key: 'education', label: '最高学历', type: 'education' },
+      { key: 'graduated_school', label: '毕业院校', type: 'text' },
+      { key: 'working_years', label: '从业年限', type: 'number' },
+      { key: 'city', label: '所在城市', type: 'city' },
     ],
   },
   contact: {
@@ -64,7 +75,6 @@ const fieldConfig = {
       { key: 'phone', label: '手机号', type: 'text' },
       { key: 'email', label: '邮箱', type: 'email' },
       { key: 'wechat', label: '微信号', type: 'text' },
-      { key: 'wechat_id', label: '微信ID', type: 'text' },
     ],
   },
   professional: {
@@ -72,7 +82,7 @@ const fieldConfig = {
     icon: Shield,
     color: '#7B4B8B',
     fields: [
-      { key: 'title', label: '头衔/职位', type: 'text' },
+      { key: 'title', label: '头衔/职称', type: 'title' },
       { key: 'specialties', label: '擅长领域', type: 'specialties' },
       { key: 'intro', label: '个人简介', type: 'textarea' },
     ],
@@ -92,16 +102,62 @@ const specialtyOptions = [
 
 const fieldLabels: Record<string, string> = {
   name: '姓名',
-  working_years: '从业年限',
+  gender: '性别',
+  law_firm: '所属律所',
   license_no: '执业证号',
+  education: '最高学历',
+  graduated_school: '毕业院校',
+  working_years: '从业年限',
+  city: '所在城市',
   phone: '手机号',
   email: '邮箱',
   wechat: '微信号',
-  wechat_id: '微信ID',
-  title: '头衔/职位',
+  title: '头衔/职称',
   specialties: '擅长领域',
   intro: '个人简介',
 };
+
+// 全国省级 - 地级市数据
+const provinceCityData: Record<string, string[]> = {
+  '北京市': ['东城区','西城区','朝阳区','海淀区','丰台区','石景山区','通州区','大兴区','昌平区','顺义区','房山区','门头沟区','平谷区','怀柔区','密云区','延庆区'],
+  '上海市': ['黄浦区','徐汇区','长宁区','静安区','普陀区','虹口区','杨浦区','浦东新区','闵行区','宝山区','嘉定区','松江区','青浦区','奉贤区','金山区','崇明区'],
+  '天津市': ['和平区','河东区','河西区','南开区','河北区','红桥区','滨海新区','东丽区','西青区','津南区','北辰区','武清区','宝坻区','静海区','宁河区','蓟州区'],
+  '重庆市': ['渝中区','江北区','沙坪坝区','九龙坡区','南岸区','渝北区','巴南区','涪陵区','万州区','黔江区','长寿区','江津区','合川区','永川区','南川区','綦江区','大足区','璧山区','铜梁区','潼南区','荣昌区','开州区','梁平区','武隆区'],
+  '河北省': ['石家庄市','唐山市','秦皇岛市','邯郸市','邢台市','保定市','张家口市','承德市','沧州市','廊坊市','衡水市'],
+  '山西省': ['太原市','大同市','阳泉市','长治市','晋城市','朔州市','晋中市','运城市','忻州市','临汾市','吕梁市'],
+  '内蒙古自治区': ['呼和浩特市','包头市','乌海市','赤峰市','通辽市','鄂尔多斯市','呼伦贝尔市','巴彦淖尔市','乌兰察布市','兴安盟','锡林郭勒盟','阿拉善盟'],
+  '辽宁省': ['沈阳市','大连市','鞍山市','抚顺市','本溪市','丹东市','锦州市','营口市','阜新市','辽阳市','盘锦市','铁岭市','朝阳市','葫芦岛市'],
+  '吉林省': ['长春市','吉林市','四平市','辽源市','通化市','白山市','松原市','白城市','延边朝鲜族自治州'],
+  '黑龙江省': ['哈尔滨市','齐齐哈尔市','鸡西市','鹤岗市','双鸭山市','大庆市','伊春市','佳木斯市','七台河市','牡丹江市','黑河市','绥化市','大兴安岭地区'],
+  '江苏省': ['南京市','无锡市','徐州市','常州市','苏州市','南通市','连云港市','淮安市','盐城市','扬州市','镇江市','泰州市','宿迁市'],
+  '浙江省': ['杭州市','宁波市','温州市','嘉兴市','湖州市','绍兴市','金华市','衢州市','舟山市','台州市','丽水市'],
+  '安徽省': ['合肥市','芜湖市','蚌埠市','淮南市','马鞍山市','淮北市','铜陵市','安庆市','黄山市','滁州市','阜阳市','宿州市','六安市','亳州市','池州市','宣城市'],
+  '福建省': ['福州市','厦门市','莆田市','三明市','泉州市','漳州市','南平市','龙岩市','宁德市'],
+  '江西省': ['南昌市','景德镇市','萍乡市','九江市','新余市','鹰潭市','赣州市','吉安市','宜春市','抚州市','上饶市'],
+  '山东省': ['济南市','青岛市','淄博市','枣庄市','东营市','烟台市','潍坊市','济宁市','泰安市','威海市','日照市','临沂市','德州市','聊城市','滨州市','菏泽市'],
+  '河南省': ['郑州市','开封市','洛阳市','平顶山市','安阳市','鹤壁市','新乡市','焦作市','濮阳市','许昌市','漯河市','三门峡市','南阳市','商丘市','信阳市','周口市','驻马店市','济源市'],
+  '湖北省': ['武汉市','黄石市','十堰市','宜昌市','襄阳市','鄂州市','荆门市','孝感市','荆州市','黄冈市','咸宁市','随州市','恩施土家族苗族自治州'],
+  '湖南省': ['长沙市','株洲市','湘潭市','衡阳市','邵阳市','岳阳市','常德市','张家界市','益阳市','郴州市','永州市','怀化市','娄底市','湘西土家族苗族自治州'],
+  '广东省': ['广州市','韶关市','深圳市','珠海市','汕头市','佛山市','江门市','湛江市','茂名市','肇庆市','惠州市','梅州市','汕尾市','河源市','阳江市','清远市','东莞市','中山市','潮州市','揭阳市','云浮市'],
+  '广西壮族自治区': ['南宁市','柳州市','桂林市','梧州市','北海市','防城港市','钦州市','贵港市','玉林市','百色市','贺州市','河池市','来宾市','崇左市'],
+  '海南省': ['海口市','三亚市','三沙市','儋州市'],
+  '四川省': ['成都市','自贡市','攀枝花市','泸州市','德阳市','绵阳市','广元市','遂宁市','内江市','乐山市','南充市','眉山市','宜宾市','广安市','达州市','雅安市','巴中市','资阳市','阿坝藏族羌族自治州','甘孜藏族自治州','凉山彝族自治州'],
+  '贵州省': ['贵阳市','六盘水市','遵义市','安顺市','毕节市','铜仁市','黔西南布依族苗族自治州','黔东南苗族侗族自治州','黔南布依族苗族自治州'],
+  '云南省': ['昆明市','曲靖市','玉溪市','保山市','昭通市','丽江市','普洱市','临沧市','楚雄彝族自治州','红河哈尼族彝族自治州','文山壮族苗族自治州','西双版纳傣族自治州','大理白族自治州','德宏傣族景颇族自治州','怒江傈僳族自治州','迪庆藏族自治州'],
+  '西藏自治区': ['拉萨市','日喀则市','昌都市','林芝市','山南市','那曲市','阿里地区'],
+  '陕西省': ['西安市','铜川市','宝鸡市','咸阳市','渭南市','延安市','汉中市','榆林市','安康市','商洛市'],
+  '甘肃省': ['兰州市','嘉峪关市','金昌市','白银市','天水市','武威市','张掖市','平凉市','酒泉市','庆阳市','定西市','陇南市','临夏回族自治州','甘南藏族自治州'],
+  '青海省': ['西宁市','海东市','海北藏族自治州','黄南藏族自治州','海南藏族自治州','果洛藏族自治州','玉树藏族自治州','海西蒙古族藏族自治州'],
+  '宁夏回族自治区': ['银川市','石嘴山市','吴忠市','固原市','中卫市'],
+  '新疆维吾尔自治区': ['乌鲁木齐市','克拉玛依市','吐鲁番市','哈密市','昌吉回族自治州','博尔塔拉蒙古自治州','巴音郭楞蒙古自治州','阿克苏地区','克孜勒苏柯尔克孜自治州','喀什地区','和田地区','伊犁哈萨克自治州','塔城地区','阿勒泰地区'],
+  '台湾省': ['台北市','高雄市','台中市','台南市','基隆市','新竹市','嘉义市'],
+  '香港特别行政区': ['中西区','东区','南区','湾仔区','九龙城区','观塘区','深水埗区','黄大仙区','油尖旺区','离岛区','葵青区','北区','西贡区','沙田区','大埔区','荃湾区','屯门区','元朗区'],
+  '澳门特别行政区': ['澳门半岛','氹仔','路环'],
+};
+
+const genderOptions = ['男', '女'];
+const titleOptions = ['专职律师', '兼职律师', '普通合伙人', '高级合伙人'];
+const educationOptions = ['专科', '本科', '硕士研究生', '博士研究生'];
 
 export default function LawyerProfilePage() {
   const { user, isAuthorized, isLoading: authLoading, lawyerId, getAuthHeaders } =
@@ -110,17 +166,22 @@ export default function LawyerProfilePage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [error, setError] = useState('');
   const [pendingRevisions, setPendingRevisions] = useState<PendingRevision[]>([]);
 
   const [formData, setFormData] = useState({
     name: '',
-    working_years: '',
+    gender: '',
+    law_firm: '',
     license_no: '',
+    education: '',
+    graduated_school: '',
+    working_years: '',
+    city: '',
     phone: '',
     email: '',
     wechat: '',
-    wechat_id: '',
     title: '',
     intro: '',
     specialties: [] as string[],
@@ -144,12 +205,16 @@ export default function LawyerProfilePage() {
           [];
         setFormData({
           name: lawyer.name || lawyer.real_name || '',
-          working_years: lawyer.working_years?.toString() || '',
+          gender: lawyer.gender || '',
+          law_firm: lawyer.law_firm || '',
           license_no: lawyer.license_no || '',
+          education: lawyer.education || '',
+          graduated_school: lawyer.graduated_school || '',
+          working_years: lawyer.working_years?.toString() || '',
+          city: lawyer.city || '',
           phone: lawyer.phone || '',
           email: lawyer.email || '',
           wechat: lawyer.wechat || '',
-          wechat_id: lawyer.wechat_id || '',
           title: lawyer.title || '',
           intro: lawyer.intro || lawyer.bio || '',
           specialties: Array.isArray(specialtiesData) ? specialtiesData : [],
@@ -217,8 +282,10 @@ export default function LawyerProfilePage() {
 
     const changedFields: Array<{ field: string; oldValue: string; newValue: string }> = [];
     const checkFields = [
-      'name', 'working_years', 'license_no',
-      'phone', 'email', 'wechat', 'wechat_id',
+      'name', 'gender', 'law_firm', 'license_no',
+      'education', 'graduated_school',
+      'working_years', 'city',
+      'phone', 'email', 'wechat',
       'title', 'specialties', 'intro',
     ] as const;
 
@@ -247,38 +314,49 @@ export default function LawyerProfilePage() {
       return;
     }
 
+    // 🔒 格式校验：手机号必须11位数字，执业证号必须17位数字
+    for (const item of changedFields) {
+      if (item.field === 'phone' && item.newValue && !/^\d{11}$/.test(item.newValue)) {
+        setError('手机号必须为11位数字');
+        return;
+      }
+      if (item.field === 'license_no' && item.newValue && !/^\d{17}$/.test(item.newValue)) {
+        setError('执业证号必须为17位数字');
+        return;
+      }
+    }
+
     setSubmitting(true);
     setError('');
 
     try {
-      for (const item of changedFields) {
-        if (hasPendingRevision(item.field)) continue;
-        const reqHeaders: HeadersInit = {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        };
-        const response = await fetch('/api/lawyer/profile/submit-review', {
-          method: 'POST',
-          headers: reqHeaders,
-          body: JSON.stringify({
-            lawyerId,
-            lawyerUserId: user?.id,
-            lawyerName: profile?.name,
-            revisionType: item.field,
+      const batchId = crypto.randomUUID();
+      const reqHeaders: HeadersInit = {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      };
+      const response = await fetch('/api/lawyer/profile/submit-review', {
+        method: 'POST',
+        headers: reqHeaders,
+        body: JSON.stringify({
+          lawyerId,
+          batchId,
+          reason: reason.trim(),
+          changes: changedFields.map((item) => ({
+            field: item.field,
             oldValue: item.oldValue,
             newValue: item.newValue,
-            reason: reason.trim(),
-          }),
-        });
-        const result = await response.json();
-        if (!result.success) {
-          setError(`${fieldLabels[item.field] || item.field}: ${result.error}`);
-          setSubmitting(false);
-          return;
-        }
+          })),
+        }),
+      });
+      const result = await response.json();
+      if (!result.success) {
+        setError(result.error || '提交失败');
+        setSubmitting(false);
+        return;
       }
       setSubmitSuccess(true);
-      setTimeout(() => setSubmitSuccess(false), 5000);
+      setShowSuccessModal(true);
       fetchPendingRevisions();
     } catch {
       setError('提交失败，请重试');
@@ -339,6 +417,145 @@ export default function LawyerProfilePage() {
   const renderFieldInput = (config: { key: string; label: string; type: string }) => {
     const isPending = hasPendingRevision(config.key);
     const isChanged = hasFieldChange(config.key);
+
+    // 性别
+    if (config.type === 'gender') {
+      return (
+        <div className="flex gap-3">
+          {genderOptions.map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => setFormData((prev) => ({ ...prev, gender: option }))}
+              disabled={isPending}
+              className={`flex-1 py-2.5 rounded-xl border-2 font-medium text-sm transition-all duration-200 ${
+                formData.gender === option
+                  ? 'border-[#C47353] bg-[#C47353]/8 text-[#C47353]'
+                  : 'border-[#E8D5C0] bg-white text-[#78716C] hover:border-[#C47353]/30'
+              } ${isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      );
+    }
+
+    // 头衔/职称（单选）
+    if (config.type === 'title') {
+      return (
+        <div className="grid grid-cols-2 gap-2">
+          {titleOptions.map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => setFormData((prev) => ({ ...prev, title: option }))}
+              disabled={isPending}
+              className={`py-2.5 rounded-xl border-2 font-medium text-sm transition-all duration-200 ${
+                formData.title === option
+                  ? 'border-[#C47353] bg-[#C47353]/8 text-[#C47353]'
+                  : 'border-[#E8D5C0] bg-white text-[#78716C] hover:border-[#C47353]/30'
+              } ${isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      );
+    }
+
+    // 最高学历
+    if (config.type === 'education') {
+      return (
+        <select
+          value={formData.education}
+          onChange={(e) => setFormData((prev) => ({ ...prev, education: e.target.value }))}
+          disabled={isPending}
+          className={`w-full px-4 py-2.5 rounded-xl border-2 bg-white text-sm transition-all duration-200 appearance-none cursor-pointer ${
+            isChanged && !isPending
+              ? 'border-[#C47353]/40 focus:border-[#C47353]'
+              : 'border-[#E8D5C0] focus:border-[#C47353]'
+          } ${isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A89B90' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 14px center',
+            paddingRight: '40px',
+          }}
+        >
+          <option value="">请选择最高学历</option>
+          {educationOptions.map((opt) => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
+      );
+    }
+
+    // 所在城市（省级-地级市二级联动）
+    if (config.type === 'city') {
+      const provinces = Object.keys(provinceCityData);
+      const currentProvince = provinces.find((p) => {
+        const cities = provinceCityData[p];
+        return cities.includes(formData.city) || false;
+      });
+      const cityList = currentProvince ? provinceCityData[currentProvince] : [];
+      return (
+        <div className="space-y-2">
+          {/* 省 */}
+          <select
+            value={currentProvince || ''}
+            onChange={(e) => {
+              const province = e.target.value;
+              if (province) {
+                setFormData((prev) => ({ ...prev, city: provinceCityData[province][0] }));
+              } else {
+                setFormData((prev) => ({ ...prev, city: '' }));
+              }
+            }}
+            disabled={isPending}
+            className={`w-full px-4 py-2.5 rounded-xl border-2 bg-white text-sm transition-all duration-200 appearance-none cursor-pointer ${
+              isChanged && !isPending
+                ? 'border-[#C47353]/40 focus:border-[#C47353]'
+                : 'border-[#E8D5C0] focus:border-[#C47353]'
+            } ${isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A89B90' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 14px center',
+              paddingRight: '40px',
+            }}
+          >
+            <option value="">请选择省份</option>
+            {provinces.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+          {/* 市 */}
+          {currentProvince && (
+            <select
+              value={formData.city}
+              onChange={(e) => setFormData((prev) => ({ ...prev, city: e.target.value }))}
+              disabled={isPending}
+              className={`w-full px-4 py-2.5 rounded-xl border-2 bg-white text-sm transition-all duration-200 appearance-none cursor-pointer ${
+                isChanged && !isPending
+                  ? 'border-[#C47353]/40 focus:border-[#C47353]'
+                  : 'border-[#E8D5C0] focus:border-[#C47353]'
+              } ${isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A89B90' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 14px center',
+                paddingRight: '40px',
+              }}
+            >
+              {cityList.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          )}
+        </div>
+      );
+    }
 
     if (config.type === 'specialties') {
       return (
@@ -403,10 +620,27 @@ export default function LawyerProfilePage() {
 
     return (
       <Input
-        type={config.type}
+        type={config.key === 'phone' || config.key === 'license_no' ? 'text' : config.type}
+        inputMode={config.key === 'phone' || config.key === 'license_no' ? 'numeric' : undefined}
         value={formData[config.key as keyof typeof formData] as string}
-        onChange={(e) => setFormData((prev) => ({ ...prev, [config.key]: e.target.value }))}
-        placeholder={`请输入${config.label}`}
+        onChange={(e) => {
+          let value = e.target.value;
+          // 手机号只允许数字，最多11位
+          if (config.key === 'phone') {
+            value = value.replace(/\D/g, '').slice(0, 11);
+          }
+          // 执业证号只允许数字，最多17位
+          if (config.key === 'license_no') {
+            value = value.replace(/\D/g, '').slice(0, 17);
+          }
+          setFormData((prev) => ({ ...prev, [config.key]: value }));
+        }}
+        placeholder={
+          config.key === 'phone' ? '请输入11位手机号' :
+          config.key === 'license_no' ? '请输入17位执业证号' :
+          `请输入${config.label}`
+        }
+        maxLength={config.key === 'phone' ? 11 : config.key === 'license_no' ? 17 : undefined}
         disabled={isPending}
         className={
           isChanged && !isPending
@@ -418,7 +652,7 @@ export default function LawyerProfilePage() {
   };
 
   return (
-    <div className="min-h-screen pb-32 bg-[#FAF7F2]">
+    <div className="min-h-screen pb-24 lg:pb-8 bg-[#FAF7F2]">
       {/* ===== 顶栏 ===== */}
       <div className="sticky top-0 z-40 bg-[#FDF8F0]/95 backdrop-blur-xl border-b border-[#E8D5C0]/50">
         <div className="px-4 py-3 flex items-center justify-between max-w-2xl lg:max-w-4xl mx-auto">
@@ -441,6 +675,12 @@ export default function LawyerProfilePage() {
             <div className="flex-1 min-w-0">
               <h2 className="font-bold text-lg text-[#1C1917] font-serif">{profile?.name || '未填写姓名'}</h2>
               <p className="text-xs text-[#78716C]">{profile?.title || '律师'}</p>
+              {(profile?.license_no || profile?.law_firm) && (
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[11px] text-[#A89B90]">
+                  {profile?.license_no && <span>执业证号 {profile.license_no}</span>}
+                  {profile?.law_firm && <span>｜ {profile.law_firm}</span>}
+                </div>
+              )}
             </div>
             <span className="text-[11px] bg-[#5C7A5A]/10 text-[#5C7A5A] px-3 py-1 rounded-full font-medium flex-shrink-0">
               已认证
@@ -564,23 +804,12 @@ export default function LawyerProfilePage() {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* ===== 底部固定提交按钮 ===== */}
-      <div
-        className="fixed bottom-0 left-0 right-0 z-40 p-4"
-        style={{
-          background: 'rgba(250,247,242,0.88)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          borderTop: '1px solid rgba(200,180,160,0.25)',
-          paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))',
-        }}
-      >
-        <div className="max-w-2xl lg:max-w-4xl mx-auto">
+        {/* ===== 提交审核按钮 ===== */}
+        <div className="pt-2">
           <button
             onClick={handleSubmitReview}
-            disabled={submitting || pendingRevisions.length > 0}
+            disabled={submitting || showSuccessModal || pendingRevisions.length > 0}
             className="w-full py-3.5 rounded-2xl font-medium text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] bg-[#C47353] text-white hover:bg-[#A85D40] shadow-lg shadow-[#C47353]/25 flex items-center justify-center gap-2"
           >
             {submitting ? (
@@ -602,6 +831,30 @@ export default function LawyerProfilePage() {
           </button>
         </div>
       </div>
+
+      {/* ===== 提交成功弹窗 ===== */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl text-center">
+            <div className="w-16 h-16 rounded-full bg-[#5C7A5A]/10 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-9 h-9 text-[#5C7A5A]" />
+            </div>
+            <h3 className="text-lg font-bold text-[#1C1917] mb-2 font-serif">提交成功</h3>
+            <p className="text-sm text-[#78716C] mb-6 leading-relaxed">
+              您的资料修改申请已成功提交，平台将在 <span className="font-medium text-[#1C1917]">1-3 个工作日</span> 内完成审核，请耐心等待。
+            </p>
+            <Button
+              onClick={() => {
+                setShowSuccessModal(false);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="w-full bg-[#C47353] hover:bg-[#A85D40] text-white"
+            >
+              我知道了
+            </Button>
+          </div>
+        </div>
+      )}
 
       <LawyerBottomNav />
     </div>

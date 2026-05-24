@@ -235,8 +235,9 @@ export default function OrderDetailPage() {
   const assignmentStatus = assignmentStatusMap[order.assignment_status as keyof typeof assignmentStatusMap] || assignmentStatusMap.default;
   const AssignStatusIcon = assignmentStatus.icon;
 
-  const canAssign = order.payment_status === 'paid' && 
-                    (!order.assignment_status || order.assignment_status === 'unassigned' || order.assignment_status === 'rejected');
+  const canAssign = !order.assignment_status || 
+                    order.assignment_status === 'unassigned' || 
+                    order.assignment_status === 'rejected';
 
   return (
     <div className="space-y-6">
@@ -407,20 +408,29 @@ export default function OrderDetailPage() {
         </div>
       )}
 
-      {/* Actions */}
-      {order.payment_status === 'paid' && (
-        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
-          <h2 className="text-base sm:text-lg font-semibold text-slate-800 mb-4">管理操作</h2>
-          <div className="flex flex-col sm:flex-row gap-3">
-            {canAssign && (
-              <button
-                onClick={openAssignModal}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors"
-              >
-                <Send className="w-5 h-5" />
-                派单给律师
-              </button>
-            )}
+      {/* Actions — 始终显示管理操作区 */}
+      <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+        <h2 className="text-base sm:text-lg font-semibold text-slate-800 mb-4">管理操作</h2>
+
+        {/* 未支付订单提示 */}
+        {order.payment_status !== 'paid' && canAssign && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+            <span className="text-sm text-amber-700">该订单尚未支付，派单后律师将直接处理</span>
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          {canAssign && (
+            <button
+              onClick={openAssignModal}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors"
+            >
+              <Send className="w-5 h-5" />
+              派单给律师
+            </button>
+          )}
+          {order.payment_status === 'paid' && (
             <button
               onClick={handleRefund}
               disabled={actionLoading}
@@ -433,12 +443,12 @@ export default function OrderDetailPage() {
               )}
               退款处理
             </button>
-          </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-3">
-            说明：派单后律师需确认接单，用户将收到站内信通知
-          </p>
+          )}
         </div>
-      )}
+        <p className="text-xs sm:text-sm text-slate-500 mt-3">
+          说明：派单后律师需确认接单，用户将收到站内信通知
+        </p>
+      </div>
 
       {/* Assign Modal */}
       {showAssignModal && (

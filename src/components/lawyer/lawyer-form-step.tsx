@@ -51,6 +51,8 @@ export function LawyerFormStep({ formData, onUpdate, onNext, onBack }: LawyerFor
       formData.specialties.length > 0 &&
       formData.education !== '' &&
       formData.graduatedSchool.trim() !== '' && // 毕业院校必填
+      formData.workingYears !== '' && parseInt(formData.workingYears) > 0 && // 执业年限必填
+      formData.city.trim() !== '' && // 城市必填
       formData.phone.trim() !== '' &&
       formData.wechat.trim() !== ''
     );
@@ -282,6 +284,60 @@ export function LawyerFormStep({ formData, onUpdate, onNext, onBack }: LawyerFor
             placeholder="请输入您的微信号（方便客户联系您）"
             className="w-full px-4 py-3 rounded-xl border-2 border-border bg-card focus:border-green-400 focus:outline-none transition-all duration-300 text-foreground placeholder:text-muted-foreground"
           />
+        </div>
+
+        {/* 执业年限 */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1.5">
+            执业年限 <span className="text-red-500">*</span>
+            <span className="text-xs text-muted-foreground font-normal ml-2">（年）</span>
+          </label>
+          <input
+            type="number"
+            min="0"
+            max="60"
+            value={formData.workingYears}
+            onChange={(e) => {
+              const val = Math.min(60, Math.max(0, parseInt(e.target.value) || 0));
+              onUpdate({ workingYears: val.toString() });
+            }}
+            placeholder="请输入您的执业年限"
+            className="w-full px-4 py-3 rounded-xl border-2 border-border bg-card focus:border-green-400 focus:outline-none transition-all duration-300 text-foreground placeholder:text-muted-foreground"
+          />
+        </div>
+
+        {/* 所在城市 */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1.5">
+            所在城市 <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={formData.city}
+            onChange={(e) => onUpdate({ city: e.target.value })}
+            className="w-full px-4 py-3 rounded-xl border-2 border-border bg-card focus:border-green-400 focus:outline-none transition-all duration-300 text-foreground appearance-none cursor-pointer"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 16px center',
+              paddingRight: '40px',
+            }}
+          >
+            <option value="">请选择所在城市</option>
+            {[
+              '北京', '上海', '广州', '深圳',
+              '杭州', '南京', '苏州', '成都', '重庆', '武汉',
+              '西安', '郑州', '长沙', '天津', '济南', '青岛',
+              '合肥', '福州', '厦门', '东莞', '佛山', '宁波',
+              '昆明', '贵阳', '南宁', '海口', '石家庄', '太原',
+              '沈阳', '大连', '长春', '哈尔滨', '兰州', '银川',
+              '西宁', '乌鲁木齐', '拉萨', '呼和浩特', '南昌',
+              '温州', '绍兴', '嘉兴', '金华', '台州', '珠海',
+              '惠州', '中山', '无锡', '常州', '南通', '徐州',
+              '其他城市',
+            ].map((cityName) => (
+              <option key={cityName} value={cityName}>{cityName}</option>
+            ))}
+          </select>
         </div>
       </div>
 

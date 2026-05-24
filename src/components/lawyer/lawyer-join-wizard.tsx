@@ -16,6 +16,8 @@ export interface LawyerFormData {
   specialties: string[];
   education: string;
   graduatedSchool: string; // 毕业院校
+  workingYears: string; // 执业年限
+  city: string; // 所在城市
   phone: string;
   wechat: string; // 微信号
   licenseImages: string[];
@@ -33,6 +35,8 @@ const initialFormData: LawyerFormData = {
   specialties: [],
   education: '',
   graduatedSchool: '', // 毕业院校
+  workingYears: '', // 执业年限
+  city: '', // 所在城市
   phone: '',
   wechat: '', // 微信号
   licenseImages: [],

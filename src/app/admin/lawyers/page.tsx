@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { adminApiRequest } from '@/lib/api/request';
 
 interface Lawyer {
@@ -14,12 +15,17 @@ interface Lawyer {
   intro: string;
   is_active: boolean;
   is_available: boolean;
+  online_status: string;
   stats: { total: number; pending: number; completed: number };
 }
 
 export default function LawyersPage() {
+  const searchParams = useSearchParams();
   const [lawyers, setLawyers] = useState<Lawyer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<string>(
+    () => searchParams.get('onlineStatus') || ''
+  );
   const [showModal, setShowModal] = useState(false);
   const [editLawyer, setEditLawyer] = useState<Lawyer | null>(null);
   const [formData, setFormData] = useState({
@@ -34,7 +40,10 @@ export default function LawyersPage() {
 
   const fetchLawyers = useCallback(async () => {
     try {
-      const response = await adminApiRequest('/api/admin/lawyers');
+      const url = statusFilter
+        ? `/api/admin/lawyers?onlineStatus=${statusFilter}`
+        : '/api/admin/lawyers';
+      const response = await adminApiRequest(url);
       const result = await response.json();
       if (result.success) {
         setLawyers(result.data);
@@ -44,10 +53,13 @@ export default function LawyersPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [statusFilter]);
 
   useEffect(() => {
     fetchLawyers();
+    // 每30秒自动刷新律师列表
+    const interval = setInterval(fetchLawyers, 30000);
+    return () => clearInterval(interval);
   }, [fetchLawyers]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -113,8 +125,43 @@ export default function LawyersPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold text-gray-800">律师列表</h2>
+      <div className="flex justify-between items-center flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold text-gray-800">律师列表</h2>
+          {/* 在线状态筛选 */}
+          <div className="flex items-center bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <button
+              onClick={() => setStatusFilter('')}
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                statusFilter === ''
+                  ? 'bg-orange-500 text-white'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              全部
+            </button>
+            <button
+              onClick={() => setStatusFilter('online')}
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                statusFilter === 'online'
+                  ? 'bg-emerald-500 text-white'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              🟢 在线
+            </button>
+            <button
+              onClick={() => setStatusFilter('away')}
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                statusFilter === 'away'
+                  ? 'bg-red-500 text-white'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              🔴 离开
+            </button>
+          </div>
+        </div>
         <button
           onClick={() => {
             setEditLawyer(null);
@@ -148,11 +195,23 @@ export default function LawyersPage() {
                     <p className="text-sm text-gray-500">{lawyer.title || '律师'}</p>
                   </div>
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  lawyer.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                }`}>
-                  {lawyer.is_active ? '在职' : '离职'}
-                </span>
+                <div className="flex flex-col gap-1.5 items-end">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    lawyer.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {lawyer.is_active ? '在职' : '离职'}
+                  </span>
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                    lawyer.online_status === 'online'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-red-100 text-red-700'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      lawyer.online_status === 'online' ? 'bg-emerald-500' : 'bg-red-500'
+                    }`} />
+                    {lawyer.online_status === 'online' ? '在线' : '离开'}
+                  </span>
+                </div>
               </div>
               
               <div className="space-y-2 text-sm">
@@ -241,13 +300,17 @@ export default function LawyersPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">职称</label>
-                <input
-                  type="text"
+                <select
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-orange-500 outline-none"
-                  placeholder="如：高级律师、主任律师"
-                />
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-orange-500 outline-none bg-white"
+                >
+                  <option value="">请选择职称</option>
+                  <option value="专职律师">专职律师</option>
+                  <option value="兼职律师">兼职律师</option>
+                  <option value="普通合伙人">普通合伙人</option>
+                  <option value="高级合伙人">高级合伙人</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">擅长领域</label>

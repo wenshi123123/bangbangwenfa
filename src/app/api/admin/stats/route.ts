@@ -66,6 +66,12 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
     .select('*', { count: 'exact', head: true })
     .eq('status', 'pending');
 
+  // 在线律师数
+  const { count: onlineLawyers } = await supabase
+    .from('lawyers')
+    .select('*', { count: 'exact', head: true })
+    .eq('online_status', 'online');
+
   return NextResponse.json({
     success: true,
     data: {
@@ -78,6 +84,7 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
       todayOrders: todayOrders || 0,
       todayRevenue: todayRevenue || 0,
       pendingCommissions: pendingCommissions || 0,
+      onlineLawyers: onlineLawyers || 0,
     },
   });
 });

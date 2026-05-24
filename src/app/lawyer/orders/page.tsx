@@ -53,7 +53,7 @@ const serviceTypeMap: Record<string, { label: string; color: string }> = {
   default: { label: '咨询服务', color: 'bg-[#F5F0E8] text-[#8C7B6E]' },
 };
 
-type TabType = 'all' | 'pending' | 'accepted' | 'completed';
+type TabType = 'all' | 'pending' | 'accepted';
 
 export default function LawyerOrdersPage() {
   const { isAuthorized, isLoading: authLoading, getAuthHeaders } = useLawyerAuth();
@@ -96,7 +96,6 @@ export default function LawyerOrdersPage() {
         order.assignment_status === 'accepted' ||
         order.assignment_status === 'confirmed'
       );
-    if (activeTab === 'completed') return order.assignment_status === 'completed';
     return true;
   });
 
@@ -108,10 +107,9 @@ export default function LawyerOrdersPage() {
     accepted: orders.filter(
       (o) => o.assignment_status === 'accepted' || o.assignment_status === 'confirmed'
     ).length,
-    completed: orders.filter((o) => o.assignment_status === 'completed').length,
   };
 
-  const formatPrice = (price: number) => (price / 100).toFixed(2);
+
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('zh-CN', {
@@ -158,7 +156,6 @@ export default function LawyerOrdersPage() {
     { key: 'all', label: '全部' },
     { key: 'pending', label: '待确认' },
     { key: 'accepted', label: '已接单' },
-    { key: 'completed', label: '已完成' },
   ];
 
   return (
@@ -247,9 +244,10 @@ export default function LawyerOrdersPage() {
               const serviceType = serviceTypeMap[order.service_type] || serviceTypeMap.default;
 
               return (
-                <div
+                <Link
+                  href={`/lawyer/orders/${order.id}`}
                   key={order.id}
-                  className="bg-[#FFFBF5] rounded-2xl border border-[#E8D5C0] shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow duration-300"
+                  className="bg-[#FFFBF5] rounded-2xl border border-[#E8D5C0] shadow-sm overflow-hidden flex flex-col hover:shadow-md hover:border-[#C47353]/30 transition-all duration-300 block cursor-pointer"
                 >
                   {/* 卡片头部：左侧色条 + 标题 + 状态 */}
                   <div className="flex">
@@ -268,7 +266,7 @@ export default function LawyerOrdersPage() {
                         </span>
                       </div>
                       <p className="text-[11px] text-[#A89B90] mb-3">
-                        #{order.id} · {formatDate(order.created_at)}
+                        #{order.id}
                       </p>
                     </div>
                   </div>
@@ -279,9 +277,7 @@ export default function LawyerOrdersPage() {
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${serviceType.color}`}>
                         {serviceType.label}
                       </span>
-                      <span className="text-[11px] font-semibold text-[#B8860B]">
-                        ¥{formatPrice(order.service_price)}
-                      </span>
+
                     </div>
 
                     <p className="text-xs text-[#78716C] line-clamp-2 mb-3 leading-relaxed">
@@ -309,7 +305,7 @@ export default function LawyerOrdersPage() {
                       </div>
                     )}
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>

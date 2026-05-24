@@ -5,9 +5,9 @@ CREATE TABLE IF NOT EXISTS lawyer_applications (
     name VARCHAR(100) NOT NULL,
     gender VARCHAR(10),
     law_firm VARCHAR(200),
-    license_number VARCHAR(50),
+    license_number VARCHAR(200),
     specialties TEXT, -- JSON string
-    education VARCHAR(50),
+    education VARCHAR(200),
     phone VARCHAR(20),
     wechat VARCHAR(100),
     license_images TEXT[], -- 数组

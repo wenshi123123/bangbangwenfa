@@ -38,7 +38,11 @@ interface LawyerApplication {
   license_number: string;
   specialties: string[];
   education: string;
+  graduated_school: string;
+  working_years: number;
+  city: string;
   phone: string;
+  wechat: string;
   license_images: string[];
   id_card_images: string[];
   education_images: string[];
@@ -190,7 +194,7 @@ export default function LawyerDetailPage() {
               </div>
               <div>
                 <p className="font-medium text-slate-800">{application.name}</p>
-                <p className="text-sm text-slate-500">{application.gender === 'male' ? '男' : '女'}</p>
+                <p className="text-sm text-slate-500">{(application.gender === 'male' || application.gender === '男') ? '男' : (application.gender === 'female' || application.gender === '女') ? '女' : (application.gender || '未知')}</p>
               </div>
             </div>
 
@@ -203,6 +207,14 @@ export default function LawyerDetailPage() {
                 <Building2 className="w-4 h-4 text-slate-400" />
                 <span>{application.law_firm}</span>
               </div>
+              {application.wechat && (
+                <div className="flex items-center gap-2 text-slate-600">
+                  <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <span>微信号：{application.wechat}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -215,7 +227,26 @@ export default function LawyerDetailPage() {
               <Award className="w-5 h-5 text-slate-400 mt-0.5" />
               <div>
                 <p className="text-sm text-slate-500">执业证号</p>
-                <p className="font-medium text-slate-800">{application.license_number}</p>
+                <p className="font-medium text-slate-800">{application.license_number || '未填写'}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-start gap-3">
+                <Award className="w-5 h-5 text-slate-400 mt-0.5" />
+                <div>
+                  <p className="text-sm text-slate-500">执业年限</p>
+                  <p className="font-medium text-slate-800">
+                    {application.working_years ? `${application.working_years}年` : '未填写'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Building2 className="w-5 h-5 text-slate-400 mt-0.5" />
+                <div>
+                  <p className="text-sm text-slate-500">所在城市</p>
+                  <p className="font-medium text-slate-800">{application.city || '未填写'}</p>
+                </div>
               </div>
             </div>
 
@@ -223,7 +254,15 @@ export default function LawyerDetailPage() {
               <GraduationCap className="w-5 h-5 text-slate-400 mt-0.5" />
               <div>
                 <p className="text-sm text-slate-500">学历</p>
-                <p className="font-medium text-slate-800">{application.education}</p>
+                <p className="font-medium text-slate-800">{application.education || '未填写'}</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <GraduationCap className="w-5 h-5 text-slate-400 mt-0.5" />
+              <div>
+                <p className="text-sm text-slate-500">毕业院校</p>
+                <p className="font-medium text-slate-800">{application.graduated_school || '未填写'}</p>
               </div>
             </div>
 

@@ -127,11 +127,15 @@ export async function PUT(request: NextRequest) {
     // 如果审核通过，同时在 lawyers 表创建/更新记录
     if (action === 'approve') {
       // 先检查是否已存在（lawyers 表以 phone 作为用户标识）
-      const { data: existingLawyer } = await supabase
+      const { data: existingLawyer, error: lawyerLookupError } = await supabase
         .from('lawyers')
         .select('id')
         .eq('phone', appData.phone)
-        .single();
+        .maybeSingle();
+      
+      if (lawyerLookupError) {
+        console.error('[Admin Review] 查询 lawyers 表出错:', lawyerLookupError);
+      }
 
       // 🔧 如果 appData.user_id 为空，通过 phone 反查补全
       let effectiveUserId = appData.user_id;
@@ -150,6 +154,9 @@ export async function PUT(request: NextRequest) {
             .eq('id', targetId);
         }
       }
+
+      // ✅ 会员有效期：审核通过后18个月
+      const memberExpiresAt = new Date(Date.now() + 18 * 30 * 24 * 60 * 60 * 1000);
 
       if (!existingLawyer) {
         // 🔧 解析申请表中的 specialties（可能是字符串或JSON数组）
@@ -171,22 +178,28 @@ export async function PUT(request: NextRequest) {
           name: appData.name,                     // ✅ 前端读取 lawyer.name
           real_name: appData.name,                // 保留兼容旧字段
           wechat: appData.wechat,
-          email: appData.email || null,           // ✅ 新增：邮箱
-          title: appData.title || null,           // ✅ 新增：头衔/职位
-          intro: appData.intro || null,           // ✅ 新增：个人简介
+          email: appData.email || null,           // ✅ 邮箱（申请表可能无此字段）
+          title: appData.title || '专职律师',     // ✅ 默认值：专职律师
+          intro: appData.intro || null,           // ✅ 个人简介（申请表可能无此字段）
           // license_number 映射到 license_no
           license_no: appData.license_number || null,
           // ✅ specialties 使用数组格式（与前端一致）
           specialties: specialtiesArr,
+          // ✅ 套餐信息：从申请表中同步写入
+          package_type: appData.package_type || null,
+          selected_packages: appData.selected_packages || null,
           // ✅ 会员有效期：审核通过后18个月
           member_expires_at: memberExpiresAt.toISOString(),
           member_starting_at: new Date().toISOString(),
-          // 🔢 从业年限默认值（可后续修改）
+          // ✅ 执业年限：从申请表同步（默认0）
           working_years: appData.working_years || 0,
+          // ✅ 城市：从申请表同步（默认空）
+          city: appData.city || null,
           // 额外信息存入 bio（执照图片等敏感信息）
           bio: JSON.stringify({
             lawFirm: appData.law_firm,
             education: appData.education,
+            graduatedSchool: appData.graduated_school || '',
             gender: appData.gender,
             licenseImages: appData.license_images,
             idCardImages: appData.id_card_images,

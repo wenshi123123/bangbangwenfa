@@ -34,7 +34,7 @@ export default function PriceManagementPage() {
       if (result.success) {
         setPrices(result.data);
         // 初始化编辑值
-        const initialValues: Record<number, string> = {};
+        const initialValues: Record<string, string> = {};
         result.data.forEach((p: PriceConfig) => {
           initialValues[p.id] = (p.price / 100).toString();
         });

@@ -165,11 +165,11 @@ CREATE TABLE IF NOT EXISTS lawyers (
     name VARCHAR(100),
     nickname VARCHAR(100),
     avatar_url TEXT,
-    real_name VARCHAR(50),
+    real_name VARCHAR(100),
     id_card VARCHAR(20),
     id_card_front TEXT,
     id_card_back TEXT,
-    license_no VARCHAR(50),
+    license_no VARCHAR(200),
     license_photo TEXT,
     province VARCHAR(50),
     city VARCHAR(50),
@@ -194,13 +194,17 @@ CREATE TABLE IF NOT EXISTS lawyers (
     status_updated_at TIMESTAMP WITH TIME ZONE,
     login_count INTEGER DEFAULT 0,
     last_login_at TIMESTAMP WITH TIME ZONE,
+    online_status VARCHAR(20) DEFAULT 'away',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+COMMENT ON COLUMN lawyers.online_status IS '律师在线状态: online=在线, away=离开';
+
 CREATE INDEX IF NOT EXISTS idx_lawyers_phone ON lawyers(phone);
 CREATE INDEX IF NOT EXISTS idx_lawyers_status ON lawyers(status);
 CREATE INDEX IF NOT EXISTS idx_lawyers_review_status ON lawyers(review_status);
+CREATE INDEX IF NOT EXISTS idx_lawyers_online_status ON lawyers(online_status);
 
 ALTER TABLE lawyers ENABLE ROW LEVEL SECURITY;
 
@@ -541,4 +545,60 @@ BEGIN
     RAISE NOTICE '';
     RAISE NOTICE '默认管理员账号: admin / admin123';
     RAISE NOTICE '请及时修改默认管理员密码!';
+END $$;
+
+-- ============================================
+-- 17. 兜底迁移：为已存在的 lawyers 表补充 online_status 列
+-- ============================================
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'lawyers' AND column_name = 'online_status'
+    ) THEN
+        ALTER TABLE lawyers ADD COLUMN online_status VARCHAR(20) DEFAULT 'away';
+        RAISE NOTICE '已为 lawyers 表添加 online_status 列';
+    ELSE
+        RAISE NOTICE 'lawyers.online_status 列已存在，跳过';
+    END IF;
+
+    -- 同时补充索引（如果不存在）
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE tablename = 'lawyers' AND indexname = 'idx_lawyers_online_status'
+    ) THEN
+        CREATE INDEX idx_lawyers_online_status ON lawyers(online_status);
+        RAISE NOTICE '已创建 idx_lawyers_online_status 索引';
+    END IF;
+END $$;
+
+-- ============================================
+-- 18. 兜底迁移：为已存在的 lawyers 表补充 member_starting_at / graduated_school / education 等列
+-- ============================================
+DO $$
+DECLARE
+    col_record RECORD;
+BEGIN
+    FOR col_record IN
+        SELECT column_name, data_type, is_nullable
+        FROM (VALUES
+            ('member_starting_at', 'TIMESTAMP WITH TIME ZONE'),
+            ('graduated_school', 'VARCHAR(200)'),
+            ('education', 'VARCHAR(50)'),
+            ('package_type', 'VARCHAR(50)'),
+            ('selected_packages', 'TEXT[]'),
+            ('law_firm', 'VARCHAR(200)'),
+            ('name', 'VARCHAR(100)'),
+            ('nickname', 'VARCHAR(100)'),
+            ('status_updated_at', 'TIMESTAMP WITH TIME ZONE')
+        ) AS t(column_name, data_type)
+    LOOP
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'lawyers' AND column_name = col_record.column_name
+        ) THEN
+            EXECUTE format('ALTER TABLE lawyers ADD COLUMN %I %s', col_record.column_name, col_record.data_type);
+            RAISE NOTICE '已为 lawyers 表添加 % 列', col_record.column_name;
+        END IF;
+    END LOOP;
 END $$;

@@ -37,7 +37,7 @@ export function LawyerBottomNav() {
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-50"
+      className="fixed bottom-0 left-0 right-0 z-50 lg:hidden"
       style={{
         paddingBottom: 'env(safe-area-inset-bottom, 8px)',
         background: 'rgba(255,255,255,0.85)',

@@ -47,6 +47,7 @@ export default function LawyerPendingPage() {
   const [orders, setOrders] = useState<PendingOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [confirmingOrder, setConfirmingOrder] = useState<{ orderId: number; action: 'accept' | 'reject' } | null>(null);
 
   const fetchPendingOrders = useCallback(async () => {
     try {
@@ -71,10 +72,13 @@ export default function LawyerPendingPage() {
     }
   }, [authLoading, isAuthorized, fetchPendingOrders]);
 
-  const handleConfirm = async (orderId: number, action: 'accept' | 'reject') => {
-    if (!lawyerId) return;
-    const confirmText = action === 'accept' ? '确认接单' : '确认拒单';
-    if (!confirm(`确定要${confirmText}吗？`)) return;
+  const executeOrderAction = async (orderId: number, action: 'accept' | 'reject') => {
+    if (!lawyerId) {
+      alert('未获取到律师身份信息，请刷新页面后重试');
+      console.error('[接单/拒单] lawyerId 为空，无法操作订单', { orderId, action });
+      setConfirmingOrder(null);
+      return;
+    }
     setActionLoading(orderId);
     try {
       const headers: HeadersInit = {
@@ -91,16 +95,19 @@ export default function LawyerPendingPage() {
         alert(result.message);
         setOrders(orders.filter((o) => o.id !== orderId));
       } else {
+        console.error('[接单/拒单] 后端返回失败', { orderId, action, lawyerId, status: response.status, result });
         alert(result.error || '操作失败');
       }
-    } catch {
+    } catch (err) {
+      console.error('[接单/拒单] 请求异常', { orderId, action, lawyerId, err });
       alert('操作失败，请重试');
     } finally {
       setActionLoading(null);
+      setConfirmingOrder(null);
     }
   };
 
-  const formatPrice = (price: number) => (price / 100).toFixed(2);
+
 
   const formatDate = (dateStr: string) =>
     new Date(dateStr).toLocaleDateString('zh-CN', {
@@ -198,9 +205,10 @@ export default function LawyerPendingPage() {
               const urgency = getTimeUrgency(order.assigned_at);
 
               return (
-                <div
+                <Link
+                  href={`/lawyer/orders/${order.id}`}
                   key={order.id}
-                  className="bg-white rounded-2xl overflow-hidden border border-[#EBE3D8]/60 shadow-sm"
+                  className="bg-white rounded-2xl overflow-hidden border border-[#EBE3D8]/60 shadow-sm block hover:shadow-md hover:border-[#C47353]/20 transition-all duration-300 cursor-pointer"
                 >
                   {/* 左侧时间条 */}
                   <div className="flex">
@@ -228,14 +236,7 @@ export default function LawyerPendingPage() {
                             {order.case_title}
                           </h3>
                         </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-base font-bold text-[#7B9B6E]">
-                            ¥{formatPrice(order.service_price)}
-                          </p>
-                          <p className="text-[11px] text-[#A89B90]">
-                            {formatDate(order.assigned_at)}
-                          </p>
-                        </div>
+
                       </div>
 
                       {/* 客户信息 */}
@@ -256,43 +257,88 @@ export default function LawyerPendingPage() {
                         {order.case_description}
                       </p>
 
-                      {/* 操作按钮 */}
-                      <div className="flex gap-3">
-                        <button
-                          className="flex-1 py-2.5 text-sm font-medium rounded-xl border border-[#C26565]/20 text-[#C26565] hover:bg-[#C26565]/5 transition-colors disabled:opacity-50 active:scale-[0.98]"
-                          onClick={() => handleConfirm(order.id, 'reject')}
-                          disabled={actionLoading === order.id}
-                        >
-                          {actionLoading === order.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-                          ) : (
-                            <span className="flex items-center justify-center gap-1.5">
-                              <XCircle className="w-4 h-4" /> 拒单
-                            </span>
-                          )}
-                        </button>
-                        <button
-                          className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-[#7B9B6E] text-white hover:bg-[#6A8B5E] transition-colors disabled:opacity-50 active:scale-[0.98]"
-                          onClick={() => handleConfirm(order.id, 'accept')}
-                          disabled={actionLoading === order.id}
-                        >
-                          {actionLoading === order.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-                          ) : (
-                            <span className="flex items-center justify-center gap-1.5">
-                              <CheckCircle className="w-4 h-4" /> 接单
-                            </span>
-                          )}
-                        </button>
-                      </div>
+                      {/* 操作按钮 — 防御性检查 lawyerId */}
+                      {!lawyerId ? (
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-center">
+                          <p className="text-xs text-amber-700 mb-2">律师身份信息加载中，请刷新页面</p>
+                          <button
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.reload(); }}
+                            className="text-xs px-4 py-1.5 bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200 transition-colors"
+                          >
+                            刷新页面
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-3">
+                          <button
+                            className="flex-1 py-2.5 text-sm font-medium rounded-xl border border-[#C26565]/20 text-[#C26565] hover:bg-[#C26565]/5 transition-colors disabled:opacity-50 active:scale-[0.98]"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setConfirmingOrder({ orderId: order.id, action: 'reject' }); }}
+                            disabled={actionLoading === order.id}
+                          >
+                            {actionLoading === order.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                            ) : (
+                              <span className="flex items-center justify-center gap-1.5">
+                                <XCircle className="w-4 h-4" /> 拒单
+                              </span>
+                            )}
+                          </button>
+                          <button
+                            className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-[#7B9B6E] text-white hover:bg-[#6A8B5E] transition-colors disabled:opacity-50 active:scale-[0.98]"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setConfirmingOrder({ orderId: order.id, action: 'accept' }); }}
+                            disabled={actionLoading === order.id}
+                          >
+                            {actionLoading === order.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                            ) : (
+                              <span className="flex items-center justify-center gap-1.5">
+                                <CheckCircle className="w-4 h-4" /> 接单
+                              </span>
+                            )}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* 确认弹窗 — 替代原生 confirm()，兼容 IDE 内置浏览器 */}
+      {confirmingOrder && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setConfirmingOrder(null)}>
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-[#3D322D] mb-2 font-serif">
+              {confirmingOrder.action === 'accept' ? '确认接单' : '确认拒单'}
+            </h3>
+            <p className="text-sm text-[#8C7B6E] mb-6">
+              确定要{confirmingOrder.action === 'accept' ? '接单' : '拒单'}吗？
+              {confirmingOrder.action === 'reject' && ' 拒单后将重新进入待派单状态。'}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmingOrder(null)}
+                className="flex-1 py-2.5 text-sm font-medium rounded-xl border border-[#EBE3D8] text-[#8C7B6E] hover:bg-[#F5F2ED] transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={() => executeOrderAction(confirmingOrder.orderId, confirmingOrder.action)}
+                className={`flex-1 py-2.5 text-sm font-medium rounded-xl text-white transition-colors ${
+                  confirmingOrder.action === 'accept'
+                    ? 'bg-[#7B9B6E] hover:bg-[#6A8B5E]'
+                    : 'bg-[#C26565] hover:bg-[#A85252]'
+                }`}
+              >
+                确认{confirmingOrder.action === 'accept' ? '接单' : '拒单'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <LawyerBottomNav />
     </div>

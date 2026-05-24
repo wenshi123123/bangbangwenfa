@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from('consult_orders')
-      .select('*')
+      .select('id, contact_name, contact_phone, contact_wechat, case_type, case_title, case_description, service_type, assigned_at, category, created_at, assignment_status, assigned_lawyer_id, user_id, payment_status')
       .eq('assigned_lawyer_id', lawyerId)
       .eq('assignment_status', 'pending')
       .order('created_at', { ascending: false });

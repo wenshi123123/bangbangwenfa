@@ -134,7 +134,7 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
       if (userInfoStr) {
         try {
           userInfo = JSON.parse(userInfoStr);
-          headers['x-user-info'] = JSON.stringify({ id: userInfo.id });
+          headers['x-user-info'] = JSON.stringify({ id: userInfo?.id });
         } catch (e) {
           console.error('解析用户信息失败:', e);
         }
@@ -155,7 +155,11 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
           licenseNumber: formData.licenseNumber,
           specialties: formData.specialties,
           education: formData.education,
+          graduatedSchool: formData.graduatedSchool,
+          workingYears: parseInt(formData.workingYears) || 0,
+          city: formData.city,
           phone: formData.phone,
+          wechat: formData.wechat,
           licenseImages: formData.licenseImages,
           idCardImages: formData.idCardImages,
           educationImages: formData.educationImages,
@@ -349,8 +353,20 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
             <span className="font-medium">{formData.licenseNumber}</span>
           </div>
           <div className="flex items-center gap-3">
+            <span className="text-muted-foreground w-20 flex-shrink-0">执业年限</span>
+            <span className="font-medium">{formData.workingYears || '未填写'}年</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-muted-foreground w-20 flex-shrink-0">所在城市</span>
+            <span className="font-medium">{formData.city || '未填写'}</span>
+          </div>
+          <div className="flex items-center gap-3">
             <span className="text-muted-foreground w-20 flex-shrink-0">学历</span>
             <span className="font-medium">{formData.education}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-muted-foreground w-20 flex-shrink-0">毕业院校</span>
+            <span className="font-medium">{formData.graduatedSchool || '未填写'}</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-muted-foreground w-20 flex-shrink-0">擅长领域</span>

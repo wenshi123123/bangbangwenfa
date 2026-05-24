@@ -32,7 +32,7 @@ interface NavItem {
   href: string;
   icon: React.ReactNode;
   permission?: string;
-  badge?: 'pendingLawyerApplications' | 'pendingProfileRevisions' | 'pendingOrders' | 'pendingRefunds' | 'pendingGuardianWithdrawals' | 'pendingCommissions' | 'newUsersToday';
+  badge?: 'pendingLawyerApplications' | 'pendingProfileRevisions' | 'pendingOrders' | 'pendingRefunds' | 'pendingGuardianWithdrawals' | 'pendingCommissions' | 'newUsersToday' | 'onlineLawyers';
 }
 
 interface Stats {
@@ -45,6 +45,7 @@ interface Stats {
   newUsersToday: number;
   todayOrders: number;
   todayRevenue: number;
+  onlineLawyers: number;
 }
 
 const navItems: NavItem[] = [
@@ -59,6 +60,13 @@ const navItems: NavItem[] = [
     icon: <Scale className="w-5 h-5" />,
     permission: 'lawyer_audit',
     badge: 'pendingLawyerApplications'
+  },
+  {
+    name: '律师名单',
+    href: '/admin/lawyers',
+    icon: <Users className="w-5 h-5" />,
+    permission: 'lawyer_audit',
+    badge: 'onlineLawyers',
   },
   {
     name: '资料修改审核',
@@ -128,6 +136,7 @@ export default function AdminLayout({
     newUsersToday: 0,
     todayOrders: 0,
     todayRevenue: 0,
+    onlineLawyers: 0,
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -209,6 +218,8 @@ export default function AdminLayout({
   // 过滤有权限的菜单项
   const filteredNavItems = navItems.filter(item => {
     if (!item.permission) return true;
+    // 超级管理员（permissions包含'all'）拥有所有权限
+    if (admin?.permissions?.includes('all')) return true;
     return admin?.permissions?.includes(item.permission);
   });
 
@@ -242,12 +253,18 @@ export default function AdminLayout({
 
             {/* Desktop Nav */}
             <nav className="hidden md:flex items-center gap-1">
-              {filteredNavItems.map((item) => (
+              {filteredNavItems.map((item) => {
+                // 在线律师 badge：点击自动跳到筛选在线律师
+                const isLawyerBadge = item.badge === 'onlineLawyers';
+                const href = isLawyerBadge && stats.onlineLawyers > 0
+                  ? `${item.href}?onlineStatus=online`
+                  : item.href;
+                return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={href}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    pathname === item.href
+                    pathname === item.href || (isLawyerBadge && pathname.startsWith(item.href))
                       ? 'bg-green-50 text-green-700'
                       : 'text-slate-600 hover:bg-slate-100'
                   }`}
@@ -256,13 +273,16 @@ export default function AdminLayout({
                     {item.icon}
                     {item.name}
                     {item.badge && stats[item.badge] > 0 && (
-                      <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-red-500 text-white text-xs font-bold rounded-full">
+                      <span className={`min-w-[20px] h-5 px-1.5 flex items-center justify-center text-white text-xs font-bold rounded-full ${
+                        item.badge === 'onlineLawyers' ? 'bg-emerald-500' : 'bg-red-500'
+                      }`}>
                         {stats[item.badge] > 99 ? '99+' : stats[item.badge]}
                       </span>
                     )}
                   </span>
                 </Link>
-              ))}
+                );
+              })}
             </nav>
 
             {/* Right Side */}
@@ -303,13 +323,18 @@ export default function AdminLayout({
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-slate-200 bg-white">
             <nav className="px-4 py-3 space-y-1">
-              {filteredNavItems.map((item) => (
+              {filteredNavItems.map((item) => {
+                const isLawyerBadge = item.badge === 'onlineLawyers';
+                const href = isLawyerBadge && stats.onlineLawyers > 0
+                  ? `${item.href}?onlineStatus=online`
+                  : item.href;
+                return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={href}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`block px-4 py-3 rounded-lg text-sm font-medium ${
-                    pathname === item.href
+                    pathname === item.href || (isLawyerBadge && pathname.startsWith(item.href))
                       ? 'bg-green-50 text-green-700'
                       : 'text-slate-600 hover:bg-slate-100'
                   }`}
@@ -320,13 +345,16 @@ export default function AdminLayout({
                       {item.name}
                     </span>
                     {item.badge && stats[item.badge] > 0 && (
-                      <span className="min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-red-500 text-white text-xs font-bold rounded-full">
+                      <span className={`min-w-[20px] h-5 px-1.5 flex items-center justify-center text-white text-xs font-bold rounded-full ${
+                        item.badge === 'onlineLawyers' ? 'bg-emerald-500' : 'bg-red-500'
+                      }`}>
                         {stats[item.badge] > 99 ? '99+' : stats[item.badge]}
                       </span>
                     )}
                   </span>
                 </Link>
-              ))}
+                );
+              })}
             </nav>
           </div>
         )}

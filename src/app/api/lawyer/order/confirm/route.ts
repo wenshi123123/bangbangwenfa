@@ -35,12 +35,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '订单不存在' }, { status: 404 });
     }
     
-    // 权限校验：验证订单是否已分配给当前律师
-    if (existing.assigned_lawyer_id && existing.assigned_lawyer_id !== lawyerId) {
+    // 权限校验：验证订单是否已分配给当前律师（String 包裹处理类型不一致）
+    if (existing.assigned_lawyer_id != null && String(existing.assigned_lawyer_id) !== String(lawyerId)) {
       console.error('权限校验失败: 订单已分配给其他律师', { 
         orderId, 
         existingLawyerId: existing.assigned_lawyer_id,
-        requestLawyerId: lawyerId 
+        existingLawyerIdType: typeof existing.assigned_lawyer_id,
+        requestLawyerId: lawyerId,
+        requestLawyerIdType: typeof lawyerId,
       });
       return NextResponse.json({ success: false, error: '无权操作此订单' }, { status: 403 });
     }

@@ -26,10 +26,10 @@ interface PriceConfig {
 const CONSULT_PLANS = ['basic', 'standard', 'advanced'];
 
 // 默认价格（API 加载失败或返回空数据时使用）
-const defaultPlans = [
-  { id: 'basic', plan_name: '基础咨询', price: 6900 },
-  { id: 'standard', plan_name: '标准方案', price: 19900 },
-  { id: 'advanced', plan_name: '深度服务', price: 29900 },
+const defaultPlans: PriceConfig[] = [
+  { plan_id: 'basic', plan_name: '基础咨询', price: 6900 },
+  { plan_id: 'standard', plan_name: '标准方案', price: 19900 },
+  { plan_id: 'advanced', plan_name: '深度服务', price: 29900 },
 ];
 
 export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
