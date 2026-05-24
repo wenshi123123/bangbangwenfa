@@ -127,13 +127,13 @@ export default function GuardianCommissionsPage() {
     
     try {
       const newStatus = action === 'approve' ? 'approved' : 'rejected';
-      const response = await fetch('/api/admin/guardian-commissions', {
+      const response = await adminApiRequest('/api/admin/guardian-commissions', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: selectedCommission.id,
           status: newStatus,
-          admin_note: adminNote || null
+          adminNote: adminNote || null
         })
       });
       

@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/hooks/use-auth';
 import { Header } from '@/components/layout/header';
@@ -24,6 +24,14 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: 'cover',
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -34,7 +42,7 @@ export default function RootLayout({
       <body className={`antialiased`}>
         <AuthProvider>
           <Header />
-          <main>{children}</main>
+          <main className="min-h-screen">{children}</main>
           <LoginModal />
         </AuthProvider>
       </body>

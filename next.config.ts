@@ -1,7 +1,22 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ['localhost:5000', 'localhost'],
+  allowedDevOrigins: ['localhost:5000', 'localhost:3000', 'localhost'],
+  // ⚡ Windows 性能优化：排除 node_modules 文件监听，防止卡顿/闪退
+  turbopack: {
+    watchOptions: {
+      ignored: ['**/node_modules/**', '**/.git/**'],
+    },
+  },
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.watchOptions = {
+        ignored: ['**/node_modules/**', '**/.git/**'],
+        poll: false, // 关闭轮询，降低 CPU 占用
+      };
+    }
+    return config;
+  },
   images: {
     unoptimized: true, // 禁用图片优化，避免缓存目录问题
     remotePatterns: [

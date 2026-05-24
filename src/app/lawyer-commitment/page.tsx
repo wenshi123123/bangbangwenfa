@@ -20,7 +20,7 @@ export default function LawyerCommitmentPage() {
       </header>
 
       {/* Content */}
-      <main className="container mx-auto px-4 py-8 max-w-3xl">
+      <div className="container mx-auto px-4 py-8 max-w-3xl">
         <h1 className="text-2xl font-bold text-center mb-8">律师入驻承诺书</h1>
         
         <div className="prose prose-gray max-w-none space-y-6 text-sm leading-relaxed">
@@ -46,7 +46,7 @@ export default function LawyerCommitmentPage() {
             返回首页
           </Link>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

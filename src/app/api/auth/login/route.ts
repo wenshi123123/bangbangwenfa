@@ -172,11 +172,18 @@ async function handleCodeLogin(body: { phone?: string; code?: string }) {
       .eq('phone', phone)
       .single();
 
+    // 🔧 确定主身份类型：律师 > 守护者 > 普通用户
+    const effectiveUserType = lawyerInfo ? 'lawyer'
+      : guardianInfo ? 'guardian'
+      : 'user';
+
     const token = await generateToken({
       id: existingUser.id,
       phone: existingUser.phone,
       username: existingUser.username,
-      userType: 'user'
+      userType: effectiveUserType,
+      guardianId: guardianInfo?.id,
+      lawyerId: lawyerInfo?.id,  // 🔧 传入 lawyers 表 UUID
     });
 
     return NextResponse.json({
@@ -187,7 +194,7 @@ async function handleCodeLogin(body: { phone?: string; code?: string }) {
           phone: existingUser.phone,
           username: existingUser.username,
           nickname: existingUser.nickname,
-          userType: 'user',
+          userType: effectiveUserType,
           // 守护者信息
           isGuardian: !!guardianInfo,
           guardianInfo: guardianInfo ? {
@@ -204,7 +211,7 @@ async function handleCodeLogin(body: { phone?: string; code?: string }) {
             id: lawyerInfo.id,
             name: lawyerInfo.name,
             status: lawyerInfo.status,
-            expireAt: lawyerInfo.expire_at,
+            expireAt: lawyerInfo.member_expires_at,  // 🔧 修复：expire_at → member_expires_at
           } : null,
         },
         token
@@ -312,8 +319,18 @@ async function handleCodeLogin(body: { phone?: string; code?: string }) {
     }
 
     if (lawyerApp.review_status === 'approved') {
+      // 🔧 修复：从 lawyers 表查询 ID 和会员有效期（lawyer_applications.id 为整数，lawyers.id 为 UUID，两者不匹配）
+      const { data: lawyerRecord } = await supabase
+        .from('lawyers')
+        .select('id, member_expires_at')
+        .eq('phone', phone)
+        .maybeSingle();
+      
+      const memberExpiresAt = lawyerRecord?.member_expires_at;
+      const effectiveLawyerId = lawyerRecord?.id || lawyerApp.id; // 优先使用 lawyers 表的 UUID
+      
       // 检查是否已过期
-      if (lawyerApp.member_expires_at && new Date(lawyerApp.member_expires_at) < new Date()) {
+      if (memberExpiresAt && new Date(memberExpiresAt) < new Date()) {
         return NextResponse.json(
           { success: false, error: '您的律师会员已过期，请续费后登录' },
           { status: 400 }
@@ -348,7 +365,7 @@ async function handleCodeLogin(body: { phone?: string; code?: string }) {
         id: userId,
         phone: lawyerApp.phone,
         userType: 'lawyer',
-        lawyerId: lawyerApp.id,  // 🔧 修复：独立传入 lawyer_applications 表 ID
+        lawyerId: effectiveLawyerId,  // 🔧 使用 lawyers 表的 UUID（而非 lawyer_applications 整数）
       });
 
       return NextResponse.json({
@@ -364,10 +381,10 @@ async function handleCodeLogin(body: { phone?: string; code?: string }) {
             guardianInfo: null,
             isLawyer: true,
             lawyerInfo: {
-              id: lawyerApp.id,
+              id: effectiveLawyerId,  // 🔧 使用 lawyers 表 UUID
               name: lawyerApp.name,
               status: 'approved',
-              expireAt: lawyerApp.member_expires_at,
+              expireAt: memberExpiresAt,
             },
           },
           token
@@ -514,12 +531,32 @@ async function handlePasswordLogin(
     .limit(1)
     .maybeSingle();
 
+  // 🔧 从 lawyers 表获取准确的 member_expires_at 和 UUID
+  let lawyerMemberExpiresAt: string | null = null;
+  let lawyerUUID: string | null = null;
+  if (lawyerApp) {
+    const { data: lawyerRecord } = await supabase
+      .from('lawyers')
+      .select('id, member_expires_at')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    lawyerMemberExpiresAt = lawyerRecord?.member_expires_at || null;
+    lawyerUUID = lawyerRecord?.id || null;
+  }
+
+  // 🔧 确定主身份类型
+  const effectiveUserType = lawyerApp ? 'lawyer'
+    : guardianInfo ? 'guardian'
+    : 'user';
+
   // 生成 token
   const token = await generateToken({
     id: user.id,
     phone: user.phone,
     username: user.username,
-    userType: 'user'
+    userType: effectiveUserType,
+    guardianId: guardianInfo?.id,
+    lawyerId: lawyerUUID || lawyerApp?.id,  // 🔧 优先使用 lawyers 表 UUID
   });
 
   return NextResponse.json({
@@ -530,7 +567,7 @@ async function handlePasswordLogin(
         phone: user.phone,
         username: user.username,
         nickname: user.nickname,
-        userType: 'user',
+        userType: effectiveUserType,
         // 守护者信息
         isGuardian: !!guardianInfo,
         guardianInfo: guardianInfo ? {
@@ -544,10 +581,10 @@ async function handlePasswordLogin(
         // 律师信息
         isLawyer: !!lawyerApp,
         lawyerInfo: lawyerApp ? {
-          id: lawyerApp.id,
+          id: lawyerUUID || lawyerApp.id,  // 🔧 优先 lawyers 表 UUID
           name: lawyerApp.name,
           status: 'approved',
-          expireAt: lawyerApp.member_expires_at,
+          expireAt: lawyerMemberExpiresAt,  // 🔧 使用 member_expires_at
         } : null,
       },
       token

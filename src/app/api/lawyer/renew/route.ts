@@ -25,8 +25,8 @@ export async function POST(request: NextRequest) {
     return unauthorizedResponse(auth?.error || '请先登录');
   }
 
-  // 必须是律师身份
-  if (auth.userType !== 'lawyer') {
+  // 🔧 确保是律师身份（检查 lawyerId 而非死卡 userType）
+  if (!auth.lawyerId) {
     return NextResponse.json(
       { success: false, error: '仅律师可执行续费操作' },
       { status: 403 }

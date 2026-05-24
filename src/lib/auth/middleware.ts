@@ -8,8 +8,8 @@ import { verifyAdminJWT } from './admin-token';
 export interface AuthResult {
   success: boolean;
   userId?: number;
-  guardianId?: number;  // 守护者 ID（当 userType 为 guardian 时）
-  lawyerId?: number;    // 律师 ID（当 userType 为 lawyer 时）
+  guardianId?: number;       // 守护者 ID（当 userType 为 guardian 时）
+  lawyerId?: string | number; // 律师 ID（当 userType 为 lawyer 时，UUID 或整数）
   phone?: string;
   userType?: 'user' | 'guardian' | 'lawyer';
   error?: string;

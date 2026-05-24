@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { 
+import {
   ArrowLeft,
   Clock,
   CheckCircle,
@@ -10,12 +10,10 @@ import {
   Loader2,
   MessageSquare,
   Phone,
-  User
+  User,
 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { useAuth } from '@/hooks/use-auth';
+import { useLawyerAuth } from '@/hooks/use-lawyer-auth';
+import { LawyerBottomNav } from '@/components/lawyer/lawyer-bottom-nav';
 
 interface PendingOrder {
   id: number;
@@ -33,235 +31,270 @@ interface PendingOrder {
 }
 
 const serviceTypeMap: Record<string, { label: string; color: string }> = {
-  basic: { label: '基础咨询', color: 'bg-blue-100 text-blue-700' },
-  standard: { label: '标准咨询', color: 'bg-green-100 text-green-700' },
-  advanced: { label: '深度咨询', color: 'bg-purple-100 text-purple-700' },
+  basic: { label: '基础咨询', color: 'bg-[#7B9B6E]/10 text-[#7B9B6E]' },
+  standard: { label: '标准咨询', color: 'bg-[#6E9B7B]/10 text-[#6E9B7B]' },
+  advanced: { label: '深度咨询', color: 'bg-[#7B7B9B]/10 text-[#7B7B9B]' },
 };
 
 const categoryMap: Record<string, { label: string; color: string }> = {
-  criminal: { label: '刑事案件', color: 'text-red-600' },
-  civil: { label: '民事案件', color: 'text-blue-600' },
+  criminal: { label: '刑事案件', color: 'text-[#C26565]' },
+  civil: { label: '民事案件', color: 'text-[#7B9B6E]' },
 };
 
 export default function LawyerPendingPage() {
-  const { user, isLoggedIn, isLoading } = useAuth();
+  const { isAuthorized, isLoading: authLoading, lawyerId, getAuthHeaders } =
+    useLawyerAuth();
   const [orders, setOrders] = useState<PendingOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (!isLoading && !isLoggedIn) {
-      window.dispatchEvent(new CustomEvent('open-login-modal'));
-    }
-  }, [isLoading, isLoggedIn]);
-
-  const fetchPendingOrders = useCallback(async (lawyerId: number) => {
+  const fetchPendingOrders = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
-      const headers: HeadersInit = {};
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      
+      const headers = getAuthHeaders();
       const response = await fetch('/api/lawyer/order/pending', { headers });
       const result = await response.json();
-      
       if (result.success) {
         setOrders(result.orders || result.data || []);
       }
-    } catch (error) {
-      console.error('获取订单失败:', error);
+    } catch {
+      // 静默处理
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [getAuthHeaders]);
 
   useEffect(() => {
-    // 当登录状态确定且有 lawyerId 时才获取订单
-    if (!isLoading && isLoggedIn && user?.lawyerId) {
-      fetchPendingOrders(user.lawyerId);
-    } else if (!isLoading) {
-      // 没有 lawyerId 或未登录，停止 loading
+    if (!authLoading && isAuthorized) {
+      fetchPendingOrders();
+    } else if (!authLoading && !isAuthorized) {
       setLoading(false);
     }
-  }, [isLoading, isLoggedIn, user?.lawyerId, fetchPendingOrders]);
+  }, [authLoading, isAuthorized, fetchPendingOrders]);
 
   const handleConfirm = async (orderId: number, action: 'accept' | 'reject') => {
-    if (!user?.lawyerId) return;
-
+    if (!lawyerId) return;
     const confirmText = action === 'accept' ? '确认接单' : '确认拒单';
     if (!confirm(`确定要${confirmText}吗？`)) return;
-
     setActionLoading(orderId);
     try {
-      const token = localStorage.getItem('token');
-      const headers: HeadersInit = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      };
       const response = await fetch('/api/lawyer/order/confirm', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ orderId, action, lawyerId: user.lawyerId })
+        body: JSON.stringify({ orderId, action, lawyerId }),
       });
-
       const result = await response.json();
-      
       if (result.success) {
         alert(result.message);
-        // 从列表中移除
-        setOrders(orders.filter(o => o.id !== orderId));
+        setOrders(orders.filter((o) => o.id !== orderId));
       } else {
         alert(result.error || '操作失败');
       }
-    } catch (error) {
-      console.error('操作失败:', error);
+    } catch {
       alert('操作失败，请重试');
     } finally {
       setActionLoading(null);
     }
   };
 
-  const formatPrice = (price: number) => {
-    return (price / 100).toFixed(2);
-  };
+  const formatPrice = (price: number) => (price / 100).toFixed(2);
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('zh-CN', {
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString('zh-CN', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
     });
+
+  // 计算时间紧急程度
+  const getTimeUrgency = (dateStr: string) => {
+    const assigned = new Date(dateStr).getTime();
+    const now = Date.now();
+    const hoursDiff = (now - assigned) / (1000 * 60 * 60);
+    if (hoursDiff < 2) return { level: 'new', color: '#C47353', label: '刚刚' };
+    if (hoursDiff < 12) return { level: 'recent', color: '#C8963E', label: '今日' };
+    return { level: 'old', color: '#EBE3D8', label: '稍早' };
   };
 
-  if (isLoading || loading) {
+  if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #FEF3E2 0%, #FFF7ED 50%, #FEF3E2 100%)' }}>
-        <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+      <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-full border-2 border-[#C47353] border-t-transparent animate-spin" />
+          <span className="text-sm text-[#8C7B6E]">加载中…</span>
+        </div>
       </div>
     );
   }
 
-  if (!isLoggedIn || !user?.isLawyer) {
+  if (!isAuthorized) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #FEF3E2 0%, #FFF7ED 50%, #FEF3E2 100%)' }}>
-        <Card className="max-w-sm">
-          <CardContent className="pt-6 text-center">
-            <MessageSquare className="w-12 h-12 text-orange-500 mx-auto mb-4" />
-            <h2 className="text-xl font-bold mb-2">请先登录</h2>
-            <p className="text-muted-foreground mb-4">登录后即可处理待确认订单</p>
-            <Button onClick={() => window.dispatchEvent(new CustomEvent('open-login-modal'))}>
-              手机号登录
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-[#FAF7F2]">
+        <div className="bg-white rounded-2xl p-8 shadow-lg max-w-sm w-full text-center">
+          <div className="w-14 h-14 rounded-full bg-[#C47353]/10 flex items-center justify-center mx-auto mb-4">
+            <MessageSquare className="w-7 h-7 text-[#C47353]" />
+          </div>
+          <h2 className="text-xl font-bold text-[#3D322D] mb-2 font-serif">请先登录</h2>
+          <p className="text-[#8C7B6E] mb-6">登录后即可处理待确认订单</p>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('open-login-modal'))}
+            className="w-full py-3 bg-[#C47353] text-white font-medium rounded-xl hover:bg-[#A85D40] transition-colors"
+          >
+            手机号登录
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen pb-20" style={{ background: 'linear-gradient(135deg, #FEF3E2 0%, #FFF7ED 50%, #FEF3E2 100%)' }}>
+    <div className="min-h-screen pb-24 bg-[#FAF7F2]">
       {/* 顶部导航栏 */}
-      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-orange-100/50">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <Link href="/lawyer" className="flex items-center gap-1.5 text-orange-600">
-              <ArrowLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">返回</span>
-            </Link>
-            <div className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-orange-600" />
-              <span className="text-base font-semibold text-orange-600">待确认订单</span>
-            </div>
-            <Badge variant="outline" className="bg-orange-100 text-orange-600">
-              {orders.length}
-            </Badge>
+      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-[#EBE3D8]/60">
+        <div className="px-4 py-3 flex items-center justify-between max-w-2xl mx-auto">
+          <Link
+            href="/lawyer"
+            className="text-sm text-[#8C7B6E] hover:text-[#C47353] transition-colors"
+          >
+            ← 返回
+          </Link>
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-[#C47353]" />
+            <span className="text-[15px] font-semibold text-[#3D322D] font-serif">
+              待确认订单
+            </span>
           </div>
+          <span className="text-xs bg-[#C47353]/10 text-[#C47353] px-2.5 py-1 rounded-full font-medium">
+            {orders.length}
+          </span>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-6">
+      <div className="max-w-2xl mx-auto px-4 py-5">
         {orders.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-600 mb-2">暂无待确认订单</h3>
-              <p className="text-sm text-muted-foreground">当有新订单分配给您时，会在这里显示</p>
-            </CardContent>
-          </Card>
+          <div className="bg-white rounded-2xl py-12 border border-[#EBE3D8]/60 text-center">
+            <div className="w-16 h-16 rounded-full bg-[#F5F2ED] flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-8 h-8 text-[#A89B90]" />
+            </div>
+            <h3 className="text-[#8C7B6E] font-medium mb-1">暂无待确认订单</h3>
+            <p className="text-xs text-[#A89B90]">
+              当有新订单分配给您时，会在这里显示
+            </p>
+          </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {orders.map((order) => {
-              const serviceInfo = serviceTypeMap[order.service_type] || { label: order.service_type, color: 'bg-gray-100 text-gray-700' };
-              const catInfo = categoryMap[order.category] || { label: order.category, color: 'text-gray-600' };
+              const serviceInfo = serviceTypeMap[order.service_type] || {
+                label: order.service_type,
+                color: 'bg-[#F5F2ED] text-[#8C7B6E]',
+              };
+              const catInfo = categoryMap[order.category] || {
+                label: order.category,
+                color: 'text-[#8C7B6E]',
+              };
+              const urgency = getTimeUrgency(order.assigned_at);
 
               return (
-                <Card key={order.id} className="border-orange-100">
-                  <CardContent className="p-4">
-                    {/* Header */}
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`text-sm font-medium ${catInfo.color}`}>{catInfo.label}</span>
-                          <Badge className={serviceInfo.color}>{serviceInfo.label}</Badge>
+                <div
+                  key={order.id}
+                  className="bg-white rounded-2xl overflow-hidden border border-[#EBE3D8]/60 shadow-sm"
+                >
+                  {/* 左侧时间条 */}
+                  <div className="flex">
+                    <div
+                      className="w-1 flex-shrink-0 transition-colors duration-500"
+                      style={{ backgroundColor: urgency.color }}
+                    />
+                    <div className="flex-1 p-4">
+                      {/* 标题 + 价格 */}
+                      <div className="flex items-start justify-between mb-2.5">
+                        <div className="flex-1 min-w-0 mr-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span
+                              className={`text-xs font-medium ${catInfo.color}`}
+                            >
+                              {catInfo.label}
+                            </span>
+                            <span
+                              className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${serviceInfo.color}`}
+                            >
+                              {serviceInfo.label}
+                            </span>
+                          </div>
+                          <h3 className="font-semibold text-[#3D322D] text-sm truncate">
+                            {order.case_title}
+                          </h3>
                         </div>
-                        <h3 className="font-semibold text-gray-900">{order.case_title}</h3>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-base font-bold text-[#7B9B6E]">
+                            ¥{formatPrice(order.service_price)}
+                          </p>
+                          <p className="text-[11px] text-[#A89B90]">
+                            {formatDate(order.assigned_at)}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right ml-4">
-                        <p className="text-lg font-bold text-green-600">¥{formatPrice(order.service_price)}</p>
-                        <p className="text-xs text-muted-foreground">{formatDate(order.assigned_at)}</p>
+
+                      {/* 客户信息 */}
+                      <div className="flex items-center gap-3 mb-3 p-2.5 bg-[#FAF7F2] rounded-xl">
+                        <span className="flex items-center gap-1 text-xs text-[#8C7B6E]">
+                          <User className="w-3.5 h-3.5" />
+                          {order.contact_name}
+                        </span>
+                        <span className="w-px h-3 bg-[#EBE3D8]" />
+                        <span className="flex items-center gap-1 text-xs text-[#8C7B6E]">
+                          <Phone className="w-3.5 h-3.5" />
+                          {order.contact_phone}
+                        </span>
+                      </div>
+
+                      {/* 描述 */}
+                      <p className="text-xs text-[#8C7B6E] mb-4 line-clamp-2 leading-relaxed">
+                        {order.case_description}
+                      </p>
+
+                      {/* 操作按钮 */}
+                      <div className="flex gap-3">
+                        <button
+                          className="flex-1 py-2.5 text-sm font-medium rounded-xl border border-[#C26565]/20 text-[#C26565] hover:bg-[#C26565]/5 transition-colors disabled:opacity-50 active:scale-[0.98]"
+                          onClick={() => handleConfirm(order.id, 'reject')}
+                          disabled={actionLoading === order.id}
+                        >
+                          {actionLoading === order.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                          ) : (
+                            <span className="flex items-center justify-center gap-1.5">
+                              <XCircle className="w-4 h-4" /> 拒单
+                            </span>
+                          )}
+                        </button>
+                        <button
+                          className="flex-1 py-2.5 text-sm font-medium rounded-xl bg-[#7B9B6E] text-white hover:bg-[#6A8B5E] transition-colors disabled:opacity-50 active:scale-[0.98]"
+                          onClick={() => handleConfirm(order.id, 'accept')}
+                          disabled={actionLoading === order.id}
+                        >
+                          {actionLoading === order.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                          ) : (
+                            <span className="flex items-center justify-center gap-1.5">
+                              <CheckCircle className="w-4 h-4" /> 接单
+                            </span>
+                          )}
+                        </button>
                       </div>
                     </div>
-
-                    {/* Customer Info */}
-                    <div className="grid grid-cols-2 gap-2 mb-3 p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm">{order.contact_name}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm">{order.contact_phone}</span>
-                      </div>
-                    </div>
-
-                    {/* Description */}
-                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                      {order.case_description}
-                    </p>
-
-                    {/* Actions */}
-                    <div className="flex gap-3">
-                      <Button
-                        variant="outline"
-                        className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
-                        onClick={() => handleConfirm(order.id, 'reject')}
-                        disabled={actionLoading === order.id}
-                      >
-                        {actionLoading === order.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                        ) : (
-                          <XCircle className="w-4 h-4 mr-1" />
-                        )}
-                        拒单
-                      </Button>
-                      <Button
-                        className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
-                        onClick={() => handleConfirm(order.id, 'accept')}
-                        disabled={actionLoading === order.id}
-                      >
-                        {actionLoading === order.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                        ) : (
-                          <CheckCircle className="w-4 h-4 mr-1" />
-                        )}
-                        接单
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               );
             })}
           </div>
         )}
       </div>
+
+      <LawyerBottomNav />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { CursorFollower, ScrollProgress, TiltCard, AnimatedNumber } from "@/components/ui/animated-effects";
+import { Footer } from "@/components/layout/footer";
 
 import {
     ArrowRight,
@@ -602,7 +603,7 @@ function FAQSection() {
                                                 window.dispatchEvent(new CustomEvent("open-login-modal"));
                                             }
                                         }}
-                                        className="bg-white text-rose-600 hover:bg-rose-50 rounded-full px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-bold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 ripple-effect">立即加入
+                                        className="w-full sm:w-auto bg-white text-rose-600 hover:bg-rose-50 rounded-full px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-bold shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95 sm:hover:scale-105 ripple-effect">立即加入
                                                                                                                         <ArrowRight className="ml-2 h-5 w-5" />
                                     </Button>
                                     <p className="text-center text-rose-200 text-xs mt-2">已有守护者中心 →</p>
@@ -668,50 +669,7 @@ function FAQSection() {
     );
 }
 
-function WechatSection() {
-    return (
-        <section className="py-12 sm:py-16 bg-gradient-to-b from-white to-gray-50">
-            <div className="container mx-auto px-4">
-                <ScrollReveal className="max-w-4xl mx-auto">
-                    <div
-                        className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6 md:p-12">
-                        <div className="flex flex-col md:flex-row items-center gap-4 sm:gap-8">
-                            <div className="flex-shrink-0">
-                                <div
-                                    className="w-36 h-36 sm:w-44 sm:h-44 md:w-48 md:h-48 mx-auto rounded-xl overflow-hidden border-4 border-orange-100 shadow-lg animate-glow-pulse">
-                                    <Image
-                                        src="/wechat-qr.png"
-                                        alt="扫码关注帮帮问法"
-                                        width={192}
-                                        height={192}
-                                        className="w-full h-full object-cover"
-                                        unoptimized />
-                                </div>
-                            </div>
-                            <div className="flex-1 text-center md:text-left">
-                                <h3
-                                    className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-2 sm:mb-4">扫码关注帮帮问法</h3>
-                                <p
-                                    className="text-xs sm:text-sm md:text-base text-gray-600 leading-relaxed mb-4 sm:mb-6">扫描上方二维码关注我们的微信公众号，获取更多法律资讯和即时咨询服务。您也可以通过公众号直接联系我们专业的法律团队。</p>
-                                <div
-                                    className="flex flex-col sm:flex-row gap-2 sm:gap-4 justify-center md:justify-start">
-                                    <div
-                                        className="flex items-center justify-center md:justify-start gap-2 text-xs sm:text-sm text-gray-500">
-                                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />工作日 9:00-18:00 快速响应
-                                                                                                                    </div>
-                                    <div
-                                        className="flex items-center justify-center md:justify-start gap-2 text-xs sm:text-sm text-gray-500">
-                                        <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />专业律师团队在线
-                                                                                                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </ScrollReveal>
-            </div>
-        </section>
-    );
-}
+
 
 export default function Home() {
     const [hoveredCard, setHoveredCard] = useState<number | null>(null);
@@ -913,28 +871,28 @@ export default function Home() {
                                     opacity: 0
                                 }}>
                                 <div
-                                    className="relative inline-block p-4 rounded-2xl bg-white/40 backdrop-blur-md border border-white/50 shadow-lg">
+                                    className="relative w-full p-4 rounded-2xl bg-white/40 backdrop-blur-md border border-white/50 shadow-lg">
                                     <div
-                                        className="flex flex-col sm:flex-row gap-3 items-center lg:items-start lg:justify-start">
-                                        <div className="inline-flex relative group">
+                                        className="flex flex-col sm:flex-row gap-3 items-stretch lg:items-start">
+                                        <div className="w-full sm:w-auto relative group">
                                             <div
                                                 className="absolute -inset-1 bg-gradient-to-r from-blue-400 to-blue-500 rounded-full blur opacity-30 group-hover:opacity-50 transition-opacity duration-500" />
-                                            <Link href="/civil">
+                                            <Link href="/civil" className="block w-full">
                                                 <Button
                                                     size="lg"
-                                                    className="relative bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 text-white rounded-full px-6 sm:px-8 md:px-10 py-4 sm:py-5 md:py-6 text-base sm:text-lg font-semibold h-auto shadow-xl shadow-blue-200/50 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-blue-300/50 ripple-effect">民事咨询
+                                                    className="w-full sm:w-auto relative bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 text-white rounded-full px-6 sm:px-8 md:px-10 py-4 sm:py-5 md:py-6 text-base sm:text-lg font-semibold h-auto shadow-xl shadow-blue-200/50 transition-all duration-300 active:scale-95 sm:hover:scale-105 sm:hover:shadow-2xl sm:hover:shadow-blue-300/50 ripple-effect">民事咨询
                                                                                                                                                                 <ArrowRight
                                                         className="ml-2 sm:ml-3 h-5 sm:h-6 w-5 sm:w-6 group-hover:translate-x-1 transition-transform duration-300" />
                                                 </Button>
                                             </Link>
                                         </div>
-                                        <div className="inline-flex relative group">
+                                        <div className="w-full sm:w-auto relative group">
                                             <div
                                                 className="absolute -inset-1 bg-gradient-to-r from-orange-400 to-orange-500 rounded-full blur opacity-30 group-hover:opacity-50 transition-opacity duration-500" />
-                                            <Link href="/consult">
+                                            <Link href="/consult" className="block w-full">
                                                 <Button
                                                     size="lg"
-                                                    className="relative bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white rounded-full px-6 sm:px-8 md:px-10 py-4 sm:py-5 md:py-6 text-base sm:text-lg font-semibold h-auto shadow-xl shadow-orange-200/50 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-orange-300/50 ripple-effect">刑事咨询
+                                                    className="w-full sm:w-auto relative bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white rounded-full px-6 sm:px-8 md:px-10 py-4 sm:py-5 md:py-6 text-base sm:text-lg font-semibold h-auto shadow-xl shadow-orange-200/50 transition-all duration-300 active:scale-95 sm:hover:scale-105 sm:hover:shadow-2xl sm:hover:shadow-orange-300/50 ripple-effect">刑事咨询
                                                                                                                                                                 <ArrowRight
                                                         className="ml-2 sm:ml-3 h-5 sm:h-6 w-5 sm:w-6 group-hover:translate-x-1 transition-transform duration-300" />
                                                 </Button>
@@ -1032,26 +990,26 @@ export default function Home() {
                         )}
                     </div>
                     <ScrollReveal className="text-center mt-12" delay={400}>
-                        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                            <Link href="/civil">
-                                <div className="inline-flex relative group">
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center items-stretch sm:items-center">
+                            <Link href="/civil" className="w-full sm:w-auto">
+                                <div className="w-full sm:w-auto relative group">
                                     <div
                                         className="absolute -inset-1 bg-gradient-to-r from-blue-400 to-blue-500 rounded-full blur opacity-30 group-hover:opacity-50 transition-opacity duration-500" />
                                     <Button
                                         size="lg"
-                                        className="relative bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 text-white rounded-full px-10 py-5 text-lg font-semibold h-auto shadow-xl shadow-blue-200/50 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-blue-300/50 ripple-effect">民事咨询
+                                        className="w-full sm:w-auto relative bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 text-white rounded-full px-10 py-5 text-lg font-semibold h-auto shadow-xl shadow-blue-200/50 transition-all duration-300 active:scale-95 sm:hover:scale-105 sm:hover:shadow-2xl sm:hover:shadow-blue-300/50 ripple-effect">民事咨询
                                                                                                                         <ArrowRight
                                             className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
                                     </Button>
                                 </div>
                             </Link>
-                            <Link href="/consult">
-                                <div className="inline-flex relative group">
+                            <Link href="/consult" className="w-full sm:w-auto">
+                                <div className="w-full sm:w-auto relative group">
                                     <div
                                         className="absolute -inset-1 bg-gradient-to-r from-orange-400 to-orange-500 rounded-full blur opacity-30 group-hover:opacity-50 transition-opacity duration-500" />
                                     <Button
                                         size="lg"
-                                        className="relative bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white rounded-full px-10 py-5 text-lg font-semibold h-auto shadow-xl shadow-orange-200/50 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-orange-300/50 ripple-effect">刑事咨询
+                                        className="w-full sm:w-auto relative bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white rounded-full px-10 py-5 text-lg font-semibold h-auto shadow-xl shadow-orange-200/50 transition-all duration-300 active:scale-95 sm:hover:scale-105 sm:hover:shadow-2xl sm:hover:shadow-orange-300/50 ripple-effect">刑事咨询
                                                                                                                         <ArrowRight
                                             className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
                                     </Button>
@@ -1129,52 +1087,10 @@ export default function Home() {
             </section>
             <AuthoritySection />
             <FAQSection />
-            <WechatSection />
-            {/* 法律合规信息卡片 */}
-            <section className="py-12 bg-gradient-to-b from-white to-gray-50/50">
-                <div className="container mx-auto px-4">
-                    <div className="max-w-2xl mx-auto">
-                        <ScrollReveal direction="up">
-                            <div className="relative bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg overflow-hidden p-6 sm:p-8">
-                                <div className="absolute -top-6 -right-6 w-24 h-24 bg-white/10 rounded-full" />
-                                <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-white/10 rounded-full" />
-                                <div className="absolute -top-4 -left-10 w-12 h-12 bg-white/5 rounded-full" />
-                                <div className="relative z-10 text-center">
-                                    <h3 className="text-lg sm:text-xl font-bold text-white mb-4">法律声明与协议</h3>
-                                    <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
-                                        <Link href="/user-agreement" className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white text-sm rounded-full hover:bg-white/30 transition-all duration-300 hover:scale-105">
-                                            用户服务协议
-                                        </Link>
-                                        <Link href="/privacy-policy" className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white text-sm rounded-full hover:bg-white/30 transition-all duration-300 hover:scale-105">
-                                            隐私政策
-                                        </Link>
-                                        <Link href="/lawyer-commitment" className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white text-sm rounded-full hover:bg-white/30 transition-all duration-300 hover:scale-105">
-                                            律师入驻承诺书
-                                        </Link>
-                                        <Link href="/lawyer-entry-agreement" className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white text-sm rounded-full hover:bg-white/30 transition-all duration-300 hover:scale-105">
-                                            律师入驻服务协议
-                                        </Link>
-                                    </div>
-                                </div>
-                            </div>
-                        </ScrollReveal>
-                    </div>
-                </div>
-            </section>
-            <footer className="border-t border-gray-100 py-6 sm:py-8 bg-gray-50/50">
-                <div className="container mx-auto px-4 text-center space-y-4">
-                    <p className="text-xs sm:text-sm text-gray-400">© 2024 帮帮问法</p>
-                    <div className="flex justify-center gap-2 sm:gap-4">
-                        <a
-                            href="/admin/login"
-                            className="inline-block text-xs px-3 py-1 bg-gray-100 text-gray-500 rounded-full hover:bg-gray-200 hover:text-gray-700 transition-colors"
-                            title="管理入口">管理入口
-                        </a>
-                    </div>
-                </div>
-            </footer>
+
             <CursorFollower />
             <ScrollProgress />
+            <Footer />
         </div>
     );
 }

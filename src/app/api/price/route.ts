@@ -12,9 +12,8 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
 
     let query = supabase
-      .from('price_plans')
+      .from('price_configs')
       .select('category, plan_id, plan_name, price')
-      .eq('is_active', true)
       .order('category', { ascending: true })
       .order('price', { ascending: true });
 

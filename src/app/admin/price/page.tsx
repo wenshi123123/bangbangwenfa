@@ -5,7 +5,7 @@ import { Save, Loader2, AlertCircle } from 'lucide-react';
 import { adminApiRequest } from '@/lib/api/request';
 
 interface PriceConfig {
-  id: number;
+  id: number | string;
   category: string;
   plan_id: string;
   plan_name: string;
@@ -22,9 +22,9 @@ const CATEGORY_MAP: Record<string, string> = {
 export default function PriceManagementPage() {
   const [prices, setPrices] = useState<PriceConfig[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<number | null>(null);
+  const [saving, setSaving] = useState<number | string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [editValues, setEditValues] = useState<Record<number, string>>({});
+  const [editValues, setEditValues] = useState<Record<number | string, string>>({});
 
   const fetchPrices = useCallback(async () => {
     try {
@@ -53,11 +53,11 @@ export default function PriceManagementPage() {
     fetchPrices();
   }, [fetchPrices]);
 
-  const handlePriceChange = (id: number, value: string) => {
+  const handlePriceChange = (id: number | string, value: string) => {
     setEditValues(prev => ({ ...prev, [id]: value }));
   };
 
-  const handleSave = async (id: number) => {
+  const handleSave = async (id: number | string) => {
     const newPrice = parseFloat(editValues[id]);
     
     if (isNaN(newPrice) || newPrice < 0) {
@@ -147,7 +147,7 @@ export default function PriceManagementPage() {
           
           <div className="divide-y divide-border">
             {prices.map((item) => (
-              <div key={item.id} className="p-4 flex items-center gap-4">
+              <div key={item.id} className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -161,7 +161,7 @@ export default function PriceManagementPage() {
                   <p className="text-xs text-muted-foreground">ID: {item.id}</p>
                 </div>
 
-                {/* Input */}
+                {/* Input + Save */}
                 <div className="flex items-center gap-2">
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">¥</span>
@@ -169,33 +169,31 @@ export default function PriceManagementPage() {
                       type="number"
                       value={editValues[item.id] || ''}
                       onChange={(e) => handlePriceChange(item.id, e.target.value)}
-                      className="w-28 pl-7 pr-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      className="w-24 sm:w-28 pl-7 pr-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                       placeholder="0.00"
                       step="0.01"
                       min="0"
                     />
                   </div>
-                  <span className="text-sm text-muted-foreground">元</span>
+                  <span className="text-sm text-muted-foreground hidden sm:inline">元</span>
+                  <button
+                    onClick={() => handleSave(item.id)}
+                    disabled={saving === item.id}
+                    className="px-3 sm:px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                  >
+                    {saving === item.id ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        保存中
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        保存
+                      </>
+                    )}
+                  </button>
                 </div>
-
-                {/* Save Button */}
-                <button
-                  onClick={() => handleSave(item.id)}
-                  disabled={saving === item.id}
-                  className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-                >
-                  {saving === item.id ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      保存中
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      保存
-                    </>
-                  )}
-                </button>
               </div>
             ))}
           </div>

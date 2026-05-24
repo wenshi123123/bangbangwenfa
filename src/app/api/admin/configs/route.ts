@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// PUT - 更新配置
+// PUT - 更新配置（支持批量）
 export async function PUT(request: NextRequest) {
   const authResult = await requireAdminAuth(request);
   if (!authResult.success) {
@@ -45,13 +45,48 @@ export async function PUT(request: NextRequest) {
   
   try {
     const body = await request.json();
-    const { key, value } = body;
+    const { configs, key, value } = body;
     
+    const supabase = getSupabaseAdmin();
+    
+    // 批量更新
+    if (configs && Array.isArray(configs)) {
+      const now = new Date().toISOString();
+      const results = [];
+      const errors = [];
+      
+      for (const cfg of configs) {
+        if (!cfg.key) continue;
+        const { data, error } = await supabase
+          .from('system_configs')
+          .update({ config_value: cfg.value, updated_at: now })
+          .eq('config_key', cfg.key)
+          .select()
+          .single();
+        
+        if (error) {
+          errors.push({ key: cfg.key, error: error.message });
+        } else {
+          results.push(data);
+        }
+      }
+      
+      if (errors.length > 0) {
+        return NextResponse.json({ 
+          success: false, 
+          error: '部分配置保存失败', 
+          details: errors 
+        }, { status: 500 });
+      }
+      
+      return NextResponse.json({ success: true, data: results });
+    }
+    
+    // 单条更新（向后兼容）
     if (!key) {
       return NextResponse.json({ success: false, error: '配置键不能为空' }, { status: 400 });
     }
     
-    const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from('system_configs')
       .update({ config_value: value, updated_at: new Date().toISOString() })

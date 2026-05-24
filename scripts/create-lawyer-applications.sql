@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS lawyer_applications (
     payment_status VARCHAR(20) DEFAULT 'pending', -- pending, paid, failed
     review_status VARCHAR(20) DEFAULT 'pending', -- pending, approved, rejected
     review_remark TEXT,
+    member_expires_at TIMESTAMP WITH TIME ZONE,
     order_no VARCHAR(100),
     wechat_transaction_id VARCHAR(100),
     paid_at TIMESTAMP WITH TIME ZONE,

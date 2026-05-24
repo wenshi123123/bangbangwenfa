@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -333,9 +333,15 @@ export default function AdminLayout({
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {children}
-      </main>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <Suspense fallback={
+          <div className="flex items-center justify-center py-20">
+            <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        }>
+          {children}
+        </Suspense>
+      </div>
     </div>
   );
 }

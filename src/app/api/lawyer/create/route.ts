@@ -22,8 +22,22 @@ export async function POST(request: NextRequest) {
       packageType,
       packagePrice,
       selectedPackages,
-      userId,
+      userId: bodyUserId,
     } = body;
+
+    // 🔧 兜底：如果 body 中没有 userId，尝试从 x-user-info header 获取
+    let userId = bodyUserId;
+    if (!userId) {
+      try {
+        const userInfoHeader = request.headers.get('x-user-info');
+        if (userInfoHeader) {
+          const userInfo = JSON.parse(userInfoHeader);
+          userId = userInfo.id;
+        }
+      } catch {
+        // header 解析失败，忽略
+      }
+    }
 
     // 验证必填字段
     if (!name || !phone) {

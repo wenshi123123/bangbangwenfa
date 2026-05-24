@@ -77,13 +77,27 @@ async function handlePaymentSuccess(tradeNo: string, orderNo: string): Promise<v
     .eq('order_no', orderNo);
 
   // 更新律师会员到期时间
-  await supabase
+  const { data: lawyerData } = await supabase
     .from('lawyers')
     .update({
       member_expires_at: newExpiresAt.toISOString(),
       updated_at: new Date().toISOString(),
     })
-    .eq('id', order.lawyer_id);
+    .eq('id', order.lawyer_id)
+    .select('user_id, phone')
+    .single();
+
+  // 🔧 同步更新 lawyer_applications 表
+  if (lawyerData) {
+    await supabase
+      .from('lawyer_applications')
+      .update({
+        member_expires_at: newExpiresAt.toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', lawyerData.user_id)
+      .eq('review_status', 'approved');
+  }
 
   console.log('律师续费成功:', {
     orderNo,

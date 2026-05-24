@@ -116,7 +116,7 @@ function HeroSection({ onStartJoin }: { onStartJoin: () => void }) {
             <Button 
               onClick={onStartJoin}
               size="lg"
-              className="bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 text-white rounded-full px-10 py-6 text-lg font-semibold shadow-xl shadow-rose-200/50 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-rose-300/30 group"
+              className="w-full sm:w-auto bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 text-white rounded-full px-10 py-6 text-lg font-semibold shadow-xl shadow-rose-200/50 transition-all duration-300 active:scale-95 sm:hover:scale-105 sm:hover:shadow-2xl sm:hover:shadow-rose-300/30 group"
             >
               <Heart className="mr-2 h-5 w-5 group-hover:animate-warm-pulse" />
               传递守护
@@ -430,7 +430,7 @@ function BottomCTA({ onStartJoin }: { onStartJoin: () => void }) {
           <Button 
             onClick={onStartJoin}
             size="lg"
-            className="bg-white text-rose-600 hover:bg-white/95 rounded-full px-12 py-7 text-xl font-bold shadow-2xl transition-all duration-300 hover:scale-105 hover:shadow-white/30 group"
+            className="w-full sm:w-auto bg-white text-rose-600 hover:bg-white/95 rounded-full px-12 py-7 text-xl font-bold shadow-2xl transition-all duration-300 active:scale-95 sm:hover:scale-105 sm:hover:shadow-white/30 group"
           >
             <Heart className="mr-3 h-6 w-6 group-hover:animate-warm-pulse" />
             立即传递守护
@@ -494,7 +494,7 @@ function FAQSection({ onStartJoin }: { onStartJoin: () => void }) {
             <Button 
               onClick={onStartJoin}
               size="lg"
-              className="bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 text-white rounded-full px-10 py-6 text-lg font-semibold shadow-xl shadow-rose-200/50 transition-all duration-300 hover:scale-105 group"
+              className="w-full sm:w-auto bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 text-white rounded-full px-10 py-6 text-lg font-semibold shadow-xl shadow-rose-200/50 transition-all duration-300 active:scale-95 sm:hover:scale-105 group"
             >
               <Heart className="mr-2 h-5 w-5 group-hover:animate-warm-pulse" />
               传递守护

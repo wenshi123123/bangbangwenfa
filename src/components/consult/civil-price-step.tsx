@@ -25,6 +25,13 @@ interface PriceConfig {
 // 只显示这三个咨询套餐
 const CONSULT_PLANS = ['basic', 'standard', 'advanced'];
 
+// 默认价格（API 加载失败或返回空数据时使用）
+const defaultPlans = [
+  { id: 'basic', plan_name: '基础咨询', price: 6900 },
+  { id: 'standard', plan_name: '标准方案', price: 19900 },
+  { id: 'advanced', plan_name: '深度服务', price: 29900 },
+];
+
 export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
   const router = useRouter();
   const [selectedPlan, setSelectedPlan] = useState<string>('standard');
@@ -38,11 +45,16 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
       try {
         const response = await apiRequest('/api/price?category=civil', { skipAuth: true });
         const result = await response.json();
-        if (result.success) {
+        if (result.success && result.data && result.data.length > 0) {
           setPrices(result.data);
+        } else {
+          // API 返回空数据，使用默认价格
+          setPrices(defaultPlans);
         }
       } catch (error) {
         console.error('Failed to fetch prices:', error);
+        // API 请求失败，使用默认价格
+        setPrices(defaultPlans);
       } finally {
         setLoading(false);
       }
@@ -50,7 +62,7 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
     fetchPrices();
   }, []);
 
-  // 根据 API 数据生成套餐列表 - 只显示 basic, standard, advanced
+  // 根据数据生成套餐列表 - 只显示 basic, standard, advanced
   const consultationPlans = prices
     .filter(p => CONSULT_PLANS.includes(p.plan_id))
     .map(p => ({

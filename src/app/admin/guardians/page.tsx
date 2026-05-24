@@ -90,26 +90,28 @@ export default function GuardiansPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/admin/dashboard" className="text-blue-600 hover:underline">
-                返回仪表盘
-              </Link>
-              <h1 className="text-xl font-semibold">守护者管理</h1>
-            </div>
-            <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
-              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              刷新
-            </Button>
-          </div>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">守护者管理</h1>
+          <p className="text-slate-500 mt-1">管理平台守护者用户信息</p>
         </div>
-      </header>
+        <div className="flex items-center gap-3">
+          <Link 
+            href="/admin/dashboard" 
+            className="text-sm text-slate-500 hover:text-slate-700"
+          >
+            返回工作台
+          </Link>
+          <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            刷新
+          </Button>
+        </div>
+      </div>
 
-      <main className="container mx-auto px-4 py-6">
+      <div>
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card>
@@ -278,7 +280,7 @@ export default function GuardiansPage() {
             )}
           </CardContent>
         </Card>
-      </main>
+      </div>
     </div>
   );
 }

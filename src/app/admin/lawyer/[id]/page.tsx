@@ -46,7 +46,7 @@ interface LawyerApplication {
   package_price: number;
   payment_status: string;
   review_status: string;
-  rejection_reason: string | null;
+  review_remark: string | null;
   reviewed_by: string | null;
   reviewed_at: string | null;
   created_at: string;
@@ -59,10 +59,9 @@ const statusMap = {
   paid: { label: '待支付', color: 'bg-blue-100 text-blue-700', icon: Clock },
 };
 
-const packageMap = {
-  basic: { label: '基础版', price: 1999 },
-  standard: { label: '标准版', price: 2999 },
-  advanced: { label: '高级版', price: 4999 },
+const packageMap: Record<string, { label: string; price: number }> = {
+  civil_premium: { label: '民事律师（臻选）', price: 500000 },
+  criminal_premium: { label: '刑事律师（臻选）', price: 800000 },
 };
 
 export default function LawyerDetailPage() {
@@ -123,7 +122,8 @@ export default function LawyerDetailPage() {
       }
     } catch (error) {
       console.error('审核操作失败:', error);
-      alert('操作失败，请重试');
+      const message = error instanceof Error ? error.message : '操作失败，请重试';
+      alert(message);
     } finally {
       setActionLoading(false);
     }
@@ -159,7 +159,7 @@ export default function LawyerDetailPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-4">
           <Link 
             href="/admin/lawyer"
@@ -168,20 +168,20 @@ export default function LawyerDetailPage() {
             <ArrowLeft className="w-5 h-5 text-slate-600" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">申请详情</h1>
-            <p className="text-slate-500 mt-1">申请编号：#{application.id}</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800">申请详情</h1>
+            <p className="text-slate-500 mt-1 text-sm">申请编号：#{application.id}</p>
           </div>
         </div>
-        <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium ${status.color}`}>
+        <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium ${status.color} self-start sm:self-auto`}>
           <StatusIcon className="w-4 h-4" />
           {status.label}
         </span>
       </div>
 
       {/* Info Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Basic Info */}
-        <div className="bg-white rounded-xl p-6 shadow-sm">
+        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-800 mb-4">基本信息</h2>
           <div className="space-y-4">
             <div className="flex items-start gap-3">
@@ -194,7 +194,7 @@ export default function LawyerDetailPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex items-center gap-2 text-slate-600">
                 <Phone className="w-4 h-4 text-slate-400" />
                 <span>{application.phone}</span>
@@ -208,7 +208,7 @@ export default function LawyerDetailPage() {
         </div>
 
         {/* Professional Info */}
-        <div className="bg-white rounded-xl p-6 shadow-sm">
+        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-800 mb-4">专业信息</h2>
           <div className="space-y-4">
             <div className="flex items-start gap-3">
@@ -241,7 +241,7 @@ export default function LawyerDetailPage() {
         </div>
 
         {/* Package Info */}
-        <div className="bg-white rounded-xl p-6 shadow-sm">
+        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-800 mb-4">入驻套餐</h2>
           <div className="flex items-center justify-between">
             <div>
@@ -258,7 +258,7 @@ export default function LawyerDetailPage() {
 
         {/* Review Info */}
         {application.review_status !== 'pending' && (
-          <div className="bg-white rounded-xl p-6 shadow-sm">
+          <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-800 mb-4">审核信息</h2>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -267,9 +267,9 @@ export default function LawyerDetailPage() {
                   {application.reviewed_at ? new Date(application.reviewed_at).toLocaleString('zh-CN') : '-'}
                 </span>
               </div>
-              {application.rejection_reason && (
+              {application.review_remark && (
                 <div className="p-3 bg-red-50 rounded-lg">
-                  <p className="text-sm text-red-600">拒绝原因：{application.rejection_reason}</p>
+                  <p className="text-sm text-red-600">拒绝原因：{application.review_remark}</p>
                 </div>
               )}
             </div>
@@ -278,9 +278,9 @@ export default function LawyerDetailPage() {
       </div>
 
       {/* Documents */}
-      <div className="bg-white rounded-xl p-6 shadow-sm">
+      <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-slate-800 mb-4">证件材料</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
           {/* License Images */}
           <div>
             <p className="text-sm text-slate-500 mb-2 flex items-center gap-2">
@@ -330,13 +330,13 @@ export default function LawyerDetailPage() {
 
       {/* Actions */}
       {application.review_status === 'pending' && (
-        <div className="bg-white rounded-xl p-6 shadow-sm">
+        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-800 mb-4">审核操作</h2>
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-3 sm:gap-4">
             <button
               onClick={() => handleReview('approve')}
               disabled={actionLoading}
-              className="flex items-center gap-2 px-6 py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 sm:px-6 py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors disabled:opacity-50 text-sm sm:text-base"
             >
               {actionLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -348,7 +348,7 @@ export default function LawyerDetailPage() {
             <button
               onClick={() => setShowRejectModal(true)}
               disabled={actionLoading}
-              className="flex items-center gap-2 px-6 py-3 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 sm:px-6 py-3 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors disabled:opacity-50 text-sm sm:text-base"
             >
               <XCircle className="w-5 h-5" />
               拒绝入驻

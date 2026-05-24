@@ -66,7 +66,7 @@ export default function ProfileRevisionDetailPage() {
       const response = await adminApiRequest(`/api/admin/lawyer-profile-revisions/${params.id}`);
       const result = await response.json();
       if (result.success) {
-        setRevision(result.data);
+        setRevision(result.revision);
       } else {
         setError(result.error || '获取详情失败');
       }
@@ -94,7 +94,7 @@ export default function ProfileRevisionDetailPage() {
     setError('');
     try {
       const response = await adminApiRequest(`/api/admin/lawyer-profile-revisions/${params.id}`, {
-        method: 'POST',
+        method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
         },
@@ -172,7 +172,7 @@ export default function ProfileRevisionDetailPage() {
 
   if (isLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)' }}>
+      <div className="flex items-center justify-center py-20">
         <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
@@ -180,7 +180,7 @@ export default function ProfileRevisionDetailPage() {
 
   if (!revision) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)' }}>
+      <div className="flex items-center justify-center p-4 py-20">
         <Card className="max-w-md">
           <CardContent className="pt-6 text-center">
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
@@ -198,25 +198,29 @@ export default function ProfileRevisionDetailPage() {
   const isPending = revision.status === 'pending';
 
   return (
-    <div className="min-h-screen pb-20" style={{ background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)' }}>
-      {/* 顶部导航栏 */}
-      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-200">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <Link href="/admin/profile-revisions" className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900">
-              <ArrowLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">返回列表</span>
-            </Link>
-            <div className="flex items-center gap-2">
-              <User className="w-5 h-5 text-blue-600" />
-              <span className="text-base font-semibold text-gray-900">审核详情</span>
-            </div>
-            <div className="w-28" />
-          </div>
+    <div className="space-y-6">
+      {/* 页面标题 — 不再 sticky，复用 layout 导航栏 */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Link 
+            href="/admin/profile-revisions" 
+            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            返回列表
+          </Link>
+          <span className="text-slate-300">|</span>
+          <h1 className="text-lg sm:text-xl font-bold text-slate-800">审核详情</h1>
         </div>
+        {revision && (
+          <Badge className={statusConfig[revision.status]?.bgColor + ' ' + statusConfig[revision.status]?.color}>
+            {revision.status === 'pending' && <Clock className="w-3 h-3 mr-1" />}
+            {statusConfig[revision.status]?.label || revision.status}
+          </Badge>
+        )}
       </div>
 
-      <div className="container mx-auto px-4 py-6 max-w-3xl space-y-6">
+      <div className="max-w-3xl space-y-6">
         {/* 错误提示 */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2 text-red-700">

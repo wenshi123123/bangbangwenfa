@@ -122,11 +122,16 @@ export async function POST(request: NextRequest) {
     };
 
     // 获取律师信息（检查是否已存在）
-    const { data: existingLawyer } = await supabase
-      .from('lawyers')
-      .select('id, member_expires_at')
-      .eq('user_id', application.user_id?.toString())
-      .single();
+    const applicationUserId = application.user_id ? String(application.user_id) : null;
+    let existingLawyer = null;
+    if (applicationUserId) {
+      const { data: found } = await supabase
+        .from('lawyers')
+        .select('id, member_expires_at')
+        .eq('user_id', applicationUserId)
+        .maybeSingle();
+      existingLawyer = found;
+    }
 
     // 套餐时长固定18个月
     const PACKAGE_MONTHS = 18;
@@ -169,14 +174,19 @@ export async function POST(request: NextRequest) {
       const expiresAt = calculateMemberExpiry(new Date(), PACKAGE_MONTHS);
 
       await supabase.from('lawyers').insert({
-        user_id: application.user_id?.toString(),
+        user_id: applicationUserId,
         name: application.name,
+        real_name: application.name,           // 🔧 从申请中带入
         phone: application.phone,
         wechat: application.wechat,
+        license_no: application.license_number, // 🔧 从申请中带入
+        specialization: application.specialties, // 🔧 从申请中带入
         is_active: true,
         is_available: true,
         member_expires_at: expiresAt.toISOString(),
         membership_status: 'normal',
+        rating: 5.0,                           // 🔧 初始评分
+        max_orders: 50,                        // 🔧 初始接单上限
         created_at: new Date().toISOString(),
       });
 

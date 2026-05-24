@@ -79,7 +79,7 @@ export default function AboutPage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 md:py-12 max-w-4xl">
+      <div className="container mx-auto px-4 py-8 md:py-12 max-w-4xl">
         {/* Hero Section */}
         <section className="text-center mb-12 animate-fade-in">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-orange-400 to-orange-600 mb-6 shadow-xl shadow-orange-200">
@@ -284,12 +284,12 @@ export default function AboutPage() {
 
         {/* CTA Section */}
         <section className="text-center animate-slide-up stagger-6">
-          <div className="inline-flex relative group">
+          <div className="w-full sm:w-auto inline-flex relative group">
             <div className="absolute -inset-1 bg-gradient-to-r from-orange-400 to-orange-500 rounded-full blur opacity-30 group-hover:opacity-50 transition-opacity duration-500" />
-            <Link href="/?start=consult">
+            <Link href="/?start=consult" className="w-full sm:w-auto block">
               <Button 
                 size="lg" 
-                className="relative bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white rounded-full px-10 py-6 text-lg font-semibold h-auto shadow-xl shadow-orange-200/50 transition-all duration-300 hover:scale-105"
+                className="w-full sm:w-auto relative bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white rounded-full px-10 py-6 text-lg font-semibold h-auto shadow-xl shadow-orange-200/50 transition-all duration-300 active:scale-95 sm:hover:scale-105"
               >
                 立即开始咨询
               </Button>
@@ -299,16 +299,7 @@ export default function AboutPage() {
 
         {/* Bottom Spacing */}
         <div className="h-12" />
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t border-gray-100 py-6 bg-white/50">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-sm text-gray-400">
-            © 2024 帮帮问法 · 隐私声明 · 服务条款
-          </p>
-        </div>
-      </footer>
+      </div>
     </div>
   );
 }

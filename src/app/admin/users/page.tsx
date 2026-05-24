@@ -49,7 +49,7 @@ export default function UserManagementPage() {
   }, []);
 
   const filteredUsers = users.filter(user => 
-    user.nickname?.toLowerCase() || ''.includes(searchKeyword.toLowerCase()) ||
+    (user.nickname?.toLowerCase() || '').includes(searchKeyword.toLowerCase()) ||
     (user.phone || '').includes(searchKeyword)
   );
 

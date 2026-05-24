@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   const lawyerId = auth.lawyerId!;
   
   try {
-    const { orderId } = await request.json();
+    const { orderId, action } = await request.json();
     if (!orderId) {
       return NextResponse.json({ success: false, error: '缺少订单ID' }, { status: 400 });
     }
@@ -50,22 +50,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '订单状态不允许操作' }, { status: 400 });
     }
     
-    // 更新订单状态
+    // 根据 action 区分接单/拒单
+    const updateData: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (action === 'reject') {
+      updateData.assigned_lawyer_id = null;
+      updateData.assignment_status = 'unassigned';
+    } else {
+      // accept（默认）
+      updateData.assigned_lawyer_id = lawyerId;
+      updateData.assignment_status = 'confirmed';
+      updateData.confirmed_at = new Date().toISOString();
+    }
+
     const { data, error } = await supabase
       .from('consult_orders')
-      .update({ 
-        assigned_lawyer_id: lawyerId,
-        assignment_status: 'confirmed',
-        confirmed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', orderId)
       .select()
       .single();
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
-    return NextResponse.json({ success: true, order: data });
+    return NextResponse.json({
+      success: true,
+      message: action === 'reject' ? '已拒单' : '已接单',
+      order: data,
+    });
   } catch (error) {
     return NextResponse.json({ success: false, error: '服务器错误' }, { status: 500 });
   }

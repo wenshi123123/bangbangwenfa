@@ -10,20 +10,32 @@ export async function GET(request: NextRequest) {
     return unauthorizedResponse(auth.error);
   }
   
-  // 确保是律师类型
-  if (auth.userType !== 'lawyer') {
+  // 🔧 确保有律师ID（不再死卡 userType，兼容既有用户即是律师的场景）
+  const lawyerId = auth.lawyerId;
+  if (!lawyerId) {
     return NextResponse.json({ success: false, error: '非律师账号' }, { status: 403 });
   }
   
-  const lawyerId = auth.lawyerId!;
-  
   try {
     const supabase = getSupabaseAdmin();
-    const { data, error } = await supabase
+    
+    // 优先用 lawyerId 查询（UUID from lawyers表）
+    let { data, error } = await supabase
       .from('lawyers')
-      .select('*')
-      .eq('id', lawyerId)
+      .select('id, phone, name, real_name, nickname, avatar_url, wechat, email, title, intro, specialties, member_expires_at, member_starting_at, is_available, max_orders, current_orders, rating, response_rate, status, license_no, working_years, province, city, specialization, bio, created_at, updated_at, user_id')
+      .eq('id', String(lawyerId))
       .maybeSingle();
+    
+    // 🔧 兜底：如果 lawyerId 匹配不上（如旧 token 存的是整数 ID），按 user_id 查询
+    if (!data && !error && auth.userId) {
+      const fallback = await supabase
+        .from('lawyers')
+        .select('id, phone, name, real_name, nickname, avatar_url, wechat, email, title, intro, specialties, member_expires_at, member_starting_at, is_available, max_orders, current_orders, rating, response_rate, status, license_no, working_years, province, city, specialization, bio, created_at, updated_at, user_id')
+        .eq('user_id', auth.userId)
+        .maybeSingle();
+      data = fallback.data;
+      error = fallback.error;
+    }
     
     if (error || !data) {
       return NextResponse.json({ success: false, error: error?.message || '律师不存在' }, { status: 404 });
@@ -48,7 +60,8 @@ export async function GET(request: NextRequest) {
     const safeData = decryptFields(data, LAWYER_SENSITIVE_FIELDS);
     
     return NextResponse.json({ 
-      success: true, 
+      success: true,
+      _v: 'v2-explicit-columns',
       data: {
         ...safeData,
         stats: {
@@ -56,6 +69,11 @@ export async function GET(request: NextRequest) {
           pending: pending,
           completed: total - pending
         }
+      }
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'X-API-Version': 'v2-explicit-columns',
       }
     });
   } catch (error) {
@@ -70,12 +88,11 @@ export async function PUT(request: NextRequest) {
     return unauthorizedResponse(auth.error);
   }
   
-  // 确保是律师类型
-  if (auth.userType !== 'lawyer') {
+  // 🔧 确保有律师ID
+  const lawyerId = auth.lawyerId;
+  if (!lawyerId) {
     return NextResponse.json({ success: false, error: '非律师账号' }, { status: 403 });
   }
-  
-  const lawyerId = auth.lawyerId!;
   
   try {
     const body = await request.json();
@@ -105,7 +122,7 @@ export async function PUT(request: NextRequest) {
     const { data, error } = await supabase
       .from('lawyers')
       .update(encryptedUpdates)
-      .eq('id', lawyerId)
+      .eq('id', String(lawyerId))
       .select()
       .maybeSingle();
     if (error) {

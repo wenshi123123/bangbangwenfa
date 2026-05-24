@@ -7,7 +7,18 @@ import { decryptFields, LAWYER_SENSITIVE_FIELDS } from '@/lib/crypto/encryption'
 
 export async function POST(request: NextRequest) {
   try {
-    // 登录限流：同一 IP 5次/分钟
+    const { phone, code } = await request.json();
+
+    // 参数校验先于限流，避免无效请求消耗限流配额
+    if (!phone) {
+      return NextResponse.json({ success: false, error: '请输入手机号' }, { status: 400 });
+    }
+
+    if (!code) {
+      return NextResponse.json({ success: false, error: '请输入验证码' }, { status: 400 });
+    }
+
+    // 登录限流：同一 IP 5次/分钟（仅对有效请求限流）
     const clientIP = getClientIP(request);
     const rateLimit = checkRateLimit(`${clientIP}:lawyer-login`, 5, 60000);
     if (!rateLimit.allowed) {
@@ -15,16 +26,6 @@ export async function POST(request: NextRequest) {
         { success: false, error: '登录尝试过于频繁，请稍后再试' },
         { status: 429 }
       );
-    }
-
-    const { phone, code } = await request.json();
-
-    if (!phone) {
-      return NextResponse.json({ success: false, error: '请输入手机号' }, { status: 400 });
-    }
-
-    if (!code) {
-      return NextResponse.json({ success: false, error: '请输入验证码' }, { status: 400 });
     }
 
     // 验证验证码
@@ -61,9 +62,27 @@ export async function POST(request: NextRequest) {
       .update({ login_count: (lawyer.login_count || 0) + 1 })
       .eq('id', lawyer.id);
 
-    // 生成登录 token（id 为 lawyers 表 UUID，lawyerId 独立传入）
+    // 🔑 通过 phone 查询对应的 users 表 ID，确保 token.id 始终是 users 表主键
+    let userIdForToken = lawyer.user_id;
+    if (!userIdForToken) {
+      const { data: userRec } = await supabase
+        .from('users')
+        .select('id')
+        .eq('phone', phone)
+        .maybeSingle();
+      if (userRec) {
+        userIdForToken = userRec.id;
+        // 回写 user_id 到 lawyers 表，修复存量数据
+        await supabase
+          .from('lawyers')
+          .update({ user_id: userRec.id })
+          .eq('id', lawyer.id);
+      }
+    }
+
+    // 生成登录 token（id 使用 users 表 ID，与 issue-token 保持一致）
     const token = generateToken({
-      id: lawyer.id,
+      id: userIdForToken || lawyer.id,
       phone: safeLawyer.phone,
       userType: 'lawyer',
       lawyerId: lawyer.id,

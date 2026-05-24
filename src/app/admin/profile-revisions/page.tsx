@@ -59,8 +59,8 @@ export default function ProfileRevisionsPage() {
       const response = await adminApiRequest(`/api/admin/lawyer-profile-revisions?${params}`);
       const result = await response.json();
       if (result.success) {
-        setRevisions(result.data);
-        setPendingCount(result.pendingCount);
+        setRevisions(result.revisions || []);
+        setPendingCount(result.revisions ? result.revisions.filter((r: Revision) => r.status === 'pending').length : 0);
       }
     } catch (error) {
       console.error('获取审核列表失败:', error);
@@ -97,34 +97,32 @@ export default function ProfileRevisionsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)' }}>
+      <div className="flex items-center justify-center py-20">
         <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)' }}>
-      {/* 顶部导航栏 */}
-      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-200">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <Link href="/admin" className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900">
-              <ArrowLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">返回后台</span>
-            </Link>
-            <div className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-blue-600" />
-              <span className="text-base font-semibold text-gray-900">律师资料修改审核</span>
-            </div>
-            <div className="w-28" />
-          </div>
+    <div className="space-y-6">
+      {/* 页面标题 — 不再 sticky，复用 layout 导航栏 */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800">律师资料修改审核</h1>
+          <p className="text-slate-500 mt-1 text-sm">审核律师提交的资料修改申请</p>
         </div>
+        <Link 
+          href="/admin/dashboard"
+          className="self-start inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          返回工作台
+        </Link>
       </div>
 
-      <div className="container mx-auto px-4 py-6">
+      <div>
         {/* 统计卡片 */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
           <Card className="border-gray-200">
             <CardContent className="pt-4 pb-4 text-center">
               <div className="flex items-center justify-center gap-2 mb-1">
@@ -199,11 +197,11 @@ export default function ProfileRevisionsPage() {
                         <div className="flex items-center gap-2 mb-2">
                           <span className="font-medium">{revision.lawyer_name || '未知律师'}</span>
                           <Badge className={statusInfo.bgColor + ' ' + statusInfo.color}>
-                            {status === 'pending' && <Clock className="w-3 h-3 mr-1" />}
+                            {revision.status === 'pending' && <Clock className="w-3 h-3 mr-1" />}
                             {statusInfo.label}
                           </Badge>
                         </div>
-                        <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                           <div>
                             <span className="text-muted-foreground">修改字段：</span>
                             <span className="font-medium">{fieldLabels[revision.revision_type] || revision.revision_type}</span>

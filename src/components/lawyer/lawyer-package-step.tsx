@@ -66,10 +66,13 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
           // 将价格配置映射到套餐
           const packagesData = PACKAGE_CONFIGS.map(config => {
             const priceConfig = result.data.find((p: any) => p.plan_id === config.id);
+            // 兜底：如果 API 未返回匹配价格，使用默认值而非 0
+            const defaultPrice = config.id === 'civil_premium' ? 500000 : 800000;
+            const price = priceConfig?.price || defaultPrice;
             return {
               ...config,
-              price: priceConfig?.price || 0,
-              priceDisplay: priceConfig ? (priceConfig.price / 100).toFixed(0) : '0',
+              price,
+              priceDisplay: (price / 100).toFixed(0),
             };
           });
           setPackages(packagesData);
@@ -124,12 +127,13 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
     setIsSubmitting(true);
 
     try {
-      // 获取用户信息
+      // 获取用户信息（同时用于 header 和 body 中的 userId）
       const userInfoStr = localStorage.getItem('user_info');
+      let userInfo: { id: number } | null = null;
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (userInfoStr) {
         try {
-          const userInfo = JSON.parse(userInfoStr);
+          userInfo = JSON.parse(userInfoStr);
           headers['x-user-info'] = JSON.stringify({ id: userInfo.id });
         } catch (e) {
           console.error('解析用户信息失败:', e);
@@ -144,6 +148,7 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
         method: 'POST',
         headers,
         body: JSON.stringify({
+          userId: userInfo?.id,
           name: formData.name,
           gender: formData.gender,
           lawFirm: formData.lawFirm,

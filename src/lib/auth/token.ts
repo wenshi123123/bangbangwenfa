@@ -53,12 +53,12 @@ function base64UrlDecode(str: string): string {
  * - lawyerId: 律师专属，为 lawyer_applications 表主键（或 lawyers 表）
  */
 export function generateToken(payload: {
-  id?: number;
+  id?: number | string;
   phone: string;
   username?: string;
   userType: 'user' | 'guardian' | 'lawyer';
-  guardianId?: number;  // 守护者记录 ID（guardian_users.id）
-  lawyerId?: number;     // 律师记录 ID（lawyer_applications.id）
+  guardianId?: number;       // 守护者记录 ID（guardian_users.id）
+  lawyerId?: string | number; // 律师记录 ID（lawyers 表 UUID 或 lawyer_applications 整数）
 }): string {
   const header = { alg: 'HS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
@@ -95,8 +95,8 @@ export function verifyToken(token: string): {
     phone: string;
     username?: string;
     userType: 'user' | 'guardian' | 'lawyer';
-    guardianId?: number;  // 守护者记录 ID
-    lawyerId?: number;     // 律师记录 ID
+    guardianId?: number;       // 守护者记录 ID
+    lawyerId?: string | number; // 律师记录 ID（UUID 或整数）
     iat?: number;
     exp?: number;
   };
@@ -237,7 +237,7 @@ export function getUserFromRequest(request: Request): {
   phone: string;
   userType: 'user' | 'guardian' | 'lawyer';
   guardianId?: number;
-  lawyerId?: number;
+  lawyerId?: string | number;
 } | null {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {

@@ -98,12 +98,16 @@ export default function AdminNotificationsPage() {
       const data = await response.json();
       
       if (data.success) {
+        const sentCount = data.data?.sent_count ?? 0;
+        const totalTargets = data.data?.total_targets ?? 0;
         setResult({
           success: true,
-          message: '通知发送成功',
-          sent_count: data.data?.sent_count,
+          message: data.data?.message || '通知发送成功',
+          sent_count: sentCount,
         });
-        setFormData({ ...formData, title: '', content: '' });
+        if (sentCount > 0) {
+          setFormData({ ...formData, title: '', content: '' });
+        }
       } else {
         setResult({ success: false, message: data.error || '发送失败' });
       }
@@ -116,26 +120,25 @@ export default function AdminNotificationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      {/* Header */}
-      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-100/50">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center gap-4">
-            <Link 
-              href="/admin/dashboard"
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 text-slate-600" />
-            </Link>
-            <div className="flex items-center gap-3">
-              <Bell className="w-6 h-6 text-slate-600" />
-              <h1 className="text-xl font-bold text-foreground">发送系统通知</h1>
-            </div>
+    <div>
+      {/* Page Header — 不再 sticky，复用 layout 导航栏 */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
+        <Link 
+          href="/admin/dashboard"
+          className="self-start p-2 hover:bg-slate-100 rounded-lg transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5 text-slate-600" />
+        </Link>
+        <div className="flex items-center gap-3">
+          <Bell className="w-6 h-6 text-slate-600" />
+          <div>
+            <h1 className="text-xl font-bold text-slate-800">发送系统通知</h1>
+            <p className="text-sm text-slate-500">向指定用户群推送消息通知</p>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-6 max-w-2xl">
+      <div className="max-w-2xl">
         {/* 结果提示 */}
         {result && (
           <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${

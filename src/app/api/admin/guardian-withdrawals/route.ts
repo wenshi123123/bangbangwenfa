@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabaseAdmin();
     let query = supabase
       .from('guardian_withdrawals')
-      .select('*, guardian_users(id, nickname)', { count: 'exact' })
+      .select('*, guardian:guardian_users(id, nickname, wechat_account, user_id)', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
     if (status) query = query.eq('status', status);

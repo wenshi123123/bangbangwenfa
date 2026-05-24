@@ -5,7 +5,14 @@ import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
 // POST 方法：通过手机号检查
 export async function POST(request: NextRequest) {
   try {
-    // 限流检查
+    const { phone } = await request.json();
+    
+    // 参数校验先于限流，避免无效请求消耗限流配额
+    if (!phone) {
+      return NextResponse.json({ success: false, error: '请输入手机号' }, { status: 400 });
+    }
+
+    // 限流检查（仅对有效请求限流）
     const clientIP = getClientIP(request);
     const rateLimit = checkRateLimit(`${clientIP}:lawyer-check`, 5, 60000);
     if (!rateLimit.allowed) {
@@ -13,11 +20,6 @@ export async function POST(request: NextRequest) {
         { success: false, error: '请求过于频繁，请稍后再试' },
         { status: 429 }
       );
-    }
-
-    const { phone } = await request.json();
-    if (!phone) {
-      return NextResponse.json({ success: false, error: '请输入手机号' }, { status: 400 });
     }
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
@@ -47,10 +49,12 @@ export async function GET(request: NextRequest) {
 
     const supabase = getSupabaseClient();
     
-    // 查询 lawyers 表
-    const { data, error } = await supabase
+    // 🔧 在数据库层面过滤，避免全表查询
+    let { data: lawyerData, error } = await supabase
       .from('lawyers')
-      .select('*');
+      .select('id, real_name, phone, status, user_id')
+      .eq('user_id', userId)
+      .maybeSingle();
     
     if (error) {
       console.error('查询 lawyers 失败:', error);
@@ -61,35 +65,99 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // 手动查找匹配的 user_id（避免类型不匹配）
-    const lawyerData = data?.find((row: any) => 
-      row.user_id?.toString() === userId || row.user_id === parseInt(userId)
-    );
+    // 🔧 兜底：如果 user_id 匹配失败，尝试通过 phone 匹配（修复存量数据 user_id=NULL 的问题）
+    if (!lawyerData) {
+      try {
+        const { data: userRecord } = await supabase
+          .from('users')
+          .select('phone')
+          .eq('id', userId)
+          .single();
+        if (userRecord?.phone) {
+          const { data: phoneMatch } = await supabase
+            .from('lawyers')
+            .select('id, real_name, phone, status, user_id')
+            .eq('phone', userRecord.phone)
+            .maybeSingle();
+          lawyerData = phoneMatch;
+          // 🔧 回写 user_id 修复存量数据
+          if (lawyerData) {
+            await supabase
+              .from('lawyers')
+              .update({ user_id: userId })
+              .eq('id', lawyerData.id);
+          }
+        }
+      } catch {
+        // 忽略查询失败
+      }
+    }
     
     if (lawyerData) {
       return NextResponse.json({ success: true, data: lawyerData });
     }
 
-    // 没有律师记录，检查是否有申请记录
+    // 没有律师记录，检查是否有申请记录（兜底）
     try {
-      const { data: appData } = await supabase
+      let { data: appData } = await supabase
         .from('lawyer_applications')
         .select('*')
         .filter('user_id', 'eq', userId)
         .order('created_at', { ascending: false })
         .limit(1);
+
+      // 🔧 兜底：如果 user_id 匹配不到，用 phone 再次查询（修复存量数据）
+      if (!appData || appData.length === 0) {
+        const { data: userRecord } = await supabase
+          .from('users')
+          .select('phone')
+          .eq('id', userId)
+          .single();
+        if (userRecord?.phone) {
+          const phoneResult = await supabase
+            .from('lawyer_applications')
+            .select('*')
+            .eq('phone', userRecord.phone)
+            .order('created_at', { ascending: false })
+            .limit(1);
+          appData = phoneResult.data;
+          // 如果通过 phone 找到了，回写 user_id
+          if (appData && appData.length > 0) {
+            await supabase
+              .from('lawyer_applications')
+              .update({ user_id: userId })
+              .eq('id', appData[0].id);
+          }
+        }
+      }
       
       if (appData && appData.length > 0) {
+        const app = appData[0];
+        // 如果申请已审核通过，返回 success: true 让前端进入律师后台
+        if (app.review_status === 'approved') {
+          return NextResponse.json({ 
+            success: true, 
+            data: {
+              id: app.id,
+              real_name: app.name,
+              status: 'active',
+              // 通过 application 作为临时律师数据
+              _from_application: true,
+              application_id: app.id,
+            },
+          });
+        }
+        // 其他状态返回详细信息
         return NextResponse.json({ 
           success: false, 
           data: null,
           hasApplication: true,
-          applicationStatus: appData[0].review_status,
-          paymentStatus: appData[0].payment_status
+          applicationStatus: app.review_status,
+          paymentStatus: app.payment_status
         });
       }
     } catch (tableError) {
-      console.warn('lawyer_applications 表不存在或查询失败:', tableError);
+      console.warn('lawyer_applications 表查询失败:', tableError);
     }
 
     return NextResponse.json({ success: false, data: null, hasApplication: false });

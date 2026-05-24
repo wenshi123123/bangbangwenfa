@@ -20,7 +20,7 @@ export default function UserAgreementPage() {
       </header>
 
       {/* Content */}
-      <main className="container mx-auto px-4 py-8 max-w-3xl">
+      <div className="container mx-auto px-4 py-8 max-w-3xl">
         <h1 className="text-2xl font-bold text-center mb-8">帮帮问法平台用户服务协议</h1>
         
         <div className="prose prose-gray max-w-none space-y-4 text-sm leading-relaxed">
@@ -125,7 +125,7 @@ export default function UserAgreementPage() {
             返回首页
           </Link>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

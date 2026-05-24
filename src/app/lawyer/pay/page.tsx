@@ -31,7 +31,7 @@ function LawyerPayContent() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            applicationId: parseInt(applicationId),
+            applicationId: applicationId,
           }),
         });
 
@@ -122,10 +122,10 @@ function LawyerPayContent() {
       <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-green-100/50">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <Link href="/lawyer" className="flex items-center gap-1.5 text-green-600 hover:text-green-700 transition-colors">
+            <button onClick={() => router.back()} className="flex items-center gap-1.5 text-green-600 hover:text-green-700 transition-colors">
               <ArrowLeft className="w-5 h-5" />
               <span className="text-sm font-medium">返回</span>
-            </Link>
+            </button>
             <span className="text-sm font-semibold text-green-600">律师入驻支付</span>
             <div className="w-16" />
           </div>

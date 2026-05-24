@@ -17,18 +17,18 @@ export async function GET(request: NextRequest) {
     const to = from + pageSize - 1;
     
     // 状态映射：URL 参数值 -> 数据库字段值
-    const statusMap: Record<string, string> = {
-      'pending_review': 'pending',
-      'approved': 'approved',
-      'rejected': 'rejected',
-      'paid': 'paid'
-    };
-    
-    const dbStatus = status ? (statusMap[status] || status) : null;
+    const reviewStatuses = ['pending', 'approved', 'rejected'];
+    const isPaymentFilter = status === 'paid';
+    const dbStatus = status ? (reviewStatuses.includes(status) ? status : status) : null;
     
     const supabase = getSupabaseAdmin();
     let query = supabase.from('lawyer_applications').select('*', { count: 'exact' }).order('created_at', { ascending: false });
-    if (dbStatus) query = query.eq('review_status', dbStatus);
+    
+    if (isPaymentFilter) {
+      query = query.eq('payment_status', 'paid');
+    } else if (dbStatus) {
+      query = query.eq('review_status', dbStatus);
+    }
     
     // 分页
     query = query.range(from, to);

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, Calendar, CheckCircle, Clock, CreditCard } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { LawyerBottomNav } from '@/components/lawyer/lawyer-bottom-nav';
 
 const renewalPackages = [
   {
@@ -84,9 +85,13 @@ export default function LawyerRenewPage() {
     if (!pkg) return;
 
     try {
+      const token = localStorage.getItem('token');
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      
       const response = await fetch('/api/lawyer/renew', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ package_id: pkg.id }),
       });
       
@@ -111,7 +116,7 @@ export default function LawyerRenewPage() {
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <Link 
-              href="/lawyer/dashboard"
+              href="/lawyer"
               className="flex items-center gap-1.5 text-orange-600 hover:text-orange-700 transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -230,6 +235,7 @@ export default function LawyerRenewPage() {
           点击支付后将打开微信支付二维码，请使用微信扫码支付
         </p>
       </div>
+      <LawyerBottomNav />
     </div>
   );
 }

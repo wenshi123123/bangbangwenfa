@@ -118,26 +118,25 @@ export default function AdminAnalyticsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      {/* Header */}
-      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-100/50">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center gap-4">
-            <Link 
-              href="/admin/dashboard"
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 text-slate-600" />
-            </Link>
-            <div className="flex items-center gap-3">
-              <FileText className="w-6 h-6 text-slate-600" />
-              <h1 className="text-xl font-bold text-foreground">数据导出中心</h1>
-            </div>
+    <div>
+      {/* Page Header — 不再 sticky，复用 layout 导航栏 */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
+        <Link 
+          href="/admin/dashboard"
+          className="self-start p-2 hover:bg-slate-100 rounded-lg transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5 text-slate-600" />
+        </Link>
+        <div className="flex items-center gap-3">
+          <FileText className="w-6 h-6 text-slate-600" />
+          <div>
+            <h1 className="text-xl font-bold text-slate-800">数据导出中心</h1>
+            <p className="text-sm text-slate-500">按类型导出平台数据</p>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-6 max-w-4xl">
+      <div className="max-w-4xl">
         {/* 导出类型选择 */}
         <Card className="mb-6">
           <CardHeader>
@@ -201,10 +200,10 @@ export default function AdminAnalyticsPage() {
           <CardContent className="space-y-4">
             {/* 日期范围 */}
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
+              <label className="block text-sm font-medium text-slate-800 mb-2">
                 日期范围（可选）
               </label>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
                 <div className="flex-1">
                   <input
                     type="date"
@@ -214,7 +213,7 @@ export default function AdminAnalyticsPage() {
                   />
                   <p className="text-xs text-slate-400 mt-1">开始日期</p>
                 </div>
-                <span className="text-slate-400 mt-6">至</span>
+                <span className="text-slate-400 text-center sm:mt-6">至</span>
                 <div className="flex-1">
                   <input
                     type="date"
@@ -229,13 +228,13 @@ export default function AdminAnalyticsPage() {
 
             {/* 导出格式 */}
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
+              <label className="block text-sm font-medium text-slate-800 mb-2">
                 导出格式
               </label>
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <button
                   onClick={() => setFormData({ ...formData, format: 'json' })}
-                  className={`flex-1 p-4 rounded-xl border-2 transition-all ${
+                  className={`flex-1 p-4 rounded-xl border-2 text-left sm:text-center transition-all ${
                     formData.format === 'json'
                       ? 'border-rose-500 bg-rose-50'
                       : 'border-slate-200 hover:border-slate-300'
@@ -246,7 +245,7 @@ export default function AdminAnalyticsPage() {
                 </button>
                 <button
                   onClick={() => setFormData({ ...formData, format: 'csv' })}
-                  className={`flex-1 p-4 rounded-xl border-2 transition-all ${
+                  className={`flex-1 p-4 rounded-xl border-2 text-left sm:text-center transition-all ${
                     formData.format === 'csv'
                       ? 'border-rose-500 bg-rose-50'
                       : 'border-slate-200 hover:border-slate-300'

@@ -124,7 +124,7 @@ export default function GuardianWithdrawalsPage() {
         body: JSON.stringify({
           id: selectedWithdrawal.id,
           status: newStatus,
-          admin_note: adminNote || null
+          adminNote: adminNote || null
         })
       });
       
@@ -179,7 +179,7 @@ export default function GuardianWithdrawalsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { key: '', label: '全部', count: total, color: 'bg-slate-50' },
           { key: 'pending', label: '待处理', count: withdrawals.filter(w => w.status === 'pending').length, color: 'bg-amber-50' },

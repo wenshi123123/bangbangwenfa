@@ -15,7 +15,7 @@ export interface GuardianInfo {
 }
 
 export interface LawyerInfo {
-  id: number;
+  id: string | number;
   name: string;
   status: 'pending' | 'approved' | 'paid' | 'expired' | 'active' | 'rejected';
   expireAt?: string;
@@ -35,7 +35,7 @@ export interface UserInfo {
   isLawyer: boolean;
   lawyerInfo?: LawyerInfo | null;
   // 兼容旧字段
-  lawyerId?: number;
+  lawyerId?: string | number;
   lawyerStatus?: LawyerInfo['status'];
   lawyerExpireAt?: string;
   inviteCode?: string;
@@ -127,6 +127,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (userInfoStr) {
         try {
           const userData = JSON.parse(userInfoStr);
+          // 🔑 从 token 中检查 userType，覆盖 isLawyer 状态
+          const token = localStorage.getItem('token');
+          if (token) {
+            try {
+              const payload = JSON.parse(atob(token.split('.')[1]));
+              if (payload.userType === 'lawyer') {
+                userData.isLawyer = true;
+                userData.userType = 'lawyer';
+                if (payload.lawyerId) {
+                  userData.lawyerInfo = userData.lawyerInfo || {};
+                  userData.lawyerInfo.id = payload.lawyerId;
+                }
+              }
+            } catch { /* token 解析失败，忽略 */ }
+          }
           setUser(buildUserInfo(userData));
         } catch (e) {
           console.error('解析 user_info 失败:', e);

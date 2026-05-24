@@ -181,8 +181,6 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 60000);
-    return () => clearInterval(interval);
   }, [fetchData]);
 
   // 手动刷新
@@ -295,7 +293,7 @@ export default function AdminDashboard() {
           <h1 className="text-2xl font-bold text-slate-800">运营数据看板</h1>
           <p className="text-slate-500 mt-1">实时监控业务数据，掌握运营状况</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {/* 时间筛选 */}
           <div className="flex bg-slate-100 rounded-lg p-1">
             {[7, 30, 90].map(days => (

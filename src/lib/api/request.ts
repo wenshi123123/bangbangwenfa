@@ -96,6 +96,8 @@ export async function apiRequest(
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('auth-expired'));
     }
+    // 抛出错误终止调用链，避免调用方继续处理已无意义的 response
+    throw new Error('登录已过期，请重新登录');
   }
   
   return response;
@@ -132,8 +134,14 @@ export async function adminApiRequest(
     localStorage.removeItem('admin_token');
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('admin-logged-out'));
-      window.location.href = '/admin/login';
+      const currentPath = window.location.pathname;
+      if (currentPath !== '/admin/login' && !currentPath.startsWith('/admin/login')) {
+        // 先给用户提示，再跳转
+        window.location.href = '/admin/login';
+      }
     }
+    // 抛出错误终止调用链，避免调用方继续处理已无意义的 response
+    throw new Error('管理员登录已过期，请重新登录');
   }
   
   return response;
