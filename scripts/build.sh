@@ -1,9 +1,27 @@
 #!/bin/bash
-set -Eeuo pipefail
+set -e
 
 COZE_WORKSPACE_PATH="${COZE_WORKSPACE_PATH:-$(pwd)}"
 
 cd "${COZE_WORKSPACE_PATH}"
+
+# ============================================
+# COZE_ 前缀变量映射（与 start.sh 保持同步）
+# 扣子平台自动给环境变量添加 COZE_ 前缀，
+# 以下代码将 COZE_XXX 映射为 XXX（在代码中直接读取）
+# 此映射必须在 pnpm next build 前执行，确保
+# NEXT_PUBLIC_* 变量能被正确内联到客户端 JS 包。
+# ============================================
+echo "Mapping COZE_ prefixed environment variables..."
+COZE_PREFIXED_VARS=$(env | grep '^COZE_' | cut -d= -f1)
+for COZE_VAR in $COZE_PREFIXED_VARS; do
+  ORIG_VAR="${COZE_VAR#COZE_}"
+  if [ -z "${!ORIG_VAR:-}" ]; then
+    export "$ORIG_VAR=${!COZE_VAR}"
+    echo "  Mapped: $COZE_VAR → $ORIG_VAR"
+  fi
+done
+echo "COZE_ mapping complete."
 
 echo "Installing dependencies..."
 pnpm install --prefer-frozen-lockfile --prefer-offline --loglevel debug --reporter=append-only

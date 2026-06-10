@@ -11,6 +11,13 @@ import {
 } from 'lucide-react';
 import { adminApiRequest } from '@/lib/api/request';
 
+interface TrendData {
+  newUsersToday: number;
+  yesterdayNewUsers: number;
+  totalUsers: number;
+  totalLawyers: number;
+}
+
 interface User {
   id: number;
   openid: string | null;
@@ -29,6 +36,7 @@ export default function UserManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [trend, setTrend] = useState<TrendData | null>(null);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -48,6 +56,27 @@ export default function UserManagementPage() {
     fetchUsers();
   }, []);
 
+  // 获取趋势数据
+  useEffect(() => {
+    const fetchTrend = async () => {
+      try {
+        const res = await adminApiRequest('/api/admin/stats');
+        const result = await res.json();
+        if (result.success) {
+          setTrend({
+            newUsersToday: result.data.newUsersToday || 0,
+            yesterdayNewUsers: result.data.yesterdayNewUsers || 0,
+            totalUsers: result.data.totalUsers || 0,
+            totalLawyers: result.data.totalLawyers || 0,
+          });
+        }
+      } catch (e) {
+        console.error('获取趋势数据失败:', e);
+      }
+    };
+    fetchTrend();
+  }, []);
+
   const filteredUsers = users.filter(user => 
     (user.nickname?.toLowerCase() || '').includes(searchKeyword.toLowerCase()) ||
     (user.phone || '').includes(searchKeyword)
@@ -63,8 +92,40 @@ export default function UserManagementPage() {
         </div>
       </div>
 
+      {/* 趋势卡片 */}
+      {trend && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white rounded-xl p-4 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
+            <p className="text-xs text-slate-500 mb-1">今日新增</p>
+            <p className="text-2xl font-bold text-slate-800">{trend.newUsersToday}</p>
+            {trend.yesterdayNewUsers > 0 && (
+              <p className={`text-xs mt-1 ${trend.newUsersToday >= trend.yesterdayNewUsers ? 'text-green-600' : 'text-red-500'}`}>
+                {trend.newUsersToday >= trend.yesterdayNewUsers ? '↑' : '↓'}
+                {Math.abs(Math.round((trend.newUsersToday - trend.yesterdayNewUsers) / trend.yesterdayNewUsers * 100))}%
+                较昨日
+              </p>
+            )}
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
+            <p className="text-xs text-slate-500 mb-1">昨日新增</p>
+            <p className="text-2xl font-bold text-slate-800">{trend.yesterdayNewUsers}</p>
+            <p className="text-xs text-slate-400 mt-1">新注册用户</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
+            <p className="text-xs text-slate-500 mb-1">总用户</p>
+            <p className="text-2xl font-bold text-slate-800">{trend.totalUsers}</p>
+            <p className="text-xs text-slate-400 mt-1">累计注册</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
+            <p className="text-xs text-slate-500 mb-1">律师数</p>
+            <p className="text-2xl font-bold text-green-700">{trend.totalLawyers}</p>
+            <p className="text-xs text-slate-400 mt-1">已入驻</p>
+          </div>
+        </div>
+      )}
+
       {/* Search */}
-      <div className="bg-white rounded-xl p-4 shadow-sm">
+      <div className="bg-white rounded-xl p-4 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
           <input
@@ -78,7 +139,7 @@ export default function UserManagementPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(61,50,45,0.06)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-slate-50">

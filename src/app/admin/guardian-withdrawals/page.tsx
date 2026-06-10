@@ -198,7 +198,7 @@ export default function GuardianWithdrawalsPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl p-4 shadow-sm">
+      <div className="bg-white rounded-xl p-4 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
           <input
@@ -212,7 +212,7 @@ export default function GuardianWithdrawalsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(61,50,45,0.06)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-slate-50">
@@ -340,7 +340,7 @@ export default function GuardianWithdrawalsPage() {
       {/* Detail Modal */}
       {showDetailModal && selectedWithdrawal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <h3 className="text-lg font-bold">提现详情</h3>
               <button

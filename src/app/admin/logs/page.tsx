@@ -69,7 +69,7 @@ export default function LogsPage() {
           <select
             value={filters.actionType}
             onChange={(e) => setFilters({ ...filters, actionType: e.target.value })}
-            className="px-3 py-2 rounded-xl border border-gray-200 focus:border-orange-500 outline-none text-sm"
+            className="px-3 py-2 rounded-xl border border-gray-200 focus:border-[#C47353] outline-none text-sm"
           >
             <option value="all">全部操作</option>
             {Object.entries(actionLabels).map(([value, label]) => (
@@ -81,11 +81,11 @@ export default function LogsPage() {
             placeholder="搜索操作人..."
             value={filters.keyword}
             onChange={(e) => setFilters({ ...filters, keyword: e.target.value })}
-            className="px-3 py-2 rounded-xl border border-gray-200 focus:border-orange-500 outline-none text-sm"
+            className="px-3 py-2 rounded-xl border border-gray-200 focus:border-[#C47353] outline-none text-sm"
           />
           <button
             onClick={() => setPagination({ ...pagination, page: 1 })}
-            className="px-4 py-2 rounded-xl bg-orange-500 text-white font-medium hover:bg-orange-600 transition-colors text-sm"
+            className="px-4 py-2 rounded-xl bg-[#C47353] text-white font-medium hover:bg-[#A85D40] transition-colors text-sm"
           >
             搜索
           </button>
@@ -93,7 +93,7 @@ export default function LogsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_rgba(61,50,45,0.06)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
@@ -110,7 +110,7 @@ export default function LogsPage() {
               {loading ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center">
-                    <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full mx-auto" />
+                    <div className="animate-spin w-8 h-8 border-4 border-[#C47353] border-t-transparent rounded-full mx-auto" />
                   </td>
                 </tr>
               ) : logs.length === 0 ? (

@@ -253,7 +253,7 @@ export default function MessagesPage() {
               </Link>
               <div className="flex items-center gap-3">
                 <Bell className="w-6 h-6 text-rose-600" />
-                <h1 className="text-xl font-bold text-foreground">消息通知</h1>
+                <h1 className="text-xl font-serif text-[#3D322D] font-normal">消息通知</h1>
                 {unreadCount > 0 && (
                   <span className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
                     {unreadCount}
@@ -293,12 +293,12 @@ export default function MessagesPage() {
 
         {/* 通知列表 */}
         {filteredNotifications.length === 0 ? (
-          <div className="bg-white rounded-2xl p-12 shadow-sm text-center">
+          <div className="bg-white rounded-xl p-12 shadow-[0_4px_16px_rgba(61,50,45,0.08)] text-center">
             <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Bell className="w-10 h-10 text-rose-400" />
             </div>
-            <h2 className="text-xl font-bold text-foreground mb-2">暂无通知</h2>
-            <p className="text-muted-foreground">当有重要消息时，会在这里显示</p>
+            <h2 className="text-xl font-serif text-[#3D322D] font-normal mb-2">暂无通知</h2>
+            <p className="text-[#8C7B6E]">当有重要消息时，会在这里显示</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -309,7 +309,7 @@ export default function MessagesPage() {
               return (
                 <div 
                   key={notification.id}
-                  className={`bg-white rounded-xl p-4 shadow-sm transition-all ${
+                  className={`bg-white rounded-xl p-4 shadow-[0_2px_8px_rgba(61,50,45,0.04)] transition-all ${
                     !notification.is_read ? 'border-l-4 border-l-rose-500' : ''
                   }`}
                   onClick={() => !notification.is_read && markAsRead(notification.id)}

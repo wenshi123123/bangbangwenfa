@@ -55,8 +55,7 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
   const [formData, setFormData] = useState<LawyerFormData>(initialFormData);
   const [showPromo, setShowPromo] = useState(true);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
-  const formRef = useRef<HTMLDivElement>(null);
-  const { isLoggedIn, isLoading } = useAuth();
+  const { user, isLoggedIn, isLoading } = useAuth();
 
   // 登录检查
   useEffect(() => {
@@ -64,6 +63,16 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
       setShowLoginPrompt(true);
     }
   }, [isLoading, isLoggedIn]);
+
+  // 从宣传页进入表单时，滚动到顶部
+  useEffect(() => {
+    if (!showPromo) {
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 50);
+    }
+  }, [showPromo]);
+
 
   // 打开登录弹窗
   const handleOpenLogin = () => {
@@ -81,14 +90,25 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
       setShowPromo(false);
     } else {
       setStep(step - 1);
+      // 延迟 300ms 确保 DOM 完全渲染
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 300);
     }
+  };
+
+  // 统一处理步骤切换 + 滚动到顶部
+  const handleStepChange = (newStep: number) => {
+    setStep(newStep);
+    // 延迟 300ms 确保 DOM 完全渲染
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 300);
   };
 
   const scrollToForm = () => {
     setShowPromo(false);
-    setTimeout(() => {
-      formRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
+    // useEffect 会处理滚动到顶部
   };
 
   const renderStep = () => {
@@ -98,7 +118,7 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
           <LawyerFormStep
             formData={formData}
             onUpdate={updateFormData}
-            onNext={() => setStep(2)}
+            onNext={() => handleStepChange(2)}
             onBack={handleBack}
           />
         );
@@ -107,7 +127,7 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
           <LawyerUploadStep
             formData={formData}
             onUpdate={updateFormData}
-            onNext={() => setStep(3)}
+            onNext={() => handleStepChange(3)}
             onBack={handleBack}
           />
         );
@@ -130,6 +150,35 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
           <p className="text-muted-foreground">加载中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 已是认证律师，无需重复入驻
+  if (user?.isLawyer) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)' }}>
+        <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-sm w-full shadow-xl text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">您已是认证律师</h2>
+          <p className="text-gray-500 mb-6">无需重复入驻，可前往律师工作台管理您的业务</p>
+          <a
+            href="/lawyer/dashboard"
+            className="block w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-3 px-6 rounded-xl font-semibold transition-all"
+          >
+            前往律师工作台
+          </a>
+          <button
+            onClick={onBack}
+            className="w-full mt-3 text-gray-500 py-2 text-sm hover:text-gray-700"
+          >
+            返回首页
+          </button>
         </div>
       </div>
     );
@@ -170,10 +219,6 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
     return (
       <div>
         <LawyerPromoSection onStartApply={scrollToForm} />
-        <div 
-          ref={formRef}
-          className="hidden"
-        />
       </div>
     );
   }

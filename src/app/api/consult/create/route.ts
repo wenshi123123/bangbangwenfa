@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
+import { notifyOrder } from '@/lib/notify/webhook';
 
 export async function POST(request: NextRequest) {
   try {
@@ -114,6 +115,16 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Webhook 通知
+    notifyOrder({
+      type: 'Consult',
+      userName: finalContactName,
+      amount: finalServicePrice,
+      detail: `${finalCategory === 'criminal' ? '刑事' : '民事'}咨询 - ${finalServiceType}`,
+      orderId: data?.id,
+      status: 'Pending Payment',
+    });
 
     return NextResponse.json({
       success: true,

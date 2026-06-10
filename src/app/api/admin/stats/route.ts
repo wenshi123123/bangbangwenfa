@@ -40,10 +40,49 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
   today.setHours(0, 0, 0, 0);
   const todayStr = today.toISOString();
 
+  // 昨日日期区间
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStart = yesterday.toISOString().split('T')[0] + 'T00:00:00.000Z';
+  const yesterdayEnd = yesterday.toISOString().split('T')[0] + 'T23:59:59.999Z';
+
   const { count: newUsersToday } = await supabase
     .from('users')
     .select('*', { count: 'exact', head: true })
     .gte('created_at', todayStr);
+
+  const { count: yesterdayNewUsers } = await supabase
+    .from('users')
+    .select('*', { count: 'exact', head: true })
+    .gte('created_at', yesterdayStart)
+    .lte('created_at', yesterdayEnd);
+
+  // 总用户数
+  const { count: totalUsers } = await supabase
+    .from('users')
+    .select('*', { count: 'exact', head: true });
+
+  // 总律师数
+  const { count: totalLawyers } = await supabase
+    .from('lawyers')
+    .select('*', { count: 'exact', head: true });
+
+  // 昨日订单数
+  const { count: yesterdayOrders } = await supabase
+    .from('consult_orders')
+    .select('*', { count: 'exact', head: true })
+    .gte('created_at', yesterdayStart)
+    .lte('created_at', yesterdayEnd);
+
+  // 昨日收入
+  const { data: yesterdayRevenueData } = await supabase
+    .from('consult_orders')
+    .select('service_price')
+    .eq('payment_status', 'paid')
+    .gte('created_at', yesterdayStart)
+    .lte('created_at', yesterdayEnd);
+
+  const yesterdayRevenue = yesterdayRevenueData?.reduce((sum, item) => sum + (item.service_price || 0), 0) || 0;
 
   // 今日订单数
   const { count: todayOrders } = await supabase
@@ -85,6 +124,11 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
       todayRevenue: todayRevenue || 0,
       pendingCommissions: pendingCommissions || 0,
       onlineLawyers: onlineLawyers || 0,
+      yesterdayNewUsers: yesterdayNewUsers || 0,
+      totalUsers: totalUsers || 0,
+      totalLawyers: totalLawyers || 0,
+      yesterdayOrders: yesterdayOrders || 0,
+      yesterdayRevenue: yesterdayRevenue || 0,
     },
   });
 });

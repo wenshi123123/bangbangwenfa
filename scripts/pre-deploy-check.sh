@@ -2,7 +2,7 @@
 # 预部署检查脚本
 # 在部署前运行，确保 schema.ts 变更不会触发扣子平台迁移错误
 
-set -Eeuo pipefail
+set -e
 
 echo "=== 预部署检查 ==="
 echo ""

@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { User, Shield, Briefcase, Settings, ChevronRight, LogOut, QrCode, X, ShoppingCart, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { User, Shield, Briefcase, Settings, ChevronRight, LogOut, QrCode, X, ShoppingCart, Clock, CheckCircle, AlertCircle, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -25,9 +26,11 @@ interface Order {
 
 export default function UserCenterPage() {
   const { user, isLoggedIn, isLoading, logout, updateUser } = useAuth();
+  const router = useRouter();
   const [showSettings, setShowSettings] = useState(false);
   const [editNickname, setEditNickname] = useState('');
   const [saving, setSaving] = useState(false);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
   // 订单相关状态
   const [orders, setOrders] = useState<Order[]>([]);
@@ -56,11 +59,25 @@ export default function UserCenterPage() {
     }
   }, [user?.id]);
 
+  // 加载未读通知数
+  const loadUnreadCount = useCallback(async () => {
+    try {
+      const res = await apiRequest('/api/user/notifications?unreadOnly=true&limit=1');
+      const result = await res.json();
+      if (result.success) {
+        setUnreadNotificationCount(result.unreadCount || 0);
+      }
+    } catch (err) {
+      // 忽略错误，通知入口仍可点击
+    }
+  }, []);
+
   useEffect(() => {
     if (user?.id && isLoggedIn) {
       loadOrders();
+      loadUnreadCount();
     }
-  }, [user?.id, isLoggedIn, loadOrders]);
+  }, [user?.id, isLoggedIn, loadOrders, loadUnreadCount]);
 
   useEffect(() => {
     if (!isLoading && !isLoggedIn) {
@@ -72,8 +89,8 @@ export default function UserCenterPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <p className="text-muted-foreground">加载中...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#C47353] mx-auto mb-4"></div>
+          <p className="text-[#8C7B6E]">加载中...</p>
         </div>
       </div>
     );
@@ -81,12 +98,12 @@ export default function UserCenterPage() {
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="max-w-sm">
+      <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center p-4">
+        <Card className="max-w-sm shadow-[0_4px_16px_rgba(61,50,45,0.08)] rounded-xl">
           <CardContent className="pt-6 text-center">
-            <h2 className="text-xl font-bold mb-4">请先登录</h2>
-            <p className="text-muted-foreground mb-4">登录后可查看您的个人中心</p>
-            <Button onClick={() => window.dispatchEvent(new CustomEvent('open-login-modal'))}>
+            <h2 className="text-xl font-serif text-[#3D322D] font-normal mb-4">请先登录</h2>
+            <p className="text-[#8C7B6E] mb-4">登录后可查看您的个人中心</p>
+            <Button onClick={() => window.dispatchEvent(new CustomEvent('open-login-modal'))} className="bg-[#C47353] hover:bg-[#A85D40] text-white rounded-full">
               手机号登录
             </Button>
           </CardContent>
@@ -96,9 +113,9 @@ export default function UserCenterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#FAF7F2]">
       {/* 用户信息卡片 */}
-      <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white py-8 px-4">
+      <div className="bg-[#C47353] text-white py-8 px-4">
         <div className="container mx-auto">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl">
@@ -112,11 +129,11 @@ export default function UserCenterPage() {
               <h2 className="text-xl font-bold">{user?.nickname || '用户'}</h2>
               <div className="flex items-center gap-2 mt-0.5">
                 {user?.isLawyer ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-500/20 text-orange-200 rounded text-xs">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#C47353]/20 text-white/80 rounded text-xs">
                     认证律师
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/20 text-orange-100 rounded text-xs">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/20 text-white/80 rounded text-xs">
                     注册用户
                   </span>
                 )}
@@ -134,7 +151,7 @@ export default function UserCenterPage() {
       {/* 功能菜单 */}
       <div className="container mx-auto px-4 py-6">
         {/* 身份入口 */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6">
           {/* 守护者入口 */}
           <Link href="/guardian/center">
             <Card className="hover:shadow-lg transition-shadow cursor-pointer border-purple-100">
@@ -155,11 +172,11 @@ export default function UserCenterPage() {
           {/* 律师后台入口 - 仅律师可见 */}
           {user?.isLawyer && (
             <Link href="/lawyer/dashboard">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-orange-100">
+              <Card className="hover:shadow-[0_8px_24px_rgba(61,50,45,0.06)] transition-shadow cursor-pointer border border-[rgba(196,115,83,0.2)]">
                 <CardContent className="py-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center">
-                      <Briefcase className="w-6 h-6 text-orange-600" />
+                    <div className="w-12 h-12 rounded-xl bg-[#FAF7F2] flex items-center justify-center border border-[rgba(196,115,83,0.2)]">
+                      <Briefcase className="w-6 h-6 text-[#C47353]" />
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900">律师后台</p>
@@ -172,16 +189,41 @@ export default function UserCenterPage() {
           )}
         </div>
 
+        {/* 消息通知入口 */}
+        <div className="bg-white rounded-xl shadow-[0_4px_16px_rgba(61,50,45,0.08)] overflow-hidden mb-4">
+          <Link href="/user/notifications" className="w-full flex items-center justify-between px-4 py-4 hover:bg-gray-50 transition-colors text-left">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Bell className="w-5 h-5 text-[#C47353]" />
+                {unreadNotificationCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                    {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                  </span>
+                )}
+              </div>
+              <span className="text-gray-700">消息通知</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {unreadNotificationCount > 0 && (
+                <span className="text-xs text-[#C47353] bg-[#C47353]/10 px-2 py-0.5 rounded-full">
+                  {unreadNotificationCount} 条未读
+                </span>
+              )}
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </div>
+          </Link>
+        </div>
+
         {/* 我的订单 */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">我的订单</h3>
-            <span className="text-sm text-gray-500">{orders.length} 笔</span>
+        <div className="bg-white rounded-xl shadow-[0_4px_16px_rgba(61,50,45,0.08)] overflow-hidden">
+          <div className="px-4 py-3 border-b border-[rgba(196,115,83,0.15)] flex items-center justify-between">
+            <h3 className="font-serif text-[#3D322D] font-normal">我的订单</h3>
+            <span className="text-sm text-[#8C7B6E]">{orders.length} 笔</span>
           </div>
           
           {ordersLoading ? (
-            <div className="p-8 text-center text-gray-400">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-2"></div>
+            <div className="p-8 text-center text-[#8C7B6E]">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#C47353] mx-auto mb-2"></div>
               <p className="text-sm">加载中...</p>
             </div>
           ) : orders.length === 0 ? (
@@ -225,7 +267,7 @@ export default function UserCenterPage() {
                       <div className="flex items-center gap-2">
                         <p className="font-medium text-gray-900 truncate">{order.caseTitle || '未命名咨询'}</p>
                         {order.type === 'lawyer' && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-orange-100 text-orange-700">
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-[#FAF7F2] text-[#C47353]">
                             律师入驻
                           </span>
                         )}
@@ -249,9 +291,9 @@ export default function UserCenterPage() {
         </div>
 
         {/* 设置 */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mt-4">
-          <div className="px-4 py-3 border-b">
-            <h3 className="font-semibold text-gray-900">设置</h3>
+        <div className="bg-white rounded-xl shadow-[0_4px_16px_rgba(61,50,45,0.08)] overflow-hidden mt-4">
+          <div className="px-4 py-3 border-b border-[rgba(196,115,83,0.15)]">
+            <h3 className="font-serif text-[#3D322D] font-normal">设置</h3>
           </div>
           <div className="divide-y">
             <button 
@@ -317,10 +359,10 @@ export default function UserCenterPage() {
                   value={editNickname}
                   onChange={(e) => setEditNickname(e.target.value)}
                   placeholder="请输入昵称"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-[#E5DDD5] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C47353]/20 focus:border-[#C47353]"
                   maxLength={20}
                 />
-                <p className="text-xs text-gray-400 mt-1">{editNickname.length}/20</p>
+                <p className="text-xs text-[#8C7B6E] mt-1">{editNickname.length}/20</p>
               </div>
 
               {/* 邀请码 */}
@@ -342,7 +384,7 @@ export default function UserCenterPage() {
                   取消
                 </Button>
                 <Button
-                  className="flex-1 bg-orange-500 hover:bg-orange-600"
+                  className="flex-1 bg-[#C47353] hover:bg-[#A85D40] text-white rounded-full"
                   disabled={saving || editNickname === user?.nickname}
                   onClick={async () => {
                     if (!editNickname.trim()) return;
@@ -448,6 +490,21 @@ export default function UserCenterPage() {
                       进入律师工作台
                     </Button>
                   </Link>
+                </div>
+              )}
+
+              {/* 待支付订单 - 继续支付按钮 */}
+              {showOrderDetail.paymentStatus === 'pending' && (
+                <div className="pt-2">
+                  <Button
+                    onClick={() => {
+                      setShowOrderDetail(null);
+                      router.push(`/pay?orderId=${showOrderDetail.id}`);
+                    }}
+                    className="w-full bg-[#C47353] hover:bg-[#A85D40] text-white rounded-full"
+                  >
+                    继续支付 ¥{(showOrderDetail.servicePrice / 100).toFixed(2)}
+                  </Button>
                 </div>
               )}
             </div>

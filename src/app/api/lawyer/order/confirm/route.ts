@@ -71,11 +71,53 @@ export async function POST(request: NextRequest) {
       .from('consult_orders')
       .update(updateData)
       .eq('id', orderId)
-      .select()
+      .select('user_id, order_no')
       .single();
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
+
+    // 【P0-用户通知】律师确认接单后通知用户
+    if (action !== 'reject' && data?.user_id) {
+      try {
+        // 获取律师姓名
+        const { data: lawyerInfo } = await supabase
+          .from('lawyers')
+          .select('name')
+          .eq('id', lawyerId)
+          .maybeSingle();
+
+        await supabase.from('notifications').insert({
+          user_id: data.user_id,
+          type: 'lawyer_confirmed',
+          title: '律师已确认接单',
+          content: `律师 ${lawyerInfo?.name || '律师'} 已确认接单，请耐心等待律师回复。订单号：${data.order_no}`,
+          data: { orderId, orderNo: data.order_no, lawyerId, lawyerName: lawyerInfo?.name || '' },
+          is_read: false,
+        });
+        console.log(`✅ 用户通知已写入: 律师 ${lawyerInfo?.name || lawyerId} 确认接单，订单 ${orderId}`);
+      } catch (notifyErr) {
+        console.error('写入用户确认接单通知失败（不影响结果）:', notifyErr);
+      }
+    }
+
+    // 【P0-用户通知】律师拒单后通知用户（订单回到未分配状态）
+    if (action === 'reject' && data?.user_id) {
+      try {
+        await supabase.from('notifications').insert({
+          user_id: data.user_id,
+          type: 'lawyer_rejected',
+          title: '律师无法接单',
+          content: `律师已拒单，平台将重新为您分配律师。订单号：${data.order_no}`,
+          data: { orderId, orderNo: data.order_no },
+          is_read: false,
+        });
+        console.log(`⚠️ 用户通知已写入: 律师拒单，订单 ${orderId} 回到未分配状态`);
+      } catch (notifyErr) {
+        console.error('写入用户拒单通知失败（不影响结果）:', notifyErr);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: action === 'reject' ? '已拒单' : '已接单',

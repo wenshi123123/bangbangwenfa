@@ -30,7 +30,7 @@ function safeParseArray(value: string[] | string | null | undefined): string[] {
 }
 
 interface LawyerApplication {
-  id: number;
+  id: string;
   user_id: string;
   name: string;
   gender: string;
@@ -66,6 +66,8 @@ const statusMap = {
 const packageMap: Record<string, { label: string; price: number }> = {
   civil_premium: { label: '民事律师（臻选）', price: 500000 },
   criminal_premium: { label: '刑事律师（臻选）', price: 800000 },
+  civil: { label: '民事律师（臻选）', price: 500000 },
+  criminal: { label: '刑事律师（臻选）', price: 800000 },
 };
 
 export default function LawyerDetailPage() {
@@ -111,7 +113,7 @@ export default function LawyerDetailPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          id: parseInt(id),
+          id: id,
           action,
           reason: rejectReason,
         })
@@ -185,7 +187,7 @@ export default function LawyerDetailPage() {
       {/* Info Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Basic Info */}
-        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
           <h2 className="text-lg font-semibold text-slate-800 mb-4">基本信息</h2>
           <div className="space-y-4">
             <div className="flex items-start gap-3">
@@ -220,7 +222,7 @@ export default function LawyerDetailPage() {
         </div>
 
         {/* Professional Info */}
-        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
           <h2 className="text-lg font-semibold text-slate-800 mb-4">专业信息</h2>
           <div className="space-y-4">
             <div className="flex items-start gap-3">
@@ -280,7 +282,7 @@ export default function LawyerDetailPage() {
         </div>
 
         {/* Package Info */}
-        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
           <h2 className="text-lg font-semibold text-slate-800 mb-4">入驻套餐</h2>
           <div className="flex items-center justify-between">
             <div>
@@ -297,7 +299,7 @@ export default function LawyerDetailPage() {
 
         {/* Review Info */}
         {application.review_status !== 'pending' && (
-          <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+          <div className="bg-white rounded-xl p-4 sm:p-6 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
             <h2 className="text-lg font-semibold text-slate-800 mb-4">审核信息</h2>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -317,7 +319,7 @@ export default function LawyerDetailPage() {
       </div>
 
       {/* Documents */}
-      <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+      <div className="bg-white rounded-xl p-4 sm:p-6 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
         <h2 className="text-lg font-semibold text-slate-800 mb-4">证件材料</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
           {/* License Images */}
@@ -369,7 +371,7 @@ export default function LawyerDetailPage() {
 
       {/* Actions */}
       {application.review_status === 'pending' && (
-        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
           <h2 className="text-lg font-semibold text-slate-800 mb-4">审核操作</h2>
           <div className="flex flex-wrap gap-3 sm:gap-4">
             <button

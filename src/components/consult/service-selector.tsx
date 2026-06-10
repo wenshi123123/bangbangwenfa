@@ -69,9 +69,9 @@ export function ServiceSelector({ onSelectPlan }: ServiceSelectorProps) {
       {servicePlans.map((plan) => (
         <Card 
           key={plan.id}
-          className={`relative flex flex-col transition-all duration-200 hover:shadow-lg ${
+          className={`relative flex flex-col transition-all duration-200 hover:shadow-[0_4px_16px_rgba(61,50,45,0.08)] ${
             plan.recommended 
-              ? 'border-primary shadow-md ring-2 ring-primary/20' 
+              ? 'border-primary shadow-[0_4px_12px_rgba(61,50,45,0.06)] ring-2 ring-primary/20' 
               : ''
           }`}
         >

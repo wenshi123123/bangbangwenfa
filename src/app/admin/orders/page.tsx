@@ -13,6 +13,15 @@ import {
 } from 'lucide-react';
 import { adminApiRequest } from '@/lib/api/request';
 
+interface TrendData {
+  todayOrders: number;
+  yesterdayOrders: number;
+  todayRevenue: number;
+  yesterdayRevenue: number;
+  pendingOrders: number;
+  pendingPaymentOrders: number;
+}
+
 interface Order {
   id: number;
   contact_name: string;
@@ -54,6 +63,7 @@ export default function OrderListPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [trend, setTrend] = useState<TrendData | null>(null);
   const pageSize = 10;
 
   useEffect(() => {
@@ -90,6 +100,29 @@ export default function OrderListPage() {
     fetchList();
   }, [page, statusFilter, categoryFilter, searchKeyword]);
 
+  // 获取趋势数据
+  useEffect(() => {
+    const fetchTrend = async () => {
+      try {
+        const res = await adminApiRequest('/api/admin/stats');
+        const result = await res.json();
+        if (result.success) {
+          setTrend({
+            todayOrders: result.data.todayOrders || 0,
+            yesterdayOrders: result.data.yesterdayOrders || 0,
+            todayRevenue: result.data.todayRevenue || 0,
+            yesterdayRevenue: result.data.yesterdayRevenue || 0,
+            pendingOrders: result.data.pendingOrders || 0,
+            pendingPaymentOrders: 0,
+          });
+        }
+      } catch (e) {
+        console.error('获取趋势数据失败:', e);
+      }
+    };
+    fetchTrend();
+  }, []);
+
   const totalPages = Math.ceil(total / pageSize);
 
   return (
@@ -102,8 +135,48 @@ export default function OrderListPage() {
         </div>
       </div>
 
+      {/* 趋势卡片 */}
+      {trend && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white rounded-xl p-4 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
+            <p className="text-xs text-slate-500 mb-1">今日订单</p>
+            <p className="text-2xl font-bold text-slate-800">{trend.todayOrders}</p>
+            {trend.yesterdayOrders > 0 && (
+              <p className={`text-xs mt-1 ${trend.todayOrders >= trend.yesterdayOrders ? 'text-green-600' : 'text-red-500'}`}>
+                {trend.todayOrders >= trend.yesterdayOrders ? '↑' : '↓'}
+                {Math.abs(Math.round((trend.todayOrders - trend.yesterdayOrders) / trend.yesterdayOrders * 100))}%
+                较昨日
+              </p>
+            )}
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
+            <p className="text-xs text-slate-500 mb-1">今日收入</p>
+            <p className="text-2xl font-bold text-slate-800">¥{(trend.todayRevenue / 100).toFixed(2)}</p>
+            {trend.yesterdayRevenue > 0 && (
+              <p className={`text-xs mt-1 ${trend.todayRevenue >= trend.yesterdayRevenue ? 'text-green-600' : 'text-red-500'}`}>
+                {trend.todayRevenue >= trend.yesterdayRevenue ? '↑' : '↓'}
+                {Math.abs(Math.round((trend.todayRevenue - trend.yesterdayRevenue) / trend.yesterdayRevenue * 100))}%
+                较昨日
+              </p>
+            )}
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
+            <p className="text-xs text-slate-500 mb-1">待派单</p>
+            <p className="text-2xl font-bold text-amber-600">{trend.pendingOrders}</p>
+            <p className="text-xs text-slate-400 mt-1">需尽快处理</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
+            <p className="text-xs text-slate-500 mb-1">待支付</p>
+            <p className="text-2xl font-bold text-blue-600">
+              {orders.filter(o => o.payment_status === 'pending').length}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">未付款订单</p>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
-      <div className="bg-white rounded-xl p-4 shadow-sm space-y-4">
+      <div className="bg-white rounded-xl p-4 shadow-[0_2px_8px_rgba(61,50,45,0.06)] space-y-4">
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -169,7 +242,7 @@ export default function OrderListPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(61,50,45,0.06)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-slate-50">

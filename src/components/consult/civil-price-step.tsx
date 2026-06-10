@@ -114,7 +114,7 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
     return (
       <div className="animate-fade-in p-4">
         <div className="flex items-center justify-center py-20">
-          <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+          <div className="animate-spin w-8 h-8 border-4 border-[#C47353] border-t-transparent rounded-full"></div>
         </div>
       </div>
     );
@@ -124,8 +124,8 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
     <div className="animate-fade-in">
       {/* Header */}
       <div className="text-center mb-4 sm:mb-6 md:mb-8">
-        <div className="inline-flex items-center gap-2 px-2.5 sm:px-3 sm:px-4 py-1 sm:py-1.5 sm:py-2 rounded-full bg-blue-50 border border-blue-100 mb-2 sm:mb-3 md:mb-4">
-          <span className="text-[10px] sm:text-xs md:text-sm font-medium text-blue-700">Step 4 / 4</span>
+        <div className="inline-flex items-center gap-2 px-2.5 sm:px-3 sm:px-4 py-1 sm:py-1.5 sm:py-2 rounded-full bg-[#FAF7F2] border border-[rgba(196,115,83,0.2)] mb-2 sm:mb-3 md:mb-4">
+          <span className="text-xs sm:text-sm font-medium text-[#C47353]">Step 4 / 4</span>
         </div>
         <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-foreground mb-1 sm:mb-2">
           确认并支付
@@ -136,9 +136,9 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
       </div>
 
       {/* Order Summary */}
-      <div className="bg-gradient-to-r from-blue-50 to-blue-100/30 rounded-lg sm:rounded-xl md:rounded-2xl p-3 sm:p-4 md:p-5 mb-3 sm:mb-4 md:mb-6 border border-blue-100">
+      <div className="bg-gradient-to-r from-[#FAF7F2] to-[rgba(196,115,83,0.06)] rounded-lg sm:rounded-xl md:rounded-xl p-3 sm:p-4 md:p-5 mb-3 sm:mb-4 md:mb-6 border border-[rgba(196,115,83,0.2)]">
         <h3 className="font-semibold text-foreground mb-2 sm:mb-3 md:mb-4 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base">
-          <svg className="w-3.5 h-3.5 sm:w-4 sm:w-5 md:w-5 sm:h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-3.5 h-3.5 sm:w-4 sm:w-5 md:w-5 sm:h-5 text-[#C47353]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
           订单摘要
@@ -155,7 +155,7 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
             <span className="text-muted-foreground">服务类型</span>
             <span className="font-medium text-foreground text-right max-w-[60%] sm:max-w-[180px] truncate">{selectedServices.join(' + ')}</span>
           </div>
-          <div className="h-px bg-blue-200 my-1 sm:my-1.5 md:my-2" />
+          <div className="h-px bg-[#F5EDE5] my-1 sm:my-1.5 md:my-2" />
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">咨询描述</span>
             <span className="text-foreground text-xs max-w-[40%] sm:max-w-[120px] md:max-w-[200px] text-right line-clamp-1 sm:line-clamp-2">
@@ -167,16 +167,16 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
 
       {/* Delegate Notice */}
       {hasDelegate && (
-        <div className="bg-blue-50 rounded-lg sm:rounded-xl md:rounded-2xl p-2.5 sm:p-3 sm:p-4 mb-3 sm:mb-4 md:mb-6 border border-blue-100">
+        <div className="bg-[#FAF7F2] rounded-lg sm:rounded-xl md:rounded-xl p-2.5 sm:p-3 sm:p-4 mb-3 sm:mb-4 md:mb-6 border border-[rgba(196,115,83,0.2)]">
           <div className="flex items-start gap-2 sm:gap-3">
-            <div className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 bg-blue-500 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+            <div className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 bg-[#C47353] rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
               <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <div>
-              <p className="font-semibold text-blue-800 text-xs sm:text-sm md:text-base mb-0.5">委托服务说明</p>
-              <p className="text-[10px] sm:text-xs md:text-sm text-blue-700">
+              <p className="font-semibold text-[#3D322D] text-xs sm:text-sm md:text-base mb-0.5">委托服务说明</p>
+              <p className="text-xs sm:text-sm text-[#C47353]">
                 您选择了委托服务，律师将在24小时内联系您确认委托费用。
                 委托服务费用由您与律师单独协商。
               </p>
@@ -199,15 +199,15 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
                   key={plan.id}
                   onClick={() => setSelectedPlan(plan.id)}
                   className={`
-                    w-full p-2.5 sm:p-3 md:p-4 rounded-lg sm:rounded-xl md:rounded-2xl border-2 transition-all duration-300 text-left relative
+                    w-full p-2.5 sm:p-3 md:p-4 rounded-lg sm:rounded-xl md:rounded-xl border-2 transition-all duration-300 text-left relative
                     ${isSelected 
-                      ? 'border-blue-400 bg-blue-50 shadow-lg shadow-blue-100' 
-                      : 'border-border bg-card hover:border-blue-200'
+                      ? 'border-[#C47353] bg-[#FAF7F2] shadow-[0_4px_16px_rgba(61,50,45,0.08)]' 
+                      : 'border-border bg-card hover:border-[rgba(196,115,83,0.2)]'
                     }
                   `}
                 >
                   {isRecommended && (
-                    <div className="absolute -top-2 sm:-top-2.5 md:-top-3 left-2 sm:left-3 md:left-4 px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-[10px] sm:text-xs md:text-sm font-medium rounded-full">
+                    <div className="absolute -top-2 sm:-top-2.5 md:-top-3 left-2 sm:left-3 md:left-4 px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1 bg-gradient-to-r from-[#C47353] to-[#A85D40] text-white text-xs sm:text-sm font-medium rounded-full">
                       推荐
                     </div>
                   )}
@@ -217,7 +217,7 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
                       <div className={`
                         w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 rounded-full border-2 flex items-center justify-center
                         ${isSelected 
-                          ? 'border-blue-500 bg-blue-500' 
+                          ? 'border-[#C47353] bg-[#C47353]' 
                           : 'border-gray-300'
                         }
                       `}>
@@ -229,7 +229,7 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
                         <div className="font-semibold text-foreground text-xs sm:text-sm md:text-base">{plan.name}</div>
                       </div>
                     </div>
-                    <div className="text-base sm:text-lg md:text-xl font-bold text-blue-600">
+                    <div className="text-base sm:text-lg md:text-xl font-bold text-[#C47353]">
                       ¥{plan.price}
                     </div>
                   </div>
@@ -241,10 +241,10 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
       )}
 
       {/* Total Amount */}
-      <div className="bg-blue-50 rounded-lg sm:rounded-xl md:rounded-2xl p-3 sm:p-4 md:p-5 mb-4 sm:mb-6 md:mb-8 border border-blue-100">
+      <div className="bg-[#FAF7F2] rounded-lg sm:rounded-xl md:rounded-xl p-3 sm:p-4 md:p-5 mb-4 sm:mb-6 md:mb-8 border border-[rgba(196,115,83,0.2)]">
         <div className="flex items-center justify-between">
           <span className="text-sm sm:text-base md:text-lg text-muted-foreground">应付金额</span>
-          <span className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-600">
+          <span className="text-xl sm:text-2xl md:text-3xl font-bold text-[#C47353]">
             ¥{currentPlan?.price || 0}
           </span>
         </div>
@@ -261,7 +261,7 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
         <button
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="flex-1 py-2.5 sm:py-3 md:py-4 px-4 sm:px-6 rounded-lg sm:rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold text-xs sm:text-sm md:text-base hover:from-blue-600 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-200"
+          className="flex-1 py-2.5 sm:py-3 md:py-4 px-4 sm:px-6 rounded-lg sm:rounded-xl bg-gradient-to-r from-[#C47353] to-[#A85D40] text-white font-semibold text-xs sm:text-sm md:text-base hover:from-[#A85D40] hover:to-[#8B3E2A] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_16px_rgba(61,50,45,0.08)]"
         >
           {isSubmitting ? (
             <span className="flex items-center justify-center gap-2">

@@ -221,8 +221,8 @@ function PayContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-warm flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+      <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#C47353]" />
       </div>
     );
   }
@@ -230,9 +230,9 @@ function PayContent() {
   // 显示支付
   if (showQrCode && payResult) {
     return (
-      <div className="min-h-screen bg-gradient-warm">
+      <div className="min-h-screen bg-[#FAF7F2]">
         {/* Header */}
-        <header className="bg-white/50 backdrop-blur-xl border-b border-black/5 sticky top-0 z-10">
+        <header className="bg-[#FAF7F2]/80 backdrop-blur-md border-b border-[rgba(196,115,83,0.15)] sticky top-0 z-10">
           <div className="container mx-auto px-4 py-3 sm:py-4">
             <button 
               onClick={() => {
@@ -339,7 +339,7 @@ function PayContent() {
                     <div className="flex justify-center">
                       <div className="w-64 h-64 bg-white rounded-xl border-2 border-gray-100 flex items-center justify-center overflow-hidden">
                         {qrLoading ? (
-                          <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+                          <Loader2 className="h-8 w-8 animate-spin text-[#C47353]" />
                         ) : qrCodeUrl ? (
                           <img 
                             src={qrCodeUrl} 
@@ -411,9 +411,9 @@ function PayContent() {
 
   // 默认显示支付方式选择
   return (
-    <div className="min-h-screen bg-gradient-warm">
+    <div className="min-h-screen bg-[#FAF7F2]">
       {/* Header */}
-      <header className="bg-white/50 backdrop-blur-xl border-b border-black/5 sticky top-0 z-10">
+      <header className="bg-[#FAF7F2]/80 backdrop-blur-md border-b border-[rgba(196,115,83,0.15)] sticky top-0 z-10">
         <div className="container mx-auto px-4 py-3 sm:py-4">
           <button 
             onClick={() => setShowConfirmDialog(true)}
@@ -470,28 +470,28 @@ function PayContent() {
                 </>
               ) : loading && !isPreview ? (
                 <div className="flex justify-center py-4">
-                  <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
+                  <Loader2 className="h-6 w-6 animate-spin text-[#C47353]" />
                 </div>
               ) : isPreview ? (
                 // 预览模式提示
                 <div className="text-center py-6">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-orange-100 flex items-center justify-center">
-                    <AlertCircle className="h-8 w-8 text-orange-500" />
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#FAF7F2] border border-[rgba(196,115,83,0.2)] flex items-center justify-center">
+                    <AlertCircle className="h-8 w-8 text-[#C47353]" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">订单不存在</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
+                  <h3 className="text-lg font-serif text-[#3D322D] font-normal mb-2">订单不存在</h3>
+                  <p className="text-sm text-[#8C7B6E] mb-4">
                     预览模式已关闭，请重新提交咨询
                   </p>
                   <Button 
                     onClick={() => router.push('/')}
-                    className="bg-gradient-to-r from-orange-400 to-pink-500 hover:from-orange-500 hover:to-pink-600"
+                    className="bg-[#C47353] hover:bg-[#A85D40] text-white rounded-full px-6"
                   >
                     重新咨询
                   </Button>
                 </div>
               ) : (
                 <div className="flex justify-center py-4">
-                  <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
+                  <Loader2 className="h-6 w-6 animate-spin text-[#C47353]" />
                 </div>
               )}
             </CardContent>
@@ -566,8 +566,8 @@ function PayContent() {
 export default function PayPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-warm flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+      <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#C47353]" />
       </div>
     }>
       <PayContent />

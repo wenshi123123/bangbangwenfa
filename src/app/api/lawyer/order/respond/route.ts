@@ -88,6 +88,30 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
+    // 【P0-用户通知】律师回复后通知用户
+    try {
+      // 查询订单的 user_id 和 order_no
+      const { data: orderInfo } = await supabase
+        .from('consult_orders')
+        .select('user_id, order_no, lawyer_name')
+        .eq('id', orderId)
+        .maybeSingle();
+
+      if (orderInfo?.user_id) {
+        await supabase.from('notifications').insert({
+          user_id: orderInfo.user_id,
+          type: 'lawyer_replied',
+          title: '律师已回复您的咨询',
+          content: `律师 ${orderInfo.lawyer_name || '律师'} 已回复您的咨询订单，请查看。订单号：${orderInfo.order_no}`,
+          data: { orderId, orderNo: orderInfo.order_no, lawyerId, lawyerName: orderInfo.lawyer_name || '' },
+          is_read: false,
+        });
+        console.log(`✅ 用户通知已写入: 律师回复，订单 ${orderId}`);
+      }
+    } catch (notifyErr) {
+      console.error('写入用户回复通知失败（不影响回复结果）:', notifyErr);
+    }
+    
     return NextResponse.json({
       success: true,
       message: '回复成功',

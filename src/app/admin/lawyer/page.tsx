@@ -37,6 +37,8 @@ const statusMap = {
 const packageMap: Record<string, { label: string; price: number }> = {
   civil_premium: { label: '民事律师（臻选）', price: 500000 },
   criminal_premium: { label: '刑事律师（臻选）', price: 800000 },
+  civil: { label: '民事律师（臻选）', price: 500000 },
+  criminal: { label: '刑事律师（臻选）', price: 800000 },
 };
 
 export default function LawyerListPage() {
@@ -178,7 +180,7 @@ export default function LawyerListPage() {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-xl p-4 shadow-sm">
+      <div className="bg-white rounded-xl p-4 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-slate-400" />
@@ -216,7 +218,7 @@ export default function LawyerListPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(61,50,45,0.06)] overflow-hidden">
         <div className="overflow-x-auto -mx-4 sm:mx-0">
           <table className="w-full min-w-[700px]">
             <thead className="bg-slate-50">

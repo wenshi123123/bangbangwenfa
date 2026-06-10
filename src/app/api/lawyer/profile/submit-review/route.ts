@@ -81,6 +81,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '无权提交此审核' }, { status: 403 });
     }
 
+    // 🔒 P0-3 方案A：定义需要触发"重新审核"的敏感字段
+    // 修改这些字段后，律师状态从 active → pending_review，需管理员重新审核
+    const P0_SENSITIVE_FIELDS = new Set([
+      'law_firm',           // 所属律所
+      'working_years',      // 从业年限
+      'license_no',        // 执业证号（证书相关）
+      'name',               // 姓名
+      'real_name',          // 真实姓名
+    ]);
+
+    // 检查本次提交是否包含 P0 敏感字段
+    const fieldsToCheck = changes
+      ? changes.map((c: { field: string }) => c.field)
+      : [revisionType];
+    const hasP0SensitiveField = fieldsToCheck.some((f: string) => P0_SENSITIVE_FIELDS.has(f));
+
+    // 🔒 P0-3 方案A：如果包含 P0 敏感字段，将律师状态改为 pending_review
+    if (hasP0SensitiveField) {
+      console.log('[P0-3] 检测到 P0 敏感字段变更，将律师状态改为 pending_review', {
+        lawyerId,
+        sensitiveFields: fieldsToCheck.filter((f: string) => P0_SENSITIVE_FIELDS.has(f)),
+      });
+      const { error: statusError } = await supabase
+        .from('lawyers')
+        .update({
+          status: 'pending_review',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', lawyerId);
+
+      if (statusError) {
+        console.error('[P0-3] 更新律师状态失败:', statusError);
+        // 不阻断审核提交流程，但记录错误
+      }
+    }
+
     // 新格式：批量提交 changes 数组
     if (changes && Array.isArray(changes) && changes.length > 0) {
       // 🔒 格式校验：手机号必须11位数字，执业证号必须17位数字
@@ -113,7 +149,16 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: revisionError.message }, { status: 500 });
       }
 
-      return NextResponse.json({ success: true, revisions, batchId: sharedBatchId });
+      return NextResponse.json({
+        success: true,
+        revisions,
+        batchId: sharedBatchId,
+        statusChanged: hasP0SensitiveField,
+        newStatus: hasP0SensitiveField ? 'pending_review' : undefined,
+        message: hasP0SensitiveField
+          ? '修改申请已提交，因涉及敏感信息，您的账号将进入审核状态。审核期间您可正常接单。'
+          : undefined,
+      });
     }
 
     // 旧格式兼容：单字段提交
@@ -139,7 +184,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: revisionError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, revision });
+    return NextResponse.json({
+      success: true,
+      revision,
+      statusChanged: hasP0SensitiveField,
+      newStatus: hasP0SensitiveField ? 'pending_review' : undefined,
+      message: hasP0SensitiveField
+        ? '修改申请已提交，因涉及敏感信息，您的账号将进入审核状态。审核期间您可正常接单。'
+        : undefined,
+    });
   } catch (error) {
     return NextResponse.json({ success: false, error: '服务器错误' }, { status: 500 });
   }

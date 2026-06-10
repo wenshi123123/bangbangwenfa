@@ -302,7 +302,7 @@ export default function AdminDashboard() {
                 onClick={() => setPeriod(days)}
                 className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
                   period === days
-                    ? 'bg-white text-slate-800 shadow-sm'
+                    ? 'bg-white text-slate-800 shadow-[0_2px_8px_rgba(61,50,45,0.06)]'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -344,7 +344,7 @@ export default function AdminDashboard() {
           <Link
             key={index}
             href={card.href}
-            className={`bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex items-center gap-4 ${
+            className={`bg-white rounded-xl p-5 shadow-[0_2px_8px_rgba(61,50,45,0.06)] hover:shadow-md transition-all flex items-center gap-4 ${
               card.urgent ? 'ring-2 ring-red-300' : ''
             }`}
           >

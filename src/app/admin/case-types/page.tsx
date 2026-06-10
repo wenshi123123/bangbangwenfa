@@ -115,17 +115,17 @@ export default function CaseTypesPage() {
             setFormData({ code: '', name: '', description: '', icon: '', color: '#FF6B35', sortOrder: types.length + 1 });
             setShowModal(true);
           }}
-          className="px-4 py-2 rounded-xl bg-orange-500 text-white font-medium hover:bg-orange-600 transition-colors"
+          className="px-4 py-2 rounded-xl bg-[#C47353] text-white font-medium hover:bg-[#A85D40] transition-colors"
         >
           + 添加类型
         </button>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_rgba(61,50,45,0.06)] overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full" />
+            <div className="animate-spin w-8 h-8 border-4 border-[#C47353] border-t-transparent rounded-full" />
           </div>
         ) : (
           <table className="w-full">
@@ -173,7 +173,7 @@ export default function CaseTypesPage() {
                   <td className="px-6 py-4">
                     <button
                       onClick={() => handleEdit(type)}
-                      className="text-orange-600 hover:text-orange-700 font-medium text-sm"
+                      className="text-[#C47353] hover:text-[#C47353] font-medium text-sm"
                     >
                       编辑
                     </button>
@@ -188,7 +188,7 @@ export default function CaseTypesPage() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">
               {editType ? '编辑案件类型' : '添加案件类型'}
             </h3>
@@ -199,7 +199,7 @@ export default function CaseTypesPage() {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-orange-500 outline-none"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-[#C47353] outline-none"
                   placeholder="如：诈骗类案件"
                   required
                 />
@@ -210,7 +210,7 @@ export default function CaseTypesPage() {
                   type="text"
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-orange-500 outline-none"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-[#C47353] outline-none"
                   placeholder="如：fraud"
                   required
                   disabled={!!editType}
@@ -222,7 +222,7 @@ export default function CaseTypesPage() {
                   type="text"
                   value={formData.icon}
                   onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-orange-500 outline-none"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-[#C47353] outline-none"
                   placeholder="emoji图标"
                 />
               </div>
@@ -239,7 +239,7 @@ export default function CaseTypesPage() {
                     type="text"
                     value={formData.color}
                     onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                    className="flex-1 px-3 py-2 rounded-xl border border-gray-200 focus:border-orange-500 outline-none"
+                    className="flex-1 px-3 py-2 rounded-xl border border-gray-200 focus:border-[#C47353] outline-none"
                   />
                 </div>
               </div>
@@ -248,7 +248,7 @@ export default function CaseTypesPage() {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-orange-500 outline-none h-20 resize-none"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-[#C47353] outline-none h-20 resize-none"
                 />
               </div>
               <div>
@@ -257,7 +257,7 @@ export default function CaseTypesPage() {
                   type="number"
                   value={formData.sortOrder}
                   onChange={(e) => setFormData({ ...formData, sortOrder: parseInt(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-orange-500 outline-none"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-[#C47353] outline-none"
                 />
               </div>
               <div className="flex gap-3 pt-2">
@@ -270,7 +270,7 @@ export default function CaseTypesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 rounded-xl bg-orange-500 text-white font-medium hover:bg-orange-600 transition-colors"
+                  className="flex-1 py-2 rounded-xl bg-[#C47353] text-white font-medium hover:bg-[#A85D40] transition-colors"
                 >
                   保存
                 </button>

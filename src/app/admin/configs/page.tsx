@@ -90,7 +90,7 @@ export default function ConfigsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full" />
+        <div className="animate-spin w-8 h-8 border-4 border-[#C47353] border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -103,7 +103,7 @@ export default function ConfigsPage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-4 py-2 rounded-xl bg-orange-500 text-white font-medium hover:bg-orange-600 disabled:opacity-50 transition-colors"
+          className="px-4 py-2 rounded-xl bg-[#C47353] text-white font-medium hover:bg-[#A85D40] disabled:opacity-50 transition-colors"
         >
           {saving ? '保存中...' : '保存配置'}
         </button>
@@ -111,7 +111,7 @@ export default function ConfigsPage() {
 
       {/* Config Groups */}
       {Object.entries(groupedConfigs).map(([group, items]) => (
-        <div key={group} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+        <div key={group} className="bg-white rounded-xl p-6 border border-gray-100 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">
             {groupLabels[group] || group}
           </h3>
@@ -133,7 +133,7 @@ export default function ConfigsPage() {
                         ...editValues,
                         [config.config_key]: e.target.checked ? 'true' : 'false'
                       })}
-                      className="w-5 h-5 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+                      className="w-5 h-5 rounded border-gray-300 text-orange-500 focus:ring-[#C47353]/20"
                     />
                     <span className="text-sm text-gray-600">
                       {editValues[config.config_key] === 'true' ? '已启用' : '已禁用'}
@@ -147,7 +147,7 @@ export default function ConfigsPage() {
                       ...editValues,
                       [config.config_key]: e.target.value
                     })}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-orange-500 outline-none"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-[#C47353] outline-none"
                   />
                 ) : (
                   <input
@@ -157,7 +157,7 @@ export default function ConfigsPage() {
                       ...editValues,
                       [config.config_key]: e.target.value
                     })}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-orange-500 outline-none"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-[#C47353] outline-none"
                   />
                 )}
                 <div className="text-xs text-gray-400 mt-1">配置键：{config.config_key}</div>

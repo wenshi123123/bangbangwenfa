@@ -206,6 +206,31 @@ export async function PUT(
           return NextResponse.json({ success: false, error: '更新律师信息失败: ' + lawyerUpdateError.message }, { status: 500 });
         }
       }
+
+      // 🔒 P0-3 方案A：审核通过后，将律师状态从 pending_review 恢复为 active
+      if (lawyerId) {
+        const { data: lawyerRecord } = await supabase
+          .from('lawyers')
+          .select('id, status')
+          .eq('id', String(lawyerId))
+          .maybeSingle();
+
+        if (lawyerRecord && lawyerRecord.status === 'pending_review') {
+          console.log('[P0-3] 审核通过，恢复律师状态为 active', { lawyerId });
+          const { error: restoreError } = await supabase
+            .from('lawyers')
+            .update({
+              status: 'active',
+              updated_at: now,
+            })
+            .eq('id', String(lawyerId));
+
+          if (restoreError) {
+            console.error('[P0-3] 恢复律师状态失败:', restoreError);
+            // 不阻断审核流程
+          }
+        }
+      }
     }
 
     const updateData: Record<string, unknown> = {

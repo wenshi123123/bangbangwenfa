@@ -13,11 +13,10 @@ import {
   X,
   Scale,
   Gift,
-  Bell,
-  ChevronDown,
   Edit3,
   Wallet,
-  Settings
+  Settings,
+  Award,
 } from 'lucide-react';
 
 interface AdminUser {
@@ -46,6 +45,11 @@ interface Stats {
   todayOrders: number;
   todayRevenue: number;
   onlineLawyers: number;
+  yesterdayNewUsers: number;
+  totalUsers: number;
+  totalLawyers: number;
+  yesterdayOrders: number;
+  yesterdayRevenue: number;
 }
 
 const navItems: NavItem[] = [
@@ -67,6 +71,12 @@ const navItems: NavItem[] = [
     icon: <Users className="w-5 h-5" />,
     permission: 'lawyer_audit',
     badge: 'onlineLawyers',
+  },
+  {
+    name: '会员管理',
+    href: '/admin/members',
+    icon: <Award className="w-5 h-5" />,
+    permission: 'lawyer_audit',
   },
   {
     name: '资料修改审核',
@@ -137,6 +147,11 @@ export default function AdminLayout({
     todayOrders: 0,
     todayRevenue: 0,
     onlineLawyers: 0,
+    yesterdayNewUsers: 0,
+    totalUsers: 0,
+    totalLawyers: 0,
+    yesterdayOrders: 0,
+    yesterdayRevenue: 0,
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -147,8 +162,7 @@ export default function AdminLayout({
       return;
     }
 
-    // 检查登录状态
-    const checkAuth = () => {
+    const checkAuth = async () => {
       const adminInfo = localStorage.getItem('admin_info');
       if (!adminInfo) {
         router.push('/admin/login');
@@ -161,23 +175,54 @@ export default function AdminLayout({
         router.push('/admin/login');
         return false;
       }
+
+      // 向 API 验证 token 是否过期
+      try {
+        const token = localStorage.getItem('admin_token');
+        if (!token) {
+          localStorage.removeItem('admin_info');
+          router.push('/admin/login');
+          return false;
+        }
+        const res = await fetch('/api/admin/auth', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const result = await res.json();
+        if (!result.success) {
+          // Token 无效或过期，清理并重定向
+          localStorage.removeItem('admin_info');
+          localStorage.removeItem('admin_token');
+          router.push('/admin/login');
+          return false;
+        }
+      } catch (err) {
+        console.error('验证 token 失败:', err);
+        // 网络错误时不拦截，页面可离线使用
+      }
+
       return true;
     };
 
-    if (!checkAuth()) return;
+    setLoading(true);
+    checkAuth().then((valid) => {
+      if (!valid) return;
+      setLoading(false);
+    });
 
-    // 监听登录状态变化
+    // 监听登录/登出事件
     const handleLoginChange = () => {
-      if (!checkAuth()) {
-        router.push('/admin/login');
-      }
+      window.location.reload();
+    };
+    const handleLogout = () => {
+      router.push('/admin/login');
     };
 
     window.addEventListener('admin-logged-in', handleLoginChange);
-    setLoading(false);
+    window.addEventListener('admin-logged-out', handleLogout);
 
     return () => {
       window.removeEventListener('admin-logged-in', handleLoginChange);
+      window.removeEventListener('admin-logged-out', handleLogout);
     };
   }, [router, pathname]);
 
@@ -237,7 +282,7 @@ export default function AdminLayout({
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Top Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-50">
+      <header className="bg-white shadow-[0_2px_8px_rgba(61,50,45,0.06)] sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo & Title */}
@@ -287,12 +332,6 @@ export default function AdminLayout({
 
             {/* Right Side */}
             <div className="flex items-center gap-4">
-              {/* Notifications */}
-              <button className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-              </button>
-
               {/* User Menu */}
               <div className="flex items-center gap-3">
                 <div className="hidden sm:block text-right">
@@ -361,7 +400,7 @@ export default function AdminLayout({
       </header>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6">
         <Suspense fallback={
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />

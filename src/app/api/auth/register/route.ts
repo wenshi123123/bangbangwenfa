@@ -148,6 +148,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // === 更新守护者邀请计数 + 创建邀请关系记录 ===
+    if (inviterId) {
+      try {
+        // 1. 递增 total_invites
+        const { data: guardianData } = await supabase
+          .from('guardian_users')
+          .select('total_invites')
+          .eq('id', inviterId)
+          .single();
+
+        if (guardianData) {
+          await supabase
+            .from('guardian_users')
+            .update({
+              total_invites: (guardianData.total_invites || 0) + 1,
+            })
+            .eq('id', inviterId);
+
+          // 2. 写入 guardian_invitees（佣金分成依赖此表匹配邀请关系）
+          await supabase
+            .from('guardian_invitees')
+            .upsert({
+              guardian_id: inviterId,
+              invitee_user_id: newUser.id,
+              invitee_nickname: finalNickname,
+              invite_code: inviteCode,
+              bind_source: 'register',
+              is_valid: true,
+            }, { onConflict: 'invitee_user_id,guardian_id' });
+        }
+      } catch (updateError) {
+        console.error('更新守护者邀请计数失败:', updateError);
+        // 不影响注册主流程，仅记录日志
+      }
+    }
+
     // === 生成 token ===
     const token = await generateToken({
       id: newUser.id,

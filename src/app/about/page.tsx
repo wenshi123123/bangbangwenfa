@@ -59,16 +59,16 @@ export default function AboutPage() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-gradient-warm flex items-center justify-center">
-        <div className="animate-pulse text-orange-500">加载中...</div>
+      <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center">
+        <div className="animate-pulse text-[#C47353]">加载中...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-warm">
+    <div className="min-h-screen bg-[#FAF7F2]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-100">
+      <header className="sticky top-0 z-40 bg-[#FAF7F2]/80 backdrop-blur-md border-b border-[rgba(196,115,83,0.15)]">
         <div className="container mx-auto px-4 py-4">
           <Link href="/">
             <Button variant="ghost" className="pl-0 hover:bg-transparent">
@@ -81,23 +81,23 @@ export default function AboutPage() {
 
       <div className="container mx-auto px-4 py-8 md:py-12 max-w-4xl">
         {/* Hero Section */}
-        <section className="text-center mb-12 animate-fade-in">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-orange-400 to-orange-600 mb-6 shadow-xl shadow-orange-200">
+        <section className="text-center mb-12">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-xl border border-[rgba(196,115,83,0.2)] mb-6 hover:scale-105 transition-transform duration-250">
             <img 
 	            src="/logo-bangbang.png"
 	            alt="帮帮问法"
 	            className="w-12 h-12 object-contain"
 	          />
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">了解帮帮</h1>
-          <p className="text-gray-500 text-lg">关于我们</p>
+          <h1 className="text-3xl md:text-4xl font-serif text-[#3D322D] font-normal mb-3">了解帮帮</h1>
+          <p className="text-[#8C7B6E] text-lg">关于我们</p>
         </section>
 
         {/* Who We Are Section */}
-        <section className="mb-8 animate-slide-up stagger-1">
-          <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 rounded-3xl p-6 md:p-8 border border-orange-100 shadow-lg">
+        <section className="mb-8">
+          <div className="bg-white border border-[rgba(196,115,83,0.2)] rounded-xl p-6 md:p-8 hover:-translate-y-[3px] hover:shadow-[0_8px_24px_rgba(61,50,45,0.06)] transition-all duration-250">
             <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center flex-shrink-0 shadow-lg">
+              <div className="w-14 h-14 rounded-xl border border-[rgba(196,115,83,0.2)] flex items-center justify-center flex-shrink-0 hover:scale-105 transition-transform duration-250">
                 <img 
 	              src="/logo-bangbang.png"
 	              alt="帮帮问法"
@@ -105,10 +105,10 @@ export default function AboutPage() {
 	            />
               </div>
               <div className="flex-1">
-                <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-3">我们是谁？</h2>
+                <h2 className="text-xl md:text-2xl font-serif text-[#3D322D] font-normal mb-3">我们是谁？</h2>
                 <div className="space-y-2">
-                  <p className="text-lg font-semibold text-orange-600">法律科技新型公司</p>
-                  <p className="text-gray-600 leading-relaxed">
+                  <p className="text-lg font-medium text-[#C47353]">法律科技新型公司</p>
+                  <p className="text-[#8C7B6E] leading-relaxed">
                     在AI浪潮下，我们更注重人与人之间最本质的交流价值。
                     我们相信，每一个法律问题背后都是一个真实的人，
                     需要另一个真实的人来倾听、理解并提供帮助。
@@ -120,17 +120,17 @@ export default function AboutPage() {
         </section>
 
         {/* Requirements Section */}
-        <section className="mb-8 animate-slide-up stagger-2">
-          <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <CheckCircle className="w-6 h-6 text-green-500" />
+        <section className="mb-8">
+          <h2 className="text-xl md:text-2xl font-serif text-[#3D322D] font-normal mb-6 flex items-center gap-2">
+            <CheckCircle className="w-6 h-6 text-[#C47353]" />
             入驻要求
           </h2>
           <div className="grid md:grid-cols-3 gap-4">
             {requirements.map((req, index) => {
               const colorMap: Record<string, { bg: string; text: string; border: string }> = {
-                orange: { bg: 'bg-orange-100', text: 'text-orange-600', border: 'border-orange-200' },
-                green: { bg: 'bg-green-100', text: 'text-green-600', border: 'border-green-200' },
-                blue: { bg: 'bg-blue-100', text: 'text-blue-600', border: 'border-blue-200' },
+                orange: { bg: 'bg-[#FAF7F2]', text: 'text-[#C47353]', border: 'border-[rgba(196,115,83,0.2)]' },
+                green: { bg: 'bg-[#F0FDF4]', text: 'text-[#16A34A]', border: 'border-[#BBF7D0]' },
+                blue: { bg: 'bg-[#EFF6FF]', text: 'text-[#2563EB]', border: 'border-[#BFDBFE]' },
               };
               const colors = colorMap[req.color];
               const Icon = req.icon;
@@ -138,13 +138,13 @@ export default function AboutPage() {
               return (
                 <div 
                   key={index}
-                  className={`${colors.bg} rounded-2xl p-5 border ${colors.border}`}
+                  className={`${colors.bg} rounded-xl p-5 border ${colors.border} hover:-translate-y-[3px] hover:shadow-[0_8px_24px_rgba(61,50,45,0.06)] transition-all duration-250`}
                 >
                   <div className={`w-12 h-12 rounded-xl ${colors.bg} border ${colors.border} flex items-center justify-center mb-4`}>
                     <Icon className={`w-6 h-6 ${colors.text}`} />
                   </div>
-                  <h3 className="font-bold text-gray-900 mb-2">{req.title}</h3>
-                  <p className="text-sm text-gray-600 leading-relaxed">{req.desc}</p>
+                  <h3 className="font-serif text-[#3D322D] font-normal mb-2">{req.title}</h3>
+                  <p className="text-sm text-[#8C7B6E] leading-relaxed">{req.desc}</p>
                 </div>
               );
             })}
@@ -152,13 +152,13 @@ export default function AboutPage() {
         </section>
 
         {/* University Background Section */}
-        <section className="mb-8 animate-slide-up stagger-3">
-          <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <GraduationCap className="w-6 h-6 text-orange-500" />
+        <section className="mb-8">
+          <h2 className="text-xl md:text-2xl font-serif text-[#3D322D] font-normal mb-6 flex items-center gap-2">
+            <GraduationCap className="w-6 h-6 text-[#C47353]" />
             学历背景
           </h2>
-          <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-3xl p-6 md:p-8">
-            <p className="text-center text-gray-600 mb-6">
+          <div className="bg-[#FAF7F2] rounded-xl p-6 md:p-8 border border-[rgba(196,115,83,0.2)]">
+            <p className="text-center text-[#8C7B6E] mb-6">
               平台律师毕业于以下顶尖法学院等众多国内知名院校
             </p>
             <div className="flex flex-wrap justify-center gap-4 md:gap-6">
@@ -168,7 +168,7 @@ export default function AboutPage() {
                   className="flex flex-col items-center gap-2"
                 >
                   <div 
-                    className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform duration-300 border border-gray-100 p-2"
+                    className="w-20 h-20 md:w-24 md:h-24 rounded-xl bg-white flex items-center justify-center shadow-[0_4px_16px_rgba(61,50,45,0.08)] hover:scale-110 transition-transform duration-300 border border-[rgba(196,115,83,0.2)] p-2"
                   >
                     <Image 
                       src={uni.src} 
@@ -179,17 +179,17 @@ export default function AboutPage() {
                       unoptimized
                     />
                   </div>
-                  <span className="text-sm font-medium text-gray-700">
+                  <span className="text-sm font-medium text-[#3D322D]">
                     {uni.name}
                   </span>
                 </div>
               ))}
               {/* 省略号表示更多院校 */}
               <div className="flex flex-col items-center gap-2">
-                <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-gray-50 flex items-center justify-center shadow-lg border border-gray-100">
-                  <span className="text-3xl text-gray-400">…</span>
+                <div className="w-20 h-20 md:w-24 md:h-24 rounded-xl bg-[#FAF7F2] flex items-center justify-center shadow-[0_4px_16px_rgba(61,50,45,0.08)] border border-[rgba(196,115,83,0.2)]">
+                  <span className="text-3xl text-[#8C7B6E]">…</span>
                 </div>
-                <span className="text-sm font-medium text-gray-500">
+                <span className="text-sm font-medium text-[#8C7B6E]">
               
                 </span>
               </div>
@@ -198,27 +198,27 @@ export default function AboutPage() {
         </section>
 
         {/* Comparison Section */}
-        <section className="mb-8 animate-slide-up stagger-4">
-          <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">
+        <section className="mb-8">
+          <h2 className="text-xl md:text-2xl font-serif text-[#3D322D] font-normal mb-6">
             我们的定位
           </h2>
           
           {/* We Are */}
           <div className="mb-4">
-            <h3 className="text-lg font-bold text-green-700 mb-3 flex items-center gap-2">
-              <CheckCircle className="w-5 h-5" />
+            <h3 className="text-lg font-serif text-[#3D322D] font-normal mb-3 flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-[#C47353]" />
               我们是
             </h3>
-            <div className="bg-gradient-to-br from-green-50 to-green-100/50 rounded-2xl p-5 border border-green-200">
+            <div className="bg-[#FAF7F2] rounded-xl p-5 border border-[rgba(196,115,83,0.2)]">
               <div className="grid md:grid-cols-2 gap-4">
                 {positives.map((item, index) => (
                   <div key={index} className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <div className="w-6 h-6 rounded-full bg-[#C47353] flex items-center justify-center flex-shrink-0 mt-0.5">
                       <CheckCircle className="w-4 h-4 text-white" />
                     </div>
                     <div>
-                      <p className="font-semibold text-green-800">{item.text}</p>
-                      <p className="text-sm text-green-600">{item.desc}</p>
+                      <p className="font-medium text-[#3D322D]">{item.text}</p>
+                      <p className="text-sm text-[#8C7B6E]">{item.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -228,20 +228,20 @@ export default function AboutPage() {
 
           {/* We Are Not */}
           <div>
-            <h3 className="text-lg font-bold text-red-700 mb-3 flex items-center gap-2">
-              <XCircle className="w-5 h-5" />
+            <h3 className="text-lg font-serif text-[#3D322D] font-normal mb-3 flex items-center gap-2">
+              <XCircle className="w-5 h-5 text-[#8C7B6E]" />
               我们不是
             </h3>
-            <div className="bg-gradient-to-br from-red-50 to-red-100/50 rounded-2xl p-5 border border-red-200">
+            <div className="bg-white rounded-xl p-5 border border-[rgba(196,115,83,0.15)]">
               <div className="grid md:grid-cols-3 gap-4">
                 {exclusions.map((item, index) => (
                   <div key={index} className="flex items-start gap-2">
-                    <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <XCircle className="w-4 h-4 text-white" />
+                    <div className="w-6 h-6 rounded-full bg-[#8C7B6E]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <XCircle className="w-4 h-4 text-[#8C7B6E]" />
                     </div>
                     <div>
-                      <p className="font-semibold text-red-800">{item.text}</p>
-                      <p className="text-xs text-red-600">{item.desc}</p>
+                      <p className="font-medium text-[#3D322D]">{item.text}</p>
+                      <p className="text-xs text-[#8C7B6E]">{item.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -251,14 +251,14 @@ export default function AboutPage() {
         </section>
 
         {/* WeChat QR Code Section */}
-        <section className="mb-8 animate-slide-up stagger-5">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-3xl p-6 md:p-8 border border-blue-200">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6 text-center flex items-center justify-center gap-2">
-              <QrCode className="w-6 h-6 text-blue-500" />
+        <section className="mb-8">
+          <div className="bg-[#FAF7F2] rounded-xl p-6 md:p-8 border border-[rgba(196,115,83,0.2)]">
+            <h2 className="text-xl md:text-2xl font-serif text-[#3D322D] font-normal mb-6 text-center flex items-center justify-center gap-2">
+              <QrCode className="w-6 h-6 text-[#C47353]" />
               关注公众号
             </h2>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6 md:gap-8">
-              <div className="w-40 h-40 md:w-48 md:h-48 bg-white rounded-3xl p-3 shadow-lg">
+              <div className="w-40 h-40 md:w-48 md:h-48 bg-white rounded-xl p-3 shadow-[0_4px_16px_rgba(61,50,45,0.08)] border border-[rgba(196,115,83,0.2)]">
                 <Image 
                   src="/wechat-qr.png" 
                   alt="公众号二维码"
@@ -270,12 +270,12 @@ export default function AboutPage() {
               </div>
               <div className="text-center sm:text-left space-y-3">
                 <div>
-                  <p className="text-lg font-semibold text-gray-900">扫码关注，了解更多</p>
-                  <p className="text-gray-500">第一时间获取法律资讯</p>
+                  <p className="text-lg font-medium text-[#3D322D]">扫码关注，了解更多</p>
+                  <p className="text-[#8C7B6E]">第一时间获取法律资讯</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-gray-600">获取最新法律科普内容</p>
-                  <p className="text-sm text-gray-600">诚邀律师加入帮帮，让你的专业配得上应有的价值</p>
+                  <p className="text-sm text-[#8C7B6E]">获取最新法律科普内容</p>
+                  <p className="text-sm text-[#8C7B6E]">诚邀律师加入帮帮，让你的专业配得上应有的价值</p>
                 </div>
               </div>
             </div>
@@ -283,13 +283,13 @@ export default function AboutPage() {
         </section>
 
         {/* CTA Section */}
-        <section className="text-center animate-slide-up stagger-6">
+        <section className="text-center">
           <div className="w-full sm:w-auto inline-flex relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-orange-400 to-orange-500 rounded-full blur opacity-30 group-hover:opacity-50 transition-opacity duration-500" />
+            <div className="absolute -inset-1 bg-[#C47353] rounded-full blur opacity-20 group-hover:opacity-40 transition-opacity duration-500" />
             <Link href="/?start=consult" className="w-full sm:w-auto block">
               <Button 
                 size="lg" 
-                className="w-full sm:w-auto relative bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white rounded-full px-10 py-6 text-lg font-semibold h-auto shadow-xl shadow-orange-200/50 transition-all duration-300 active:scale-95 sm:hover:scale-105"
+                className="w-full sm:w-auto relative bg-[#C47353] hover:bg-[#A85D40] text-white rounded-full px-10 py-6 text-lg font-medium h-auto shadow-[0_4px_16px_rgba(196,115,83,0.3)] transition-all duration-250 hover:-translate-y-[2px] active:scale-95"
               >
                 立即开始咨询
               </Button>

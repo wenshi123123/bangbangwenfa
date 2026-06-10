@@ -135,7 +135,7 @@ export default function LawyerOrdersPage() {
   if (!isAuthorized) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-[#FAF7F2]">
-        <div className="bg-white rounded-2xl p-8 shadow-lg max-w-sm w-full text-center">
+        <div className="bg-white rounded-xl p-8 shadow-lg max-w-sm w-full text-center">
           <div className="w-14 h-14 rounded-full bg-[#C47353]/10 flex items-center justify-center mx-auto mb-4">
             <MessageSquare className="w-7 h-7 text-[#C47353]" />
           </div>
@@ -201,7 +201,7 @@ export default function LawyerOrdersPage() {
                 onClick={() => setActiveTab(tab.key)}
                 className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 flex items-center gap-1.5 ${
                   activeTab === tab.key
-                    ? 'bg-[#C47353] text-white shadow-sm shadow-[#C47353]/20'
+                    ? 'bg-[#C47353] text-white shadow-[0_2px_8px_rgba(61,50,45,0.06)] shadow-[#C47353]/20'
                     : 'bg-[#F5F0E8] text-[#78716C] hover:bg-[#EDE5DA] hover:text-[#5C534A]'
                 }`}
               >
@@ -226,8 +226,8 @@ export default function LawyerOrdersPage() {
       {/* ===== 订单列表 ===== */}
       <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 py-5">
         {filteredOrders.length === 0 ? (
-          <div className="bg-[#FFFBF5] rounded-2xl py-16 border border-dashed border-[#E8D5C0] text-center">
-            <div className="w-16 h-16 rounded-2xl bg-[#F5F0E8] flex items-center justify-center mx-auto mb-4">
+          <div className="bg-[#FFFBF5] rounded-xl py-16 border border-dashed border-[#E8D5C0] text-center">
+            <div className="w-16 h-16 rounded-xl bg-[#F5F0E8] flex items-center justify-center mx-auto mb-4">
               <MessageSquare className="w-7 h-7 text-[#C8BDB2]" />
             </div>
             <h3 className="text-[#78716C] font-medium mb-1">
@@ -247,7 +247,7 @@ export default function LawyerOrdersPage() {
                 <Link
                   href={`/lawyer/orders/${order.id}`}
                   key={order.id}
-                  className="bg-[#FFFBF5] rounded-2xl border border-[#E8D5C0] shadow-sm overflow-hidden flex flex-col hover:shadow-md hover:border-[#C47353]/30 transition-all duration-300 block cursor-pointer"
+                  className="bg-[#FFFBF5] rounded-xl border border-[#E8D5C0] shadow-[0_2px_8px_rgba(61,50,45,0.06)] overflow-hidden flex flex-col hover:shadow-md hover:border-[#C47353]/30 transition-all duration-300 block cursor-pointer"
                 >
                   {/* 卡片头部：左侧色条 + 标题 + 状态 */}
                   <div className="flex">

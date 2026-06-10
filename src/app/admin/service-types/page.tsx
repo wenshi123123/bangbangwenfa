@@ -109,7 +109,7 @@ export default function ServiceTypesPage() {
             setFormData({ code: '', name: '', description: '', category: 'consult', icon: '', priceMin: 0, priceMax: 0, sortOrder: types.length + 1 });
             setShowModal(true);
           }}
-          className="px-4 py-2 rounded-xl bg-orange-500 text-white font-medium hover:bg-orange-600 transition-colors"
+          className="px-4 py-2 rounded-xl bg-[#C47353] text-white font-medium hover:bg-[#A85D40] transition-colors"
         >
           + 添加服务
         </button>
@@ -119,20 +119,20 @@ export default function ServiceTypesPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {loading ? (
           <div className="col-span-full flex items-center justify-center py-12">
-            <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full" />
+            <div className="animate-spin w-8 h-8 border-4 border-[#C47353] border-t-transparent rounded-full" />
           </div>
         ) : types.length === 0 ? (
           <div className="col-span-full text-center text-gray-400 py-12">暂无服务类型</div>
         ) : (
           types.map((type) => (
-            <div key={type.id} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+            <div key={type.id} className="bg-white rounded-xl p-6 border border-gray-100 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <span className="text-3xl">{type.icon}</span>
                   <div>
                     <h3 className="font-semibold text-gray-800">{type.name}</h3>
                     <span className={`px-2 py-0.5 rounded text-xs ${
-                      type.category === 'consult' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
+                      type.category === 'consult' ? 'bg-orange-100 text-[#C47353]' : 'bg-green-100 text-green-700'
                     }`}>
                       {categoryLabels[type.category] || type.category}
                     </span>
@@ -173,7 +173,7 @@ export default function ServiceTypesPage() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">
               {editType ? '编辑服务类型' : '添加服务类型'}
             </h3>
@@ -184,7 +184,7 @@ export default function ServiceTypesPage() {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-orange-500 outline-none"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-[#C47353] outline-none"
                   required
                 />
               </div>
@@ -194,7 +194,7 @@ export default function ServiceTypesPage() {
                   type="text"
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-orange-500 outline-none"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-[#C47353] outline-none"
                   required
                   disabled={!!editType}
                 />
@@ -204,7 +204,7 @@ export default function ServiceTypesPage() {
                 <select
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-orange-500 outline-none"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-[#C47353] outline-none"
                 >
                   <option value="consult">咨询服务</option>
                   <option value="delegate">委托服务</option>
@@ -216,7 +216,7 @@ export default function ServiceTypesPage() {
                   type="text"
                   value={formData.icon}
                   onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-orange-500 outline-none"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-[#C47353] outline-none"
                   placeholder="emoji图标"
                 />
               </div>
@@ -227,7 +227,7 @@ export default function ServiceTypesPage() {
                     type="number"
                     value={formData.priceMin / 100}
                     onChange={(e) => setFormData({ ...formData, priceMin: parseFloat(e.target.value) * 100 || 0 })}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-orange-500 outline-none"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-[#C47353] outline-none"
                   />
                 </div>
                 <div>
@@ -236,7 +236,7 @@ export default function ServiceTypesPage() {
                     type="number"
                     value={formData.priceMax / 100}
                     onChange={(e) => setFormData({ ...formData, priceMax: parseFloat(e.target.value) * 100 || 0 })}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-orange-500 outline-none"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-[#C47353] outline-none"
                   />
                 </div>
               </div>
@@ -245,7 +245,7 @@ export default function ServiceTypesPage() {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-orange-500 outline-none h-20 resize-none"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-[#C47353] outline-none h-20 resize-none"
                 />
               </div>
               <div className="flex gap-3 pt-2">
@@ -258,7 +258,7 @@ export default function ServiceTypesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 rounded-xl bg-orange-500 text-white font-medium hover:bg-orange-600 transition-colors"
+                  className="flex-1 py-2 rounded-xl bg-[#C47353] text-white font-medium hover:bg-[#A85D40] transition-colors"
                 >
                   保存
                 </button>

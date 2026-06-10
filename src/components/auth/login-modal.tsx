@@ -28,6 +28,7 @@ export default function LoginModal() {
     const [errorMsg, setErrorMsg] = useState("");
     const [countdown, setCountdown] = useState(0);
     const [isSending, setIsSending] = useState(false);
+    const [agreed, setAgreed] = useState(false);
     const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
     const clearCountdown = useCallback(() => {
@@ -49,6 +50,7 @@ export default function LoginModal() {
         setShowPassword(false);
         setErrorMsg("");
         setCountdown(0);
+        setAgreed(false);
     }, [clearCountdown]);
 
     const handleSendCode = useCallback(async () => {
@@ -232,12 +234,16 @@ export default function LoginModal() {
     }, [account, password, onClose, router]);
 
     const handleLogin = useCallback(() => {
+        if (!agreed) {
+            setErrorMsg("请先同意《用户协议》和《隐私政策》");
+            return;
+        }
         if (activeTab === "code") {
             handleCodeLogin();
         } else {
             handlePasswordLogin();
         }
-    }, [activeTab, handleCodeLogin, handlePasswordLogin]);
+    }, [activeTab, handleCodeLogin, handlePasswordLogin, agreed]);
 
     useEffect(() => {
         const handleOpenLogin = () => {
@@ -268,10 +274,10 @@ export default function LoginModal() {
                 onClick={onClose} />
             {}
             <div
-                className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                className="relative bg-white rounded-xl shadow-[0_10px_40px_rgba(61,50,45,0.12)] w-full max-w-sm mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                 {}
                 <div
-                    className="relative bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-6">
+                    className="relative bg-[#C47353] px-6 py-6">
                     <button
                         onClick={onClose}
                         className="absolute right-4 top-4 text-white/80 hover:text-white transition-colors">
@@ -279,14 +285,15 @@ export default function LoginModal() {
                     </button>
                     {}
                     <div className="flex items-center gap-3 mb-2">
-                        <div
-                            className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                            <svg viewBox="0 0 24 24" className="w-6 h-6 text-white" fill="currentColor">
-                                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                            </svg>
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden bg-white/20">
+                            <img 
+                                src="/images/logo.png" 
+                                alt="帮帮问法" 
+                                className="w-10 h-10 object-contain"
+                            />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-white">帮帮问法</h2>
+                            <h2 className="text-xl font-serif text-white font-normal">帮帮问法</h2>
                             <p className="text-white/80 text-xs">专业法律服务，守护您的权益</p>
                         </div>
                     </div>
@@ -294,7 +301,7 @@ export default function LoginModal() {
                 {}
                 <div className="flex border-b">
                     <button
-                        className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === "code" ? "text-orange-600 border-b-2 border-orange-500" : "text-muted-foreground hover:text-foreground"}`}
+                        className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === "code" ? "text-[#C47353] border-b-2 border-[#C47353]" : "text-[#8C7B6E] hover:text-[#3D322D]"}`}
                         onClick={() => {
                             setActiveTab("code");
                             setErrorMsg("");
@@ -303,7 +310,7 @@ export default function LoginModal() {
                         <Smartphone className="w-4 h-4 inline-block mr-1" />验证码登录
                                   </button>
                     <button
-                        className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === "password" ? "text-orange-600 border-b-2 border-orange-500" : "text-muted-foreground hover:text-foreground"}`}
+                        className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === "password" ? "text-[#C47353] border-b-2 border-[#C47353]" : "text-[#8C7B6E] hover:text-[#3D322D]"}`}
                         onClick={() => {
                             setActiveTab("password");
                             setErrorMsg("");
@@ -394,7 +401,7 @@ export default function LoginModal() {
                             <Link
                                 href="/reset-password"
                                 onClick={onClose}
-                                className="text-xs text-orange-600 hover:underline">忘记密码？
+                                className="text-xs text-[#C47353] hover:underline">忘记密码？
                                                   </Link>
                         </>}
                         {}
@@ -404,14 +411,30 @@ export default function LoginModal() {
                         </div>}
                         {}
                         <Button
-                            className="w-full h-12 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-medium transition-all duration-200 hover:shadow-lg hover:shadow-orange-500/25 active:scale-[0.98]"
+                            className="w-full h-12 bg-[#C47353] hover:bg-[#A85D40] text-white font-medium rounded-full transition-all duration-250 shadow-[0_2px_8px_rgba(196,115,83,0.3)] hover:-translate-y-[1px] active:scale-[0.98]"
                             onClick={handleLogin}
-                            disabled={activeTab === "code" ? phone.length !== 11 || code.length !== 6 : !account || !password}>
+                            disabled={activeTab === "code" 
+                                ? phone.length !== 11 || code.length !== 6 || !agreed 
+                                : !account || !password || !agreed}>
                             {activeTab === "code" ? "登录 / 注册" : "登录"}
                         </Button>
                         {}
-                        <p className="text-xs text-muted-foreground text-center">登录即表示同意《用户协议》和《隐私政策》
-                                          </p>
+                        <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                            <input
+                                type="checkbox"
+                                id="agreement"
+                                checked={agreed}
+                                onChange={e => setAgreed(e.target.checked)}
+                                className="mt-0.5 w-4 h-4 accent-[#C47353] cursor-pointer flex-shrink-0"
+                            />
+                            <label htmlFor="agreement" className="cursor-pointer leading-relaxed">
+                                我已阅读并同意
+                                <Link href="/user-agreement" onClick={onClose} className="text-[#C47353] hover:underline">《用户协议》</Link>
+                                和
+                                <Link href="/privacy-policy" onClick={onClose} className="text-[#C47353] hover:underline">《隐私政策》</Link>
+                                等协议内容
+                            </label>
+                        </div>
                         {}
                         <p
                             className="text-xs text-center"
@@ -426,21 +449,21 @@ export default function LoginModal() {
                             <a
                                 href="/register"
                                 onClick={onClose}
-                                className="text-orange-600 hover:underline ml-1">立即注册
+                                className="text-[#C47353] hover:underline ml-1">立即注册
                                                 </a>
                         </p>
                     </div>}
                     {step === "verifying" && <div className="flex flex-col items-center py-12">
-                        <Loader2 className="w-12 h-12 text-orange-500 animate-spin mb-4" />
+                        <Loader2 className="w-12 h-12 text-[#C47353] animate-spin mb-4" />
                         <p className="text-muted-foreground">正在验证...</p>
                     </div>}
                     {step === "success" && <div
                         className="flex flex-col items-center py-12 animate-in fade-in zoom-in-95 duration-300">
                         <div
-                            className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4">
-                            <CheckCircle className="w-8 h-8 text-orange-500" />
+                            className="w-16 h-16 bg-[#FAF7F2] rounded-full flex items-center justify-center mb-4">
+                            <CheckCircle className="w-8 h-8 text-[#C47353]" />
                         </div>
-                        <p className="text-orange-600 font-medium text-lg mb-2">登录成功</p>
+                        <p className="text-[#C47353] font-medium text-lg mb-2">登录成功</p>
                         <p className="text-muted-foreground">正在跳转...</p>
                     </div>}
                 </div>

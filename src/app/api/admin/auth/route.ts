@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     await supabase
       .from('admins')
       .update({
-        last_login: new Date().toISOString()
+        last_login_at: new Date().toISOString()
       })
       .eq('id', admin.id);
 
@@ -110,11 +110,12 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabaseAdmin();
     const { data: admin, error } = await supabase
       .from('admins')
-      .select('id, username, nickname, permissions, status, last_login')
+      .select('id, username, nickname, permissions, status, last_login_at')
       .eq('id', payload.adminId)
       .single();
 
     if (error || !admin) {
+      console.error('[Admin Auth Verify] error:', error?.message, 'adminId:', payload.adminId);
       return NextResponse.json({ success: false, error: '用户不存在' }, { status: 404 });
     }
 

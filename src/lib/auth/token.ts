@@ -46,25 +46,28 @@ function base64UrlDecode(str: string): string {
 /**
  * 生成 Token（JWS 格式，兼容标准 JWT）
  * Header: { alg: "HS256", typ: "JWT" }
- * Payload: { id, phone, userType, [guardianId], [lawyerId], iat, exp }
+ * Payload: { id, phone, userType, [guardianId], [lawyerId], [status], iat, exp }
  * 
  * - id: 始终为 users 表主键（统一用户标识）
  * - guardianId: 守护者专属，为 guardian_users 表主键
  * - lawyerId: 律师专属，为 lawyer_applications 表主键（或 lawyers 表）
+ * - status: 律师账号状态（写入 JWT，封禁后新 token 会携带 banned，旧 token 需实时校验）
  */
 export function generateToken(payload: {
   id?: number | string;
   phone: string;
   username?: string;
   userType: 'user' | 'guardian' | 'lawyer';
-  guardianId?: number;       // 守护者记录 ID（guardian_users.id）
-  lawyerId?: string | number; // 律师记录 ID（lawyers 表 UUID 或 lawyer_applications 整数）
+  guardianId?: number;
+  lawyerId?: string | number;
+  status?: string; // 律师账号状态（active|pending|approved|banned）
 }): string {
   const header = { alg: 'HS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
 
   const tokenPayload = {
     ...payload,
+    ...(payload.status ? { status: payload.status } : {}),
     iat: now,
     exp: now + TOKEN_EXPIRY_SECONDS,
   };
@@ -97,6 +100,7 @@ export function verifyToken(token: string): {
     userType: 'user' | 'guardian' | 'lawyer';
     guardianId?: number;       // 守护者记录 ID
     lawyerId?: string | number; // 律师记录 ID（UUID 或整数）
+    status?: string;           // 律师账号状态（active|pending_review|banned）
     iat?: number;
     exp?: number;
   };
@@ -169,6 +173,7 @@ function verifyJWSToken(
         userType: payload.userType,
         guardianId: payload.guardianId,
         lawyerId: payload.lawyerId,
+        status: payload.status, // P0-2/P0-3: 律师账号状态
         iat: payload.iat,
         exp: payload.exp,
       },
@@ -220,6 +225,7 @@ function verifyLegacyToken(
         userType: payload.userType,
         guardianId: payload.guardianId,
         lawyerId: payload.lawyerId,
+        status: payload.status, // P0-2/P0-3: 律师账号状态
         iat: payload.iat,
         exp: payload.exp,
       },
@@ -238,6 +244,7 @@ export function getUserFromRequest(request: Request): {
   userType: 'user' | 'guardian' | 'lawyer';
   guardianId?: number;
   lawyerId?: string | number;
+  status?: string;
 } | null {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -246,7 +253,7 @@ export function getUserFromRequest(request: Request): {
 
   const token = authHeader.slice(7);
   const result = verifyToken(token);
-  
+
   if (!result.valid || !result.payload) {
     return null;
   }
@@ -257,5 +264,6 @@ export function getUserFromRequest(request: Request): {
     userType: result.payload.userType,
     guardianId: result.payload.guardianId,
     lawyerId: result.payload.lawyerId,
+    status: result.payload.status,
   };
 }

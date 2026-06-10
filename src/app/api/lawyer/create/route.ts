@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
+import { notifyOrder } from '@/lib/notify/webhook';
 
 /**
  * 律师入驻申请 API
@@ -157,6 +158,16 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
+
+      // Webhook 通知
+      notifyOrder({
+        type: 'Registration',
+        userName: name || phone || '未知',
+        amount: packagePrice,
+        detail: `套餐：${(selectedPackages || []).map((p: string) => p === 'civil_premium' ? '民事臻选' : '刑事臻选').join(' + ') || '未知'}`,
+        orderId: application.id,
+        status: 'Pending Review',
+      });
 
       return NextResponse.json({
         success: true,

@@ -25,13 +25,13 @@ export function CaseTypeStep({ selected, onSelect, onNext }: CaseTypeStepProps) 
     <div className="animate-fade-in">
       {/* Header */}
       <div className="text-center mb-6 sm:mb-8">
-        <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-orange-50 border border-orange-100 mb-3 sm:mb-4">
-          <span className="text-xs sm:text-sm font-medium text-orange-700">Step 1 / 4</span>
+        <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#FAF7F2] border border-[rgba(196,115,83,0.2)] mb-3 sm:mb-4">
+          <span className="text-xs sm:text-sm font-medium text-[#C47353]">Step 1 / 4</span>
         </div>
-        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2">
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-serif text-[#3D322D] font-normal mb-2">
           请选择案件类型
         </h2>
-        <p className="text-xs sm:text-sm md:text-base text-muted-foreground px-2">
+        <p className="text-xs sm:text-sm md:text-base text-[#8C7B6E] px-2">
           选择您或家人涉嫌的刑事案件类型
         </p>
       </div>
@@ -43,23 +43,23 @@ export function CaseTypeStep({ selected, onSelect, onNext }: CaseTypeStepProps) 
             key={type.id}
             onClick={() => onSelect(type.id)}
             className={`
-              relative p-3 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 text-left
+              relative p-3 sm:p-4 md:p-5 rounded-xl border transition-all duration-250 text-left
               ${selected === type.id 
-                ? 'border-orange-400 bg-orange-50 shadow-lg shadow-orange-100' 
-                : 'border-border bg-card hover:border-orange-200 hover:bg-orange-50/50'
+                ? 'border-[#C47353] bg-[#FAF7F2] shadow-[0_4px_16px_rgba(61,50,45,0.08)]' 
+                : 'border-[rgba(196,115,83,0.2)] bg-white hover:border-[#C47353] hover:bg-[#FAF7F2]'
               }
             `}
           >
             {selected === type.id && (
-              <div className="absolute -top-1.5 -right-1.5 w-5 h-5 sm:w-6 sm:h-6 bg-orange-500 rounded-full flex items-center justify-center">
+              <div className="absolute -top-1.5 -right-1.5 w-5 h-5 sm:w-6 sm:h-6 bg-[#C47353] rounded-full flex items-center justify-center">
                 <svg className="w-3 h-3 sm:w-4 sm:h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
             )}
             <div className="text-2xl sm:text-3xl mb-1 sm:mb-2">{type.icon}</div>
-            <div className="font-semibold text-foreground text-xs sm:text-sm mb-0.5 sm:mb-1">{type.name}</div>
-            <div className="text-[10px] sm:text-xs text-muted-foreground leading-tight line-clamp-2">{type.description}</div>
+            <div className="font-medium text-[#3D322D] text-xs sm:text-sm mb-0.5 sm:mb-1">{type.name}</div>
+            <div className="text-xs text-[#8C7B6E] leading-tight line-clamp-2">{type.description}</div>
           </button>
         ))}
       </div>
@@ -69,10 +69,10 @@ export function CaseTypeStep({ selected, onSelect, onNext }: CaseTypeStepProps) 
         onClick={onNext}
         disabled={!selected}
         className={`
-          w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl font-semibold text-sm sm:text-base md:text-lg transition-all duration-300
+          w-full py-3 sm:py-4 rounded-full font-medium text-sm sm:text-base md:text-lg transition-all duration-250
           ${selected 
-            ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 shadow-lg shadow-orange-200 hover:shadow-xl hover:shadow-orange-300' 
-            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            ? 'bg-[#C47353] hover:bg-[#A85D40] text-white shadow-[0_2px_8px_rgba(196,115,83,0.3)] hover:-translate-y-[1px] active:scale-[0.98]' 
+            : 'bg-[#C47353]/40 text-white/70 cursor-not-allowed'
           }
         `}
       >

@@ -219,28 +219,28 @@ async function createGuardianCommission(orderId: number, transactionId: string) 
 
     if (!user || !user.inviter_id) return;
 
-    // 查询守护者信息（inviter_id 即为 guardian_users 表的主键 id）
+    // 查询守护者（仅验证存在且活跃）
     const { data: guardian } = await supabase
       .from('guardian_users')
-      .select('id, commission_rate')
+      .select('id')
       .eq('id', user.inviter_id)
       .eq('status', 'active')
       .single();
 
     if (!guardian) return;
 
-    // 计算分成金额（假设分成比例为10%）
-    const commissionRate = guardian.commission_rate || 0.1;
-    const commissionAmount = Math.floor(order.amount * commissionRate);
+    // 分成比例 1%（与 /api/guardian/calculate 保持一致）
+    const COMMISSION_RATE = 0.01;
+    const commissionAmount = Math.floor(order.amount * COMMISSION_RATE);
 
-    // 创建分成记录
+    // 创建分成记录（status: pending，需管理员审核后发放到余额）
     await supabase
       .from('guardian_commissions')
       .insert({
         guardian_id: guardian.id,
         order_id: orderId,
         commission_amount: commissionAmount,
-        commission_rate: commissionRate,
+        commission_rate: COMMISSION_RATE,
         status: 'pending',
         created_at: new Date().toISOString(),
       });

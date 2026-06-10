@@ -489,10 +489,14 @@ export default function GuardianCenterPage() {
   // 加载中状态
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose-600 mx-auto mb-4"></div>
-          <p className="text-muted-foreground">加载中...</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2]">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-[#C47353] border-t-transparent mx-auto"></div>
+          <div className="space-y-2">
+            <div className="h-3 w-32 bg-[#EBE3D8]/60 rounded-full animate-pulse mx-auto" />
+            <div className="h-2 w-24 bg-[#EBE3D8]/40 rounded-full animate-pulse mx-auto" />
+          </div>
+          <p className="text-sm text-[#8C7B6E] font-sans">加载中…</p>
         </div>
       </div>
     );

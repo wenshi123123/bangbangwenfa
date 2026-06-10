@@ -135,11 +135,11 @@ export function ConsultationWizard({ onBack }: ConsultationWizardProps) {
   // 未登录提示
   if (!isChecking && !isLoggedIn) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+      <div className="min-h-screen bg-gradient-to-b from-[#FAF7F2] to-white">
         <div className="max-w-lg mx-auto px-4 py-16">
-          <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-blue-100 flex items-center justify-center">
-              <Lock className="w-8 h-8 text-blue-500" />
+          <div className="bg-white rounded-xl shadow-[0_4px_16px_rgba(61,50,45,0.08)] p-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-[#FAF7F2] flex items-center justify-center">
+              <Lock className="w-8 h-8 text-[#C47353]" />
             </div>
             <h2 className="text-xl font-bold mb-3">需要登录</h2>
             <p className="text-muted-foreground mb-6">
@@ -147,7 +147,7 @@ export function ConsultationWizard({ onBack }: ConsultationWizardProps) {
             </p>
             <button
               onClick={() => window.dispatchEvent(new CustomEvent('open-login-modal'))}
-              className="w-full py-3 px-6 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all"
+              className="w-full py-3 px-6 bg-gradient-to-r from-[#C47353] to-[#A85D40] text-white font-semibold rounded-xl hover:from-[#A85D40] hover:to-[#8B3E2A] transition-all"
             >
               <LogIn className="w-4 h-4 inline mr-2" />
               手机号登录
@@ -161,9 +161,9 @@ export function ConsultationWizard({ onBack }: ConsultationWizardProps) {
   // 加载中
   if (isChecking) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-[#FAF7F2] to-white flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-8 h-8 border-4 border-[rgba(196,115,83,0.2)] border-t-[#C47353] rounded-full animate-spin mx-auto mb-4" />
           <p className="text-muted-foreground">加载中...</p>
         </div>
       </div>
@@ -231,14 +231,14 @@ export function ConsultationWizard({ onBack }: ConsultationWizardProps) {
         </button>
 
         {/* Progress Bar */}
-        <div className="bg-white/50 border-b border-orange-100/50 -mx-4 sm:mx-0">
+        <div className="bg-white/50 border-b border-[rgba(196,115,83,0.2)]/50 -mx-4 sm:mx-0">
           <div className="container mx-auto px-4 py-3">
             <div className="flex gap-1">
               {[1, 2, 3, 4].map((s) => (
                 <div
                   key={s}
                   className={`h-1.5 flex-1 rounded-full transition-colors ${
-                    s <= step ? 'bg-orange-500' : 'bg-orange-100'
+                    s <= step ? 'bg-[#C47353]' : 'bg-[#FAF7F2]'
                   }`}
                 />
               ))}
@@ -247,7 +247,7 @@ export function ConsultationWizard({ onBack }: ConsultationWizardProps) {
         </div>
 
         {/* Step Content */}
-        <div className="bg-card rounded-3xl p-6 md:p-8 shadow-xl shadow-orange-100/30 border border-border/50">
+        <div className="bg-card rounded-xl p-6 md:p-8 shadow-[0_8px_24px_rgba(196,115,83,0.06)] border border-border/50">
           {renderStep()}
         </div>
       </div>

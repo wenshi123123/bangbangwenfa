@@ -111,15 +111,27 @@ export default function LawyerOrderDetailPage() {
       const headers = getAuthHeaders();
       const res = await fetch(`/api/lawyer/orders/${id}`, { headers });
       const result = await res.json();
-      if (result.success) {
+      if (result.success && result.order) {
+        // P0-1 前端二次校验：确保订单属于当前律师
+        if (lawyerId && String(result.order.assigned_lawyer_id) !== String(lawyerId)) {
+          console.warn('[订单权限校验] 订单不属于当前律师', {
+            orderLawyerId: result.order.assigned_lawyer_id,
+            currentLawyerId: lawyerId,
+          });
+          setOrder(null);
+          return;
+        }
         setOrder(result.order);
+      } else if (!result.success) {
+        console.error('[订单详情] 获取失败', result.error);
+        setOrder(null);
       }
     } catch (err) {
       console.error('获取订单详情失败:', err);
     } finally {
       setLoading(false);
     }
-  }, [id, getAuthHeaders]);
+  }, [id, getAuthHeaders, lawyerId]);
 
   useEffect(() => {
     if (!authLoading && isAuthorized) {
@@ -191,7 +203,7 @@ export default function LawyerOrderDetailPage() {
   if (!isAuthorized) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-[#FAF7F2]">
-        <div className="bg-white rounded-2xl p-8 shadow-lg max-w-sm w-full text-center">
+        <div className="bg-white rounded-xl p-8 shadow-lg max-w-sm w-full text-center">
           <div className="w-14 h-14 rounded-full bg-[#C47353]/10 flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-7 h-7 text-[#C47353]" />
           </div>
@@ -212,7 +224,7 @@ export default function LawyerOrderDetailPage() {
   if (!order) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-[#FAF7F2]">
-        <div className="bg-white rounded-2xl p-8 shadow-lg max-w-sm w-full text-center">
+        <div className="bg-white rounded-xl p-8 shadow-lg max-w-sm w-full text-center">
           <div className="w-14 h-14 rounded-full bg-[#C26565]/10 flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-7 h-7 text-[#C26565]" />
           </div>
@@ -254,7 +266,7 @@ export default function LawyerOrderDetailPage() {
 
       <div className="max-w-2xl lg:max-w-3xl mx-auto px-4 py-5 space-y-4">
         {/* ===== 状态条 ===== */}
-        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl" style={{ backgroundColor: `${status.color}10` }}>
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ backgroundColor: `${status.color}10` }}>
           <div
             className="w-10 h-10 rounded-xl flex items-center justify-center"
             style={{ backgroundColor: `${status.color}20`, color: status.color }}
@@ -267,7 +279,7 @@ export default function LawyerOrderDetailPage() {
         </div>
 
         {/* ===== 客户信息卡片 ===== */}
-        <div className="bg-[#FFFBF5] rounded-2xl border border-[#E8D5C0] shadow-sm overflow-hidden">
+        <div className="bg-[#FFFBF5] rounded-xl border border-[#E8D5C0] shadow-[0_2px_8px_rgba(61,50,45,0.06)] overflow-hidden">
           <div className="flex items-center gap-2 px-5 pt-5 pb-2">
             <User className="w-5 h-5 text-[#C47353]" />
             <h2 className="text-base font-semibold text-[#1C1917] font-serif">客户信息</h2>
@@ -300,7 +312,7 @@ export default function LawyerOrderDetailPage() {
         </div>
 
         {/* ===== 案情简介 ===== */}
-        <div className="bg-[#FFFBF5] rounded-2xl border border-[#E8D5C0] shadow-sm overflow-hidden">
+        <div className="bg-[#FFFBF5] rounded-xl border border-[#E8D5C0] shadow-[0_2px_8px_rgba(61,50,45,0.06)] overflow-hidden">
           <div className="flex items-center gap-2 px-5 pt-5 pb-2">
             <FileText className="w-5 h-5 text-[#C47353]" />
             <h2 className="text-base font-semibold text-[#1C1917] font-serif">案情简介</h2>
@@ -318,7 +330,7 @@ export default function LawyerOrderDetailPage() {
         </div>
 
         {/* ===== 订单信息 ===== */}
-        <div className="bg-[#FFFBF5] rounded-2xl border border-[#E8D5C0] shadow-sm overflow-hidden">
+        <div className="bg-[#FFFBF5] rounded-xl border border-[#E8D5C0] shadow-[0_2px_8px_rgba(61,50,45,0.06)] overflow-hidden">
           <div className="flex items-center gap-2 px-5 pt-5 pb-2">
             <Clock className="w-5 h-5 text-[#C47353]" />
             <h2 className="text-base font-semibold text-[#1C1917] font-serif">订单信息</h2>
@@ -364,7 +376,7 @@ export default function LawyerOrderDetailPage() {
 
         {/* ===== 操作区（仅待确认时显示） ===== */}
         {isPending && (
-          <div className="bg-[#FFFBF5] rounded-2xl border border-[#C8963E]/20 shadow-sm overflow-hidden p-5">
+          <div className="bg-[#FFFBF5] rounded-xl border border-[#C8963E]/20 shadow-[0_2px_8px_rgba(61,50,45,0.06)] overflow-hidden p-5">
             <p className="text-sm text-[#8C7B6E] mb-4 text-center">
               请确认是否接受此订单，接单后将直接服务该客户
             </p>
@@ -380,7 +392,7 @@ export default function LawyerOrderDetailPage() {
               <button
                 onClick={() => setConfirmingAction('accept')}
                 disabled={actionLoading}
-                className="flex-1 py-3 text-sm font-medium rounded-xl bg-[#5C7A5A] text-white hover:bg-[#4A6648] transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm shadow-[#5C7A5A]/20"
+                className="flex-1 py-3 text-sm font-medium rounded-xl bg-[#5C7A5A] text-white hover:bg-[#4A6648] transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 shadow-[0_2px_8px_rgba(61,50,45,0.06)] shadow-[#5C7A5A]/20"
               >
                 {actionLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -401,7 +413,7 @@ export default function LawyerOrderDetailPage() {
           onClick={() => setConfirmingAction(null)}
         >
           <div
-            className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl"
+            className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-[#3D322D] mb-2 font-serif">

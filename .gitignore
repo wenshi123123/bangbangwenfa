@@ -36,3 +36,9 @@ deploy-package.zip
 assets/bangbangwenfa-deploy.zip
 assets/image_*.png
 *.zip
+
+# Tencent Cloud EdgeOne
+.env
+.edgeone/*
+.tef_dist/*
+  

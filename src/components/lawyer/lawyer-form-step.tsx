@@ -1,7 +1,9 @@
 'use client';
 
+import { useState, useEffect, type ChangeEvent } from 'react';
 import { LawyerFormData } from './lawyer-join-wizard';
 import { Check } from 'lucide-react';
+import { cityGroups, getProvinceByCity } from '@/lib/city-data';
 
 interface LawyerFormStepProps {
   formData: LawyerFormData;
@@ -35,6 +37,26 @@ const educationOptions = ['专科', '本科', '硕士研究生', '博士研究�
 const genderOptions = ['男', '女'];
 
 export function LawyerFormStep({ formData, onUpdate, onNext, onBack }: LawyerFormStepProps) {
+  const [selectedProvince, setSelectedProvince] = useState<string>(
+    () => getProvinceByCity(formData.city) || ''
+  );
+
+  // 城市变化时同步省份
+  useEffect(() => {
+    const p = getProvinceByCity(formData.city);
+    if (p) setSelectedProvince(p);
+  }, [formData.city]);
+
+  const handleProvinceChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    const p = e.target.value;
+    setSelectedProvince(p);
+    onUpdate({ city: '' });
+  };
+
+  const handleCityChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    onUpdate({ city: e.target.value });
+  };
+
   const handleToggleSpecialty = (id: string) => {
     const newSpecialties = formData.specialties.includes(id)
       ? formData.specialties.filter(s => s !== id)
@@ -306,14 +328,16 @@ export function LawyerFormStep({ formData, onUpdate, onNext, onBack }: LawyerFor
           />
         </div>
 
-        {/* 所在城市 */}
-        <div>
+        {/* 所在城市（省份→城市 二级联动） */}
+        <div className="space-y-2">
           <label className="block text-sm font-medium text-foreground mb-1.5">
             所在城市 <span className="text-red-500">*</span>
           </label>
+
+          {/* 省份 */}
           <select
-            value={formData.city}
-            onChange={(e) => onUpdate({ city: e.target.value })}
+            value={selectedProvince}
+            onChange={handleProvinceChange}
             className="w-full px-4 py-3 rounded-xl border-2 border-border bg-card focus:border-green-400 focus:outline-none transition-all duration-300 text-foreground appearance-none cursor-pointer"
             style={{
               backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
@@ -322,22 +346,32 @@ export function LawyerFormStep({ formData, onUpdate, onNext, onBack }: LawyerFor
               paddingRight: '40px',
             }}
           >
-            <option value="">请选择所在城市</option>
-            {[
-              '北京', '上海', '广州', '深圳',
-              '杭州', '南京', '苏州', '成都', '重庆', '武汉',
-              '西安', '郑州', '长沙', '天津', '济南', '青岛',
-              '合肥', '福州', '厦门', '东莞', '佛山', '宁波',
-              '昆明', '贵阳', '南宁', '海口', '石家庄', '太原',
-              '沈阳', '大连', '长春', '哈尔滨', '兰州', '银川',
-              '西宁', '乌鲁木齐', '拉萨', '呼和浩特', '南昌',
-              '温州', '绍兴', '嘉兴', '金华', '台州', '珠海',
-              '惠州', '中山', '无锡', '常州', '南通', '徐州',
-              '其他城市',
-            ].map((cityName) => (
-              <option key={cityName} value={cityName}>{cityName}</option>
+            <option value="">请选择省份</option>
+            {cityGroups.map((group) => (
+              <option key={group.province} value={group.province}>{group.province}</option>
             ))}
           </select>
+
+          {/* 城市（省份选定后显示） */}
+          {selectedProvince && (
+            <select
+              value={formData.city}
+              onChange={handleCityChange}
+              className="w-full px-4 py-3 rounded-xl border-2 border-border bg-card focus:border-green-400 focus:outline-none transition-all duration-300 text-foreground appearance-none cursor-pointer"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 16px center',
+                paddingRight: '40px',
+              }}
+            >
+              <option value="">请选择城市</option>
+              {cityGroups.find((g) => g.province === selectedProvince)?.cities.map((cityName) => (
+                <option key={cityName} value={cityName}>{cityName}</option>
+              ))}
+              <option value="其他城市">其他城市</option>
+            </select>
+          )}
         </div>
       </div>
 

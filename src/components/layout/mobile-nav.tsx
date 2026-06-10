@@ -14,6 +14,7 @@ import {
     Shield,
     LogOut,
     User,
+    Lightbulb,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -48,7 +49,7 @@ export function MobileNav() {
     const linkClass = (active: boolean) =>
         `flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
             active
-                ? "text-orange-600 bg-orange-50"
+                ? "text-[#C47353] bg-[#FAF7F2]"
                 : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
         }`;
 
@@ -56,6 +57,7 @@ export function MobileNav() {
     const isCivil = pathname === "/civil";
     const isConsult = pathname === "/consult";
     const isGuardian = pathname?.startsWith("/guardian") || false;
+    const isAbout = pathname === "/about";
     const isLawyerJoin = pathname === "/lawyer/join";
     const isLawyerLogin = pathname === "/lawyer/login";
 
@@ -69,17 +71,17 @@ export function MobileNav() {
                     <Menu className="w-5 h-5" />
                 </button>
             </SheetTrigger>
-            <SheetContent side="bottom" className="max-h-[85vh] rounded-t-2xl px-0">
+            <SheetContent side="bottom" className="max-h-[85vh] rounded-t-xl px-0">
                 <SheetHeader className="border-b pb-3 px-4">
                     <SheetTitle className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg overflow-hidden border-2 border-orange-200 shadow-sm">
+                        <div className="w-7 h-7 rounded-lg overflow-hidden border border-[rgba(196,115,83,0.2)]">
                             <img
                                 src="/logo-bangbang.png"
                                 alt="帮帮问法"
                                 className="w-full h-full object-contain p-0.5"
                             />
                         </div>
-                        <span className="font-bold text-gray-900">帮帮问法</span>
+                        <span className="font-serif text-[17px] tracking-[0.04em] text-[#3D322D]">帮帮问法</span>
                     </SheetTitle>
                 </SheetHeader>
 
@@ -108,7 +110,7 @@ export function MobileNav() {
                     ) : (
                         <Button
                             onClick={handleLoginClick}
-                            className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-sm"
+                            className="w-full bg-[#C47353] hover:bg-[#A85D40] text-white rounded-full shadow-[0_2px_8px_rgba(196,115,83,0.3)]"
                         >
                             <User className="w-4 h-4 mr-1.5" />
                             登录 / 注册
@@ -153,7 +155,7 @@ export function MobileNav() {
                         <div className="flex flex-col">
                             <span className="flex items-center gap-1.5">
                                 刑事服务
-                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 font-medium">
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#FAF7F2] text-[#C47353] font-medium">
                                     热门
                                 </span>
                             </span>
@@ -163,16 +165,35 @@ export function MobileNav() {
 
                     <div className="mt-2 mb-1 px-4">
                         <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                            平台入口
+                            更多服务
                         </span>
                     </div>
+                    <Link
+                        href="/about"
+                        onClick={() => setOpen(false)}
+                        className={linkClass(isAbout)}
+                    >
+                        <Lightbulb className="w-5 h-5" />
+                        <div className="flex flex-col">
+                            <span>关于帮帮</span>
+                            <span className="text-xs text-gray-400">关于我们、联系方式</span>
+                        </div>
+                    </Link>
                     <Link
                         href="/guardian"
                         onClick={() => setOpen(false)}
                         className={linkClass(isGuardian)}
                     >
                         <Users className="w-5 h-5" />
-                        <span>守护者计划</span>
+                        <div className="flex flex-col">
+                            <span className="flex items-center gap-1.5">
+                                守护者计划
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#FAF7F2] text-[#C47353] font-medium">
+                                    返现激励
+                                </span>
+                            </span>
+                            <span className="text-xs text-gray-400">用法律守护你心爱的人</span>
+                        </div>
                     </Link>
 
                     <Link

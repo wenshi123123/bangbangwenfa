@@ -32,7 +32,7 @@ export default function LawyerCommitmentPage() {
             <h2 className="text-lg font-semibold text-center mb-4">承诺书</h2>
             
             <p className="text-foreground leading-relaxed">
-              本人承诺：本人在帮帮问法上提供的信息和材料均真实、合法、有效，否则，由此产生的一切不利后果，由本人自行承担。若因此致使百度担责，本人承诺赔偿加法蔚众（湛江）科技有限公司遭受的一切损失。
+              本人承诺：本人在帮帮问法上提供的信息和材料均真实、合法、有效，否则，由此产生的一切不利后果，由本人自行承担。若因此致使加法蔚众（湛江）科技有限公司担责，本人承诺赔偿加法蔚众遭受的一切损失。
             </p>
           </div>
         </div>

@@ -119,16 +119,12 @@ export async function POST(request: NextRequest) {
       .from('guardian_commissions')
       .insert({
         guardian_id: invitee.guardian_id,
-        invitee_id: invitee.id,
         order_id: orderId,
-        order_no: orderNo,
-        order_amount: orderAmount,
         commission_amount: commissionAmount,
         commission_rate: String(COMMISSION_RATE),
         status: 'settled',
         is_refunded: false,
         refunded_amount: 0,
-        settled_at: new Date().toISOString()
       })
       .select()
       .single();

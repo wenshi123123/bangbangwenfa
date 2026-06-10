@@ -1,9 +1,7 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ['localhost:5000', 'localhost:3000', 'localhost'],
-  // Next.js 16 默认使用 Turbopack，webpack 配置已移除
-  turbopack: {},
+  allowedDevOrigins: ['localhost:5000', 'localhost:3000', 'localhost', 'localhost:3007'],
   images: {
     unoptimized: true, // 禁用图片优化，避免缓存目录问题
     remotePatterns: [

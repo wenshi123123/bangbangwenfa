@@ -37,7 +37,12 @@ export async function GET(request: NextRequest) {
         current_orders,
         rating,
         online_status,
-        created_at
+        created_at,
+        member_expires_at,
+        membership_status,
+        member_starting_at,
+        package_type,
+        selected_packages
       `)
       .order('created_at', { ascending: false });
 
@@ -99,6 +104,11 @@ export async function GET(request: NextRequest) {
       rating: lawyer.rating,
       online_status: lawyer.online_status || 'away',
       created_at: lawyer.created_at,
+      member_expires_at: lawyer.member_expires_at || null,
+      membership_status: lawyer.membership_status || null,
+      member_starting_at: lawyer.member_starting_at || null,
+      package_type: lawyer.package_type || null,
+      selected_packages: lawyer.selected_packages || null,
       stats: orderStatsMap[lawyer.id as number] || { total: 0, pending: 0, completed: 0 },
     }));
 
@@ -121,7 +131,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, wechatId, phone, title, specialties, workingYears, intro } = body;
+    const { name, wechatId, phone, title, specialties, workingYears, intro, licenseNo } = body;
 
     if (!name) {
       return NextResponse.json({ success: false, error: '姓名不能为空' }, { status: 400 });
@@ -129,8 +139,35 @@ export async function POST(request: NextRequest) {
 
     const supabase = getSupabaseAdmin();
 
+    // 通过手机号关联用户账号（确保律师可登录个人中心）
+    let userId: string | null = null;
+    if (phone) {
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('phone', phone)
+        .maybeSingle();
+
+      if (existingUser) {
+        userId = existingUser.id;
+      } else {
+        // 无账号则自动创建基础用户
+        const { data: newUser, error: createError } = await supabase
+          .from('users')
+          .insert({ phone, nickname: name, status: 'active' })
+          .select('id')
+          .single();
+
+        if (!createError && newUser) {
+          userId = newUser.id;
+        }
+      }
+    }
+
     let lawyerData: Record<string, unknown> = {
+      user_id: userId,
       name,
+      license_no: licenseNo || null,
       phone: phone || null,
       wechat: wechatId || null,
       title: title || '专职律师',

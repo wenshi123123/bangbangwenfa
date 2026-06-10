@@ -131,13 +131,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const token = localStorage.getItem('token');
           if (token) {
             try {
-              const payload = JSON.parse(atob(token.split('.')[1]));
-              if (payload.userType === 'lawyer') {
-                userData.isLawyer = true;
-                userData.userType = 'lawyer';
-                if (payload.lawyerId) {
-                  userData.lawyerInfo = userData.lawyerInfo || {};
-                  userData.lawyerInfo.id = payload.lawyerId;
+              // 修复：支持 base64url 编码的 JWT
+              const parts = token.split('.');
+              if (parts.length === 3) {
+                let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+                const pad = base64.length % 4;
+                if (pad === 2) base64 += '==';
+                else if (pad === 3) base64 += '=';
+                const payload = JSON.parse(atob(base64));
+                if (payload.userType === 'lawyer') {
+                  userData.isLawyer = true;
+                  userData.userType = 'lawyer';
+                  if (payload.lawyerId) {
+                    userData.lawyerInfo = userData.lawyerInfo || {};
+                    userData.lawyerInfo.id = payload.lawyerId;
+                  }
                 }
               }
             } catch { /* token 解析失败，忽略 */ }

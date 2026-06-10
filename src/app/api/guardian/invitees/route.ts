@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
       console.error('创建邀请关系失败:', error);
       return NextResponse.json({ 
         success: false, 
-        error: `创建邀请关系失败: ${error.message}` 
+        error: '创建邀请关系失败，请稍后重试' 
       }, { status: 500 });
     }
 
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
     console.error('创建邀请关系异常:', error);
     return NextResponse.json({ 
       success: false, 
-      error: `服务器错误: ${error.message}` 
+      error: '服务器错误，请稍后重试' 
     }, { status: 500 });
   }
 }

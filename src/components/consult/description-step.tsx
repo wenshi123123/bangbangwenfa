@@ -37,8 +37,8 @@ export function DescriptionStep({ value, contactPhone = '', onChange, onContactP
     <div className="animate-fade-in">
       {/* Header */}
       <div className="text-center mb-6 sm:mb-8">
-        <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-orange-50 border border-orange-100 mb-3 sm:mb-4">
-          <span className="text-xs sm:text-sm font-medium text-orange-700">Step 2 / 4</span>
+        <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#FAF7F2] border border-[rgba(196,115,83,0.2)] mb-3 sm:mb-4">
+          <span className="text-xs sm:text-sm font-medium text-[#C47353]">Step 2 / 4</span>
         </div>
         <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2">
           请描述案情
@@ -54,8 +54,8 @@ export function DescriptionStep({ value, contactPhone = '', onChange, onContactP
           手机号码 <span className="text-red-500">*</span>
         </label>
         <div className={`
-          relative rounded-xl sm:rounded-2xl border-2 transition-all duration-300 overflow-hidden
-          ${contactPhone && !isValidPhone ? 'border-red-400' : isFocused ? 'border-orange-400 shadow-lg shadow-orange-100' : 'border-border'}
+          relative rounded-xl sm:rounded-xl border-2 transition-all duration-300 overflow-hidden
+          ${contactPhone && !isValidPhone ? 'border-red-400' : isFocused ? 'border-[#C47353] shadow-[0_4px_16px_rgba(196,115,83,0.15)]' : 'border-border'}
         `}>
           <input
             type="tel"
@@ -86,8 +86,8 @@ export function DescriptionStep({ value, contactPhone = '', onChange, onContactP
       {/* Textarea */}
       <div className="mb-4 sm:mb-6">
         <div className={`
-          relative rounded-xl sm:rounded-2xl border-2 transition-all duration-300 overflow-hidden
-          ${isFocused ? 'border-orange-400 shadow-lg shadow-orange-100' : 'border-border'}
+          relative rounded-xl sm:rounded-xl border-2 transition-all duration-300 overflow-hidden
+          ${isFocused ? 'border-[#C47353] shadow-[0_4px_16px_rgba(196,115,83,0.15)]' : 'border-border'}
         `}>
           <textarea
             value={value}
@@ -103,7 +103,7 @@ export function DescriptionStep({ value, contactPhone = '', onChange, onContactP
         <div className="flex justify-between items-center mt-2 sm:mt-3 px-1">
           <div className={`
             text-xs sm:text-sm transition-colors
-            ${charCount < minChars ? 'text-muted-foreground' : 'text-orange-500'}
+            ${charCount < minChars ? 'text-muted-foreground' : 'text-[#C47353]'}
           `}>
             {charCount < minChars ? (
               <span>请至少填写 {minChars} 字</span>
@@ -126,7 +126,7 @@ export function DescriptionStep({ value, contactPhone = '', onChange, onContactP
       <div className="flex gap-2 sm:gap-3">
         <button
           onClick={onBack}
-          className="flex-1 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-semibold text-sm sm:text-base md:text-lg border-2 border-border bg-card hover:bg-muted transition-all duration-300"
+          className="flex-1 py-3 sm:py-4 rounded-xl sm:rounded-xl font-semibold text-sm sm:text-base md:text-lg border-2 border-border bg-card hover:bg-muted transition-all duration-300"
         >
           上一步
         </button>
@@ -134,9 +134,9 @@ export function DescriptionStep({ value, contactPhone = '', onChange, onContactP
           onClick={onNext}
           disabled={charCount < minChars || !isValidPhone}
           className={`
-            flex-[2] py-3 sm:py-4 rounded-xl sm:rounded-2xl font-semibold text-sm sm:text-base md:text-lg transition-all duration-300
+            flex-[2] py-3 sm:py-4 rounded-xl sm:rounded-xl font-semibold text-sm sm:text-base md:text-lg transition-all duration-300
             ${charCount >= minChars && isValidPhone
-              ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 shadow-lg shadow-orange-200' 
+              ? 'bg-gradient-to-r from-[#C47353] to-[#A85D40] text-white hover:from-[#8B3E2A] hover:to-[#6B2E1E] shadow-[0_4px_16px_rgba(196,115,83,0.2)]' 
               : 'bg-gray-100 text-gray-400 cursor-not-allowed'
             }
           `}

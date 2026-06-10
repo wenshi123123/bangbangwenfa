@@ -27,12 +27,9 @@ export default function AdminLoginPage() {
       const result = await response.json();
 
       if (result.success) {
-        // 存储管理员信息和 JWT token
         localStorage.setItem('admin_info', JSON.stringify(result.data.admin));
         localStorage.setItem('admin_token', result.data.token);
-        // 触发登录状态更新
         window.dispatchEvent(new Event('admin-logged-in'));
-        // 跳转到管理后台
         router.push('/admin/dashboard');
       } else {
         setError(result.error || '登录失败');
@@ -48,21 +45,18 @@ export default function AdminLoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-white to-emerald-50 px-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-lg mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg mb-4">
             <Shield className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">帮帮问法</h1>
+          <h1 className="text-2xl font-normal text-foreground">帮帮问法</h1>
           <p className="text-sm text-muted-foreground mt-1">管理后台</p>
         </div>
 
-        {/* Login Form */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h2 className="text-xl font-bold text-center mb-6">管理员登录</h2>
+        <div className="bg-white rounded-xl shadow-xl p-8">
+          <h2 className="text-xl font-normal text-center mb-6">管理员登录</h2>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Username */}
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
                 用户名
@@ -80,7 +74,6 @@ export default function AdminLoginPage() {
               </div>
             </div>
 
-            {/* Password */}
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
                 密码
@@ -98,14 +91,12 @@ export default function AdminLoginPage() {
               </div>
             </div>
 
-            {/* Error Message */}
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
                 {error}
               </div>
             )}
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
@@ -122,7 +113,6 @@ export default function AdminLoginPage() {
             </button>
           </form>
 
-          {/* Back to Home */}
           <div className="mt-6 text-center">
             <Link
               href="/"
@@ -133,9 +123,8 @@ export default function AdminLoginPage() {
           </div>
         </div>
 
-        {/* Footer */}
         <p className="text-center text-xs text-muted-foreground mt-6">
-          © 2024 帮帮问法 版权所有
+          &copy; 2024 帮帮问法 版权所有
         </p>
       </div>
     </div>

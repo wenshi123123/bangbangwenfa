@@ -123,19 +123,19 @@ export default function ResetPasswordPage() {
   // 成功页面
   if (step === 'success') {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-[0_4px_16px_rgba(61,50,45,0.08)] rounded-xl">
           <CardContent className="pt-8 pb-8 text-center">
-            <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-10 h-10 text-orange-600" />
+            <div className="w-20 h-20 bg-[#FAF7F2] rounded-full border border-[rgba(196,115,83,0.2)] flex items-center justify-center mx-auto mb-6">
+              <CheckCircle className="w-10 h-10 text-[#C47353]" />
             </div>
-            <h2 className="text-2xl font-bold mb-2">密码重置成功</h2>
-            <p className="text-muted-foreground mb-6">
+            <h2 className="text-2xl font-serif text-[#3D322D] font-normal mb-2">密码重置成功</h2>
+            <p className="text-[#8C7B6E] mb-6">
               请使用新密码登录
             </p>
             
             <Button
-              className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 py-6 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+              className="w-full bg-[#C47353] hover:bg-[#A85D40] text-white rounded-full py-6 text-lg font-medium h-auto transition-all duration-250 shadow-[0_2px_8px_rgba(196,115,83,0.3)] hover:-translate-y-[1px]"
               onClick={() => {
                 window.dispatchEvent(new CustomEvent('open-login-modal'));
                 router.push('/');
@@ -151,39 +151,39 @@ export default function ResetPasswordPage() {
   
   // 表单页面
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white">
+    <div className="min-h-screen bg-[#FAF7F2]">
       {/* 顶部导航 */}
-      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-orange-100/50">
+      <div className="sticky top-0 z-40 bg-[#FAF7F2]/80 backdrop-blur-md border-b border-[rgba(196,115,83,0.15)]">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2 text-orange-600 hover:text-orange-700">
+            <Link href="/" className="flex items-center gap-2 text-[#C47353] hover:text-[#A85D40]">
               <ArrowLeft className="w-5 h-5" />
               <span className="text-sm font-medium">返回</span>
             </Link>
-            <h1 className="text-base font-semibold text-foreground">重置密码</h1>
+            <h1 className="text-base font-serif text-[#3D322D] font-normal">重置密码</h1>
             <div className="w-12" />
           </div>
         </div>
       </div>
       
       <div className="container mx-auto px-4 py-6 max-w-md">
-        <Card className="mb-6">
+        <Card className="mb-6 shadow-[0_4px_16px_rgba(61,50,45,0.08)] rounded-xl">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                <Lock className="w-6 h-6 text-orange-600" />
+              <div className="w-12 h-12 bg-[#FAF7F2] rounded-full border border-[rgba(196,115,83,0.2)] flex items-center justify-center">
+                <Lock className="w-6 h-6 text-[#C47353]" />
               </div>
               <div>
-                <h2 className="text-xl font-bold">设置新密码</h2>
-                <p className="text-sm text-muted-foreground">通过手机验证码重置密码</p>
+                <h2 className="text-xl font-serif text-[#3D322D] font-normal">设置新密码</h2>
+                <p className="text-sm text-[#8C7B6E]">通过手机验证码重置密码</p>
               </div>
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* 手机号 */}
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  <Smartphone className="w-4 h-4 inline-block mr-1" />
+                <label className="block text-sm font-medium text-[#3D322D] mb-2">
+                  <Smartphone className="w-4 h-4 inline-block mr-1 text-[#C47353]" />
                   手机号
                 </label>
                 <Input
@@ -192,13 +192,13 @@ export default function ResetPasswordPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
                   maxLength={11}
-                  className="h-12"
+                  className="h-12 rounded-lg border-[#E5DDD5] focus:border-[#C47353] focus:ring-2 focus:ring-[#C47353]/20"
                 />
               </div>
               
               {/* 验证码 */}
               <div>
-                <label className="block text-sm font-medium mb-2">验证码</label>
+                <label className="block text-sm font-medium text-[#3D322D] mb-2">验证码</label>
                 <div className="flex gap-2">
                   <Input
                     type="text"
@@ -206,12 +206,12 @@ export default function ResetPasswordPage() {
                     value={code}
                     onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     maxLength={6}
-                    className="h-12 flex-1"
+                    className="h-12 flex-1 rounded-lg border-[#E5DDD5] focus:border-[#C47353] focus:ring-2 focus:ring-[#C47353]/20"
                   />
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-12 px-4 border-orange-200 text-orange-600 hover:bg-orange-50 whitespace-nowrap"
+                    className="h-12 px-4 border-[#C47353] text-[#C47353] hover:bg-[#C47353] hover:text-white whitespace-nowrap rounded-full"
                     onClick={sendCode}
                     disabled={countdown > 0 || sending || phone.length !== 11}
                   >
@@ -228,21 +228,21 @@ export default function ResetPasswordPage() {
               
               {/* 新密码 */}
               <div>
-                <label className="block text-sm font-medium mb-2">新密码</label>
+                <label className="block text-sm font-medium text-[#3D322D] mb-2">新密码</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8C7B6E]" />
                   <Input
                     type={showPassword ? 'text' : 'password'}
                     placeholder="至少6位，包含字母和数字"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="h-12 pl-10 pr-10"
+                    className="h-12 pl-10 pr-10 rounded-lg border-[#E5DDD5] focus:border-[#C47353] focus:ring-2 focus:ring-[#C47353]/20"
                     maxLength={20}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8C7B6E] hover:text-[#3D322D]"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -251,21 +251,21 @@ export default function ResetPasswordPage() {
               
               {/* 确认密码 */}
               <div>
-                <label className="block text-sm font-medium mb-2">确认密码</label>
+                <label className="block text-sm font-medium text-[#3D322D] mb-2">确认密码</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8C7B6E]" />
                   <Input
                     type={showConfirmPassword ? 'text' : 'password'}
                     placeholder="请再次输入新密码"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="h-12 pl-10 pr-10"
+                    className="h-12 pl-10 pr-10 rounded-lg border-[#E5DDD5] focus:border-[#C47353] focus:ring-2 focus:ring-[#C47353]/20"
                     maxLength={20}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8C7B6E] hover:text-[#3D322D]"
                   >
                     {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -274,7 +274,7 @@ export default function ResetPasswordPage() {
               
               {/* 错误提示 */}
               {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
                   <p className="text-red-600 text-sm">{error}</p>
                 </div>
               )}
@@ -282,7 +282,7 @@ export default function ResetPasswordPage() {
               {/* 提交按钮 */}
               <Button
                 type="submit"
-                className="w-full h-12 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200"
+                className="w-full h-12 bg-[#C47353] hover:bg-[#A85D40] text-white font-medium rounded-full transition-all duration-250 shadow-[0_2px_8px_rgba(196,115,83,0.3)] hover:-translate-y-[1px]"
                 disabled={loading || phone.length !== 11 || code.length !== 6 || !newPassword || !confirmPassword}
               >
                 {loading ? (
@@ -297,8 +297,8 @@ export default function ResetPasswordPage() {
             </form>
             
             <div className="mt-4 text-center">
-              <span className="text-muted-foreground text-sm">想起密码了？</span>
-              <Link href="/" className="text-orange-600 hover:underline text-sm ml-1">返回登录</Link>
+              <span className="text-[#8C7B6E] text-sm">想起密码了？</span>
+              <Link href="/" className="text-[#C47353] hover:underline text-sm ml-1">返回登录</Link>
             </div>
           </CardContent>
         </Card>

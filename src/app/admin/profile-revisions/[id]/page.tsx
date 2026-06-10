@@ -218,7 +218,7 @@ export default function ProfileRevisionDetailPage(){
       {/* 二次确认弹窗 */}
       {confirmAction&&batch&&(
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={()=>setConfirmAction(null)}>
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl" onClick={e=>e.stopPropagation()}>
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl" onClick={e=>e.stopPropagation()}>
             <AlertCircle className="w-10 h-10 text-amber-500 mx-auto mb-3"/>
             <h3 className="text-lg font-bold text-center mb-2">
               确认{confirmAction==='approve'?'通过':'驳回'}？

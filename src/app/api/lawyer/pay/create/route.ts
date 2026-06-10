@@ -89,9 +89,11 @@ export async function POST(request: NextRequest) {
     const wechatPay = getWechatPayClient();
 
     // 获取套餐名称
-    const packageName = application.package_type === 'civil_premium' ? '民事律师（臻选）' 
-                      : application.package_type === 'criminal_premium' ? '刑事律师（臻选）' 
-                      : '律师入驻';
+    const isCivil = ['civil_premium', 'civil'].includes(application.package_type);
+    const isCriminal = ['criminal_premium', 'criminal'].includes(application.package_type);
+    const packageName = isCivil ? '民事律师（臻选）' 
+                  : isCriminal ? '刑事律师（臻选）' 
+                  : '律师入驻';
 
     // 调用微信支付 Native API 创建订单
     const result = await wechatPay.createNativeOrder({
@@ -125,8 +127,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('创建律师入驻支付订单失败:', error);
+    // 开发环境暴露具体错误便于排查
+    const errMsg = error instanceof Error ? error.message : '创建支付订单失败';
     return NextResponse.json(
-      { success: false, error: '创建支付订单失败' },
+      { success: false, error: errMsg },
       { status: 500 }
     );
   }

@@ -4,6 +4,7 @@
  */
 
 import crypto from 'crypto';
+import { normalizePem, getEnvValue } from './wechat-pay';
 
 // 证书缓存
 let cachedCertificates: Map<string, { cert: string; expireTime: number }> = new Map();
@@ -163,10 +164,10 @@ export async function getPlatformCertificate(serialNo?: string): Promise<string 
     }
   }
   
-  // 尝试从环境变量获取（手动配置的证书）
-  const envCert = process.env.WEIXIN_PLATFORM_CERT;
+  // 尝试从环境变量获取（手动配置的证书，支持分段）
+  const envCert = getEnvValue('WEIXIN_PLATFORM_CERT');
   if (envCert) {
-    return envCert;
+    return normalizePem(envCert, 'CERTIFICATE');
   }
   
   return null;

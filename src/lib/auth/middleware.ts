@@ -12,6 +12,7 @@ export interface AuthResult {
   lawyerId?: string | number; // 律师 ID（当 userType 为 lawyer 时，UUID 或整数）
   phone?: string;
   userType?: 'user' | 'guardian' | 'lawyer';
+  status?: string;           // P0-2/P0-3: 律师账号状态（active|pending_review|banned）
   error?: string;
   user?: {
     id: number;
@@ -90,6 +91,7 @@ export function authenticateRequest(request: NextRequest): AuthResult {
     lawyerId: payload.lawyerId,                              // lawyer_applications/lawyers 表 ID
     phone: payload.phone,
     userType: userType,
+    status: payload.status,                                  // P0-2/P0-3: 律师账号状态
     user: {
       id: payload.id as number,
       phone: payload.phone,

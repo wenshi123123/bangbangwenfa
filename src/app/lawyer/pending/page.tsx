@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -11,6 +11,7 @@ import {
   MessageSquare,
   Phone,
   User,
+  Bell,
 } from 'lucide-react';
 import { useLawyerAuth } from '@/hooks/use-lawyer-auth';
 import { LawyerBottomNav } from '@/components/lawyer/lawyer-bottom-nav';
@@ -49,6 +50,12 @@ export default function LawyerPendingPage() {
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [confirmingOrder, setConfirmingOrder] = useState<{ orderId: number; action: 'accept' | 'reject' } | null>(null);
 
+  // 🔔 轮询相关状态
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastVisible, setToastVisible] = useState(false);
+  const prevOrderIdsRef = useRef<Set<number>>(new Set());
+  const isFirstLoadRef = useRef(true);
+
   const fetchPendingOrders = useCallback(async () => {
     try {
       const headers = getAuthHeaders();
@@ -64,13 +71,53 @@ export default function LawyerPendingPage() {
     }
   }, [getAuthHeaders]);
 
+  // 🔔 轮询：每30秒刷新待处理订单，检测新订单弹出 Toast
   useEffect(() => {
-    if (!authLoading && isAuthorized) {
-      fetchPendingOrders();
-    } else if (!authLoading && !isAuthorized) {
-      setLoading(false);
-    }
-  }, [authLoading, isAuthorized, fetchPendingOrders]);
+    if (!isAuthorized || authLoading) return;
+
+    const poll = async () => {
+      try {
+        const headers = getAuthHeaders();
+        const response = await fetch('/api/lawyer/order/pending', { headers });
+        const result = await response.json();
+        if (!result.success) return;
+
+        const newOrders: PendingOrder[] = result.orders || result.data || [];
+        const newOrderIds = new Set(newOrders.map((o: PendingOrder) => o.id));
+
+        // 首次加载不弹 Toast
+        if (!isFirstLoadRef.current) {
+          const prevIds = prevOrderIdsRef.current;
+          const newlyAdded = newOrders.filter((o: PendingOrder) => !prevIds.has(o.id));
+          if (newlyAdded.length > 0) {
+            setToastMessage(`有 ${newlyAdded.length} 个新订单已分配给你`);
+            setToastVisible(true);
+          }
+        }
+
+        isFirstLoadRef.current = false;
+        prevOrderIdsRef.current = newOrderIds;
+        setOrders(newOrders);
+
+        // 更新标签页标题
+        const count = newOrders.length;
+        document.title = count > 0 ? `(${count}) 帮帮问法 - 律师后台` : '帮帮问法 - 律师后台';
+      } catch {
+        // 静默忽略轮询错误
+      }
+    };
+
+    poll(); // 立即执行一次
+    const interval = setInterval(poll, 30000);
+    return () => clearInterval(interval);
+  }, [isAuthorized, authLoading, getAuthHeaders]);
+
+  // 🔔 Toast 自动消失（5秒）
+  useEffect(() => {
+    if (!toastVisible) return;
+    const timer = setTimeout(() => setToastVisible(false), 5000);
+    return () => clearTimeout(timer);
+  }, [toastVisible]);
 
   const executeOrderAction = async (orderId: number, action: 'accept' | 'reject') => {
     if (!lawyerId) {
@@ -140,7 +187,7 @@ export default function LawyerPendingPage() {
   if (!isAuthorized) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-[#FAF7F2]">
-        <div className="bg-white rounded-2xl p-8 shadow-lg max-w-sm w-full text-center">
+        <div className="bg-white rounded-xl p-8 shadow-lg max-w-sm w-full text-center">
           <div className="w-14 h-14 rounded-full bg-[#C47353]/10 flex items-center justify-center mx-auto mb-4">
             <MessageSquare className="w-7 h-7 text-[#C47353]" />
           </div>
@@ -159,6 +206,21 @@ export default function LawyerPendingPage() {
 
   return (
     <div className="min-h-screen pb-24 bg-[#FAF7F2]">
+
+      {/* 🔔 新订单 Toast 通知 */}
+      {toastVisible && toastMessage && (
+        <div
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-slide-down"
+          onClick={() => { setToastVisible(false); setTimeout(() => setToastMessage(null), 300); }}
+        >
+          <div className="flex items-center gap-3 px-5 py-3 bg-[#C47353] text-white rounded-xl shadow-lg cursor-pointer hover:bg-[#A85D40] transition-colors">
+            <Bell className="w-5 h-5 flex-shrink-0" />
+            <span className="text-sm font-medium">{toastMessage}</span>
+            <span className="text-xs opacity-70 ml-2">点击关闭</span>
+          </div>
+        </div>
+      )}
+
       {/* 顶部导航栏 */}
       <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-[#EBE3D8]/60">
         <div className="px-4 py-3 flex items-center justify-between max-w-2xl mx-auto">
@@ -182,7 +244,7 @@ export default function LawyerPendingPage() {
 
       <div className="max-w-2xl mx-auto px-4 py-5">
         {orders.length === 0 ? (
-          <div className="bg-white rounded-2xl py-12 border border-[#EBE3D8]/60 text-center">
+          <div className="bg-white rounded-xl py-12 border border-[#EBE3D8]/60 text-center">
             <div className="w-16 h-16 rounded-full bg-[#F5F2ED] flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-[#A89B90]" />
             </div>
@@ -208,7 +270,7 @@ export default function LawyerPendingPage() {
                 <Link
                   href={`/lawyer/orders/${order.id}`}
                   key={order.id}
-                  className="bg-white rounded-2xl overflow-hidden border border-[#EBE3D8]/60 shadow-sm block hover:shadow-md hover:border-[#C47353]/20 transition-all duration-300 cursor-pointer"
+                  className="bg-white rounded-xl overflow-hidden border border-[#EBE3D8]/60 shadow-[0_2px_8px_rgba(61,50,45,0.06)] block hover:shadow-md hover:border-[#C47353]/20 transition-all duration-300 cursor-pointer"
                 >
                   {/* 左侧时间条 */}
                   <div className="flex">
@@ -310,7 +372,7 @@ export default function LawyerPendingPage() {
       {/* 确认弹窗 — 替代原生 confirm()，兼容 IDE 内置浏览器 */}
       {confirmingOrder && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setConfirmingOrder(null)}>
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-[#3D322D] mb-2 font-serif">
               {confirmingOrder.action === 'accept' ? '确认接单' : '确认拒单'}
             </h3>

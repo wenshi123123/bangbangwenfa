@@ -90,10 +90,12 @@ const categoryMap: Record<string, { label: string; color: string; barColor: stri
 const packageNameMap: Record<string, string> = {
   civil_premium: '民事律师（臻选）',
   criminal_premium: '刑事律师（臻选）',
+  civil: '民事律师（臻选）',
+  criminal: '刑事律师（臻选）',
 };
 
 export default function LawyerPage() {
-  const { user, isAuthorized, isLoading: authLoading, lawyerId, getAuthHeaders } = useLawyerAuth();
+  const { user, isAuthorized, isLoading: authLoading, lawyerId, getAuthHeaders, accountStatus } = useLawyerAuth();
   const [fromLogin, setFromLogin] = useState(false);
   const [profile, setProfile] = useState<LawyerProfile | null>(null);
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
@@ -106,6 +108,7 @@ export default function LawyerPage() {
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [showStatusReminder, setShowStatusReminder] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const initRef = useRef(false);
   const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30分钟
@@ -233,15 +236,24 @@ export default function LawyerPage() {
       if (profileData.success && profileData.data) {
         const rawData = profileData.data;
         setDebugRaw(rawData as Record<string, unknown>);
+        // 确保 specialties 始终是数组
+        let normalizedSpecialties: string[] = [];
+        if (Array.isArray(rawData.specialties)) {
+          normalizedSpecialties = rawData.specialties;
+        } else if (typeof rawData.specialization === 'string' && rawData.specialization.trim()) {
+          try {
+            const parsed = JSON.parse(rawData.specialization);
+            normalizedSpecialties = Array.isArray(parsed) ? parsed : [parsed];
+          } catch {
+            // 不是 JSON，按逗号分隔处理
+            normalizedSpecialties = rawData.specialization.split(',').map((s: string) => s.trim()).filter(Boolean);
+          }
+        }
+
         const normalizedProfile: LawyerProfile = {
           ...rawData,
           name: rawData.name || rawData.real_name || '',
-          specialties:
-            rawData.specialties ||
-            (typeof rawData.specialization === 'string'
-              ? JSON.parse(rawData.specialization || '[]')
-              : []) ||
-            [],
+          specialties: normalizedSpecialties,
         };
         setProfile(normalizedProfile);
         setOnlineStatus(normalizedProfile.online_status || 'away');
@@ -257,7 +269,7 @@ export default function LawyerPage() {
         setPendingOrders(ordersData.orders || []);
       }
     } catch {
-      // 静默处理
+      setFetchError('加载律师数据失败，请刷新页面重试');
     } finally {
       setLoading(false);
     }
@@ -421,10 +433,30 @@ export default function LawyerPage() {
 
   const isLawyerAuthenticated = fromLogin || isAuthorized || hasLawyerIdentity();
 
+  if (fetchError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-[#FAF7F2]">
+        <div className="bg-white rounded-xl p-8 shadow-lg max-w-sm w-full text-center">
+          <div className="w-14 h-14 rounded-full bg-[#C26565]/10 flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-7 h-7 text-[#C26565]" />
+          </div>
+          <h2 className="text-xl font-bold text-[#3D322D] mb-2 font-serif">数据加载失败</h2>
+          <p className="text-[#8C7B6E] mb-6">{fetchError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full py-3 bg-[#C47353] text-white font-medium rounded-xl hover:bg-[#A85D40] transition-colors"
+          >
+            刷新页面
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!isLawyerAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-[#FAF7F2]">
-        <div className="bg-white rounded-2xl p-8 shadow-lg max-w-sm w-full text-center">
+        <div className="bg-white rounded-xl p-8 shadow-lg max-w-sm w-full text-center">
           <div className="w-14 h-14 rounded-full bg-[#C47353]/10 flex items-center justify-center mx-auto mb-4">
             <Shield className="w-7 h-7 text-[#C47353]" />
           </div>
@@ -458,6 +490,24 @@ export default function LawyerPage() {
       </div>
 
       <div className="max-w-2xl lg:max-w-5xl mx-auto px-4 py-6 lg:py-8 space-y-6">
+
+        {/* 🔒 P0-3 方案A：审核中提示横幅 */}
+        {accountStatus === 'pending_review' && (
+          <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200/70 rounded-xl animate-slide-up">
+            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Clock className="w-4 h-4 text-amber-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-amber-800">
+                您提交的资料修改正在审核中
+              </p>
+              <p className="text-xs text-amber-600 mt-1">
+                审核期间您可正常接单和提供服务。管理员审核通过后，新的资料信息将立即生效。
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* ============================================================ */}
         {/*  HERO ROW — 律师身份大卡 + 右侧指标栏（Bento 非对称网格）      */}
         {/* ============================================================ */}
@@ -465,7 +515,7 @@ export default function LawyerPage() {
           
           {/* ─── 左：律师身份 HERO 卡片（占 5/7）─── */}
           <div className="lg:col-span-5 group animate-slide-up stagger-1">
-            <div className="relative bg-gradient-to-br from-[#C47353] via-[#B06545] to-[#8B4513] rounded-2xl p-6 lg:p-7 shadow-lg shadow-[#C47353]/15 overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#C47353]/25 group-hover:-translate-y-0.5">
+            <div className="relative bg-gradient-to-br from-[#C47353] via-[#B06545] to-[#8B4513] rounded-xl p-6 lg:p-7 shadow-lg shadow-[#C47353]/15 overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#C47353]/25 group-hover:-translate-y-0.5">
               {/* 装饰圆 */}
               <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/5 rounded-full" />
               <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-white/5 rounded-full" />
@@ -492,10 +542,18 @@ export default function LawyerPage() {
                       }`} />
                       {onlineStatus === 'online' ? '🟢 在线' : '🔴 离开'}
                     </button>
-                    <span className="inline-flex items-center gap-1.5 text-[11px] bg-white/15 text-white/90 px-3 py-1 rounded-full backdrop-blur-sm">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-300" />
-                      审核通过
-                    </span>
+                    {/* 🔒 P0-3：动态状态徽章 */}
+                    {accountStatus === 'pending_review' ? (
+                      <span className="inline-flex items-center gap-1.5 text-[11px] bg-amber-400/25 text-amber-200 px-3 py-1 rounded-full backdrop-blur-sm border border-amber-400/30">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-pulse" />
+                        资料审核中
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-[11px] bg-white/15 text-white/90 px-3 py-1 rounded-full backdrop-blur-sm">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-300" />
+                        审核通过
+                      </span>
+                    )}
                     <Link
                       href="/lawyer/profile"
                       className="inline-flex items-center gap-1 text-[11px] text-white/50 hover:text-white/80 transition-colors"
@@ -507,7 +565,7 @@ export default function LawyerPage() {
 
                 {/* 头像 + 身份 */}
                 <div className="flex items-start gap-5 mb-5">
-                  <div className="w-20 h-20 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center text-white text-3xl font-serif flex-shrink-0 border border-white/20 shadow-inner">
+                  <div className="w-20 h-20 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center text-white text-3xl font-serif flex-shrink-0 border border-white/20 shadow-inner">
                     {profile?.name?.charAt(0) || '律'}
                   </div>
                   <div className="flex-1 min-w-0 pt-1">
@@ -525,7 +583,7 @@ export default function LawyerPage() {
                       {profile?.law_firm && <span>｜ {profile.law_firm}</span>}
                     </div>
                     {/* 套餐标签 */}
-                    {(profile?.selected_packages && profile.selected_packages.length > 0) && (
+                    {Array.isArray(profile?.selected_packages) && profile.selected_packages.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-2.5">
                         {profile.selected_packages.map((pkg: string) => {
                           const pkgLabel = packageNameMap[pkg] || pkg;
@@ -539,7 +597,7 @@ export default function LawyerPage() {
                     )}
                     {/* 擅长标签 */}
                     <div className="flex flex-wrap gap-1.5 mt-2.5">
-                      {profile?.specialties?.slice(0, 4).map((s: string) => {
+                      {Array.isArray(profile?.specialties) && profile.specialties.slice(0, 4).map((s: string) => {
                         const info = specialtyMap[s] || { label: s, color: '' };
                         return (
                           <span key={s} className="text-[11px] px-2.5 py-0.5 rounded-full bg-white/15 text-white/85 font-medium backdrop-blur-sm">
@@ -547,7 +605,7 @@ export default function LawyerPage() {
                           </span>
                         );
                       })}
-                      {(profile?.specialties?.length || 0) > 4 && (
+                      {Array.isArray(profile?.specialties) && profile!.specialties.length > 4 && (
                         <span className="text-[11px] text-white/50 px-1">+{profile!.specialties.length - 4}</span>
                       )}
                     </div>
@@ -607,7 +665,7 @@ export default function LawyerPage() {
           <div className="lg:col-span-2 space-y-3 lg:space-y-4 animate-slide-up stagger-2">
             
             {/* 待确认 */}
-            <div className="bg-[#FFFBF5] rounded-2xl border border-[#E8D5C0] overflow-hidden shadow-sm">
+            <div className="bg-[#FFFBF5] rounded-xl border border-[#E8D5C0] overflow-hidden shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
               <div className="h-[3px] bg-[#C8963E]" />
               <div className="p-4">
                 <div className="flex items-center gap-2 mb-1">
@@ -620,7 +678,7 @@ export default function LawyerPage() {
             </div>
 
             {/* 会员 */}
-            <div className="bg-[#FFFBF5] rounded-2xl border border-[#E8D5C0] overflow-hidden shadow-sm">
+            <div className="bg-[#FFFBF5] rounded-xl border border-[#E8D5C0] overflow-hidden shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
               <div
                 className="h-[3px]"
                 style={{
@@ -664,7 +722,7 @@ export default function LawyerPage() {
                   </p>
                 )}
                 {/* 已购套餐列表 */}
-                {(profile?.selected_packages && profile.selected_packages.length > 0) && (
+                {Array.isArray(profile?.selected_packages) && profile.selected_packages.length > 0 && (
                   <div className="mt-2.5 space-y-1">
                     {profile.selected_packages.map((pkg: string) => {
                       const pkgLabel = packageNameMap[pkg] || pkg;
@@ -716,7 +774,7 @@ export default function LawyerPage() {
 
           return (
             <div className="animate-slide-up stagger-3">
-              <div className="bg-gradient-to-r from-[#FFF8F0] to-[#FFFBF5] rounded-2xl border border-[#E8C4A8] overflow-hidden shadow-sm">
+              <div className="bg-gradient-to-r from-[#FFF8F0] to-[#FFFBF5] rounded-xl border border-[#E8C4A8] overflow-hidden shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
                 <div className="h-[3px] bg-gradient-to-r from-[#C8963E] via-[#D4A96A] to-[#E8C4A8]" />
                 <div className="p-4 lg:p-5">
                   <div className="flex items-start gap-4">
@@ -792,8 +850,8 @@ export default function LawyerPage() {
           </div>
 
           {pendingOrders.length === 0 ? (
-            <div className="bg-[#FFFBF5] rounded-2xl py-14 border border-dashed border-[#E8D5C0] text-center">
-              <div className="w-16 h-16 rounded-2xl bg-[#F5F0E8] flex items-center justify-center mx-auto mb-4">
+            <div className="bg-[#FFFBF5] rounded-xl py-14 border border-dashed border-[#E8D5C0] text-center">
+              <div className="w-16 h-16 rounded-xl bg-[#F5F0E8] flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="w-7 h-7 text-[#C8BDB2]" />
               </div>
               <p className="text-[#78716C] text-sm font-medium">暂无待确认订单</p>
@@ -815,7 +873,7 @@ export default function LawyerPage() {
                 return (
                   <div
                     key={order.id}
-                    className="bg-[#FFFBF5] rounded-2xl border border-[#E8D5C0] shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow duration-300"
+                    className="bg-[#FFFBF5] rounded-xl border border-[#E8D5C0] shadow-[0_2px_8px_rgba(61,50,45,0.06)] overflow-hidden flex flex-col hover:shadow-md transition-shadow duration-300"
                   >
                     {/* 卡片头部 + 左侧色条 */}
                     <div className="flex">
@@ -866,7 +924,7 @@ export default function LawyerPage() {
                             {actionLoading === order.id ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : '拒单'}
                           </button>
                           <button
-                            className="flex-1 py-2.5 text-xs font-medium rounded-xl bg-[#5C7A5A] text-white hover:bg-[#4D6A4B] transition-colors disabled:opacity-50 active:scale-[0.98] shadow-sm shadow-[#5C7A5A]/20"
+                            className="flex-1 py-2.5 text-xs font-medium rounded-xl bg-[#5C7A5A] text-white hover:bg-[#4D6A4B] transition-colors disabled:opacity-50 active:scale-[0.98] shadow-[0_2px_8px_rgba(92,122,90,0.2)]"
                             onClick={() => setConfirmingOrder({ orderId: order.id, action: 'accept' })}
                             disabled={actionLoading === order.id}
                           >
@@ -887,7 +945,7 @@ export default function LawyerPage() {
         {/* ============================================================ */}
         <div className="grid grid-cols-2 gap-4 animate-slide-up stagger-4">
           <Link href="/lawyer/orders" className="group">
-            <div className="bg-[#FFFBF5] rounded-2xl border border-[#E8D5C0] overflow-hidden hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
+            <div className="bg-[#FFFBF5] rounded-xl border border-[#E8D5C0] overflow-hidden hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
               <div className="h-[3px] bg-[#5C7A5A]" />
               <div className="p-5 flex items-center gap-4">
                 <div className="w-11 h-11 rounded-xl bg-[#5C7A5A]/10 flex items-center justify-center flex-shrink-0">
@@ -902,7 +960,7 @@ export default function LawyerPage() {
             </div>
           </Link>
           <Link href="/lawyer/profile" className="group">
-            <div className="bg-[#FFFBF5] rounded-2xl border border-[#E8D5C0] overflow-hidden hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
+            <div className="bg-[#FFFBF5] rounded-xl border border-[#E8D5C0] overflow-hidden hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
               <div className="h-[3px] bg-[#C47353]" />
               <div className="p-5 flex items-center gap-4">
                 <div className="w-11 h-11 rounded-xl bg-[#C47353]/10 flex items-center justify-center flex-shrink-0">
@@ -920,7 +978,7 @@ export default function LawyerPage() {
 
         {/* 联系客服 */}
         <div
-          className="bg-[#FFFBF5] rounded-2xl border border-[#E8D5C0] overflow-hidden cursor-pointer hover:shadow-sm transition-all duration-300 animate-slide-up stagger-5"
+          className="bg-[#FFFBF5] rounded-xl border border-[#E8D5C0] overflow-hidden cursor-pointer hover:shadow-[0_2px_8px_rgba(61,50,45,0.06)] transition-all duration-300 animate-slide-up stagger-5"
           onClick={() => {
             // 创建遮罩层覆盖整个页面，flex 居中
             const overlay = document.createElement('div');
@@ -928,7 +986,7 @@ export default function LawyerPage() {
             overlay.style.backdropFilter = 'blur(2px)';
 
             const card = document.createElement('div');
-            card.className = 'bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl';
+            card.className = 'bg-white rounded-xl p-6 max-w-sm w-full text-center shadow-2xl';
             card.innerHTML = `
               <h3 class="text-lg font-bold text-[#1C1917] mb-2 font-serif">关注公众号联系客服</h3>
               <p class="text-sm text-[#78716C] mb-4">扫码关注「帮帮问法」公众号<br/>在线客服将为您解答问题</p>
@@ -984,7 +1042,7 @@ export default function LawyerPage() {
       {/* 在线状态提醒弹窗 — 首次切换到在线时弹出 */}
       {showStatusReminder && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowStatusReminder(false)}>
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl animate-slide-up" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl animate-slide-up" onClick={e => e.stopPropagation()}>
             <div className="w-12 h-12 rounded-full bg-[#C47353]/10 flex items-center justify-center mx-auto mb-4">
               <span className="text-2xl">💡</span>
             </div>
@@ -1008,7 +1066,7 @@ export default function LawyerPage() {
       {/* 确认弹窗 — 替代原生 confirm()，兼容 IDE 内置浏览器 */}
       {confirmingOrder && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setConfirmingOrder(null)}>
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-[#1C1917] mb-2 font-serif">
               {confirmingOrder.action === 'accept' ? '确认接单' : '确认拒单'}
             </h3>

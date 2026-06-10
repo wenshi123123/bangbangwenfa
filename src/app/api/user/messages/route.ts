@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     
     const { data, error } = await query;
     if (error) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      return NextResponse.json({ success: false, error: '查询消息失败' }, { status: 500 });
     }
     return NextResponse.json({ success: true, messages: data || [] });
   } catch (error) {
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
     if (error) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      return NextResponse.json({ success: false, error: '查询消息失败' }, { status: 500 });
     }
     return NextResponse.json({ success: true, message: data });
   } catch (error) {

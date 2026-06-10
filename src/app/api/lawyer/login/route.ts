@@ -36,12 +36,13 @@ export async function POST(request: NextRequest) {
 
     const supabase = getSupabaseAdmin();
 
-    // 查找律师记录
+    // 🔒 P0-3 方案A：允许 active 和 pending_review 状态的律师登录
+    // pending_review 律师可正常登录接单，仅限制资料再次修改
     const { data: lawyer, error } = await supabase
       .from('lawyers')
       .select('*')
       .eq('phone', phone)
-      .eq('status', 'active')
+      .in('status', ['active', 'pending_review'])
       .single();
 
     if (error || !lawyer) {
@@ -81,17 +82,20 @@ export async function POST(request: NextRequest) {
     }
 
     // 生成登录 token（id 使用 users 表 ID，与 issue-token 保持一致）
+    // 🔒 P0-3：将律师状态写入 JWT，前端可据此显示审核提示
     const token = generateToken({
       id: userIdForToken || lawyer.id,
       phone: safeLawyer.phone,
       userType: 'lawyer',
       lawyerId: lawyer.id,
+      status: lawyer.status, // active | pending_review
     });
 
     return NextResponse.json({
       success: true,
       lawyer: { ...safeLawyer, login_count: (lawyer.login_count || 0) + 1 },
-      token
+      token,
+      lawyerStatus: lawyer.status, // 前端可据此展示状态提示
     });
   } catch (error) {
     console.error('律师登录失败:', error);

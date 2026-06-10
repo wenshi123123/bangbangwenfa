@@ -131,6 +131,30 @@ export async function POST(req: NextRequest) {
       order.case_title || '法律咨询订单'
     );
 
+    // 【P0-用户通知】派单后通知用户：订单已分配给律师
+    try {
+      // 查询订单所属用户
+      const { data: orderUser } = await supabase
+        .from('consult_orders')
+        .select('user_id')
+        .eq('id', orderId)
+        .maybeSingle();
+
+      if (orderUser?.user_id) {
+        await supabase.from('notifications').insert({
+          user_id: orderUser.user_id,
+          type: 'order_assigned',
+          title: '律师已接单',
+          content: `您的咨询订单已由平台分配给律师 ${lawyer?.name || '指定律师'}，请留意律师回复。`,
+          data: { orderId, orderNo: order.order_no, lawyerId, lawyerName: lawyer?.name || '' },
+          is_read: false,
+        });
+        console.log(`✅ 用户通知已写入: 订单 ${orderId} 派单给律师 ${lawyer?.name || lawyerId}`);
+      }
+    } catch (notifyUserErr) {
+      console.error('写入用户派单通知失败（不影响派单结果）:', notifyUserErr);
+    }
+
     return NextResponse.json({ 
       success: true, 
       message: '派单成功',

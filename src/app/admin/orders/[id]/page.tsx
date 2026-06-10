@@ -23,7 +23,7 @@ import {
 import { adminApiRequest } from '@/lib/api/request';
 
 interface Order {
-  id: number;
+  id: string;
   user_id: string;
   contact_name: string;
   contact_phone: string;
@@ -47,7 +47,7 @@ interface Order {
 }
 
 interface Lawyer {
-  id: number;
+  id: string;
   name: string;
   phone: string;
   specialties: string[];
@@ -143,7 +143,7 @@ export default function OrderDetailPage() {
         headers: { 
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ orderId: parseInt(id) })
+        body: JSON.stringify({ orderId: id })
       });
 
       const result = await response.json();
@@ -272,7 +272,7 @@ export default function OrderDetailPage() {
       {/* Info Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Customer Info */}
-        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
           <h2 className="text-base sm:text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
             <User className="w-5 h-5 text-slate-400" />
             客户信息
@@ -312,7 +312,7 @@ export default function OrderDetailPage() {
         </div>
 
         {/* Order Info */}
-        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
           <h2 className="text-base sm:text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
             <FileText className="w-5 h-5 text-slate-400" />
             订单信息
@@ -348,7 +348,7 @@ export default function OrderDetailPage() {
       </div>
 
       {/* Case Details */}
-      <div className="bg-white rounded-xl p-6 shadow-sm">
+      <div className="bg-white rounded-xl p-6 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
         <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
           <MessageSquare className="w-5 h-5 text-slate-400" />
           案件详情
@@ -367,7 +367,7 @@ export default function OrderDetailPage() {
 
       {/* Lawyer Info */}
       {order.assigned_lawyer_id && (
-        <div className="bg-white rounded-xl p-6 shadow-sm">
+        <div className="bg-white rounded-xl p-6 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
           <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-slate-400" />
             服务律师
@@ -409,7 +409,7 @@ export default function OrderDetailPage() {
       )}
 
       {/* Actions — 始终显示管理操作区 */}
-      <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+      <div className="bg-white rounded-xl p-4 sm:p-6 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
         <h2 className="text-base sm:text-lg font-semibold text-slate-800 mb-4">管理操作</h2>
 
         {/* 未支付订单提示 */}

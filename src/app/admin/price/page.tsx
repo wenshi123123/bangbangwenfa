@@ -139,7 +139,7 @@ export default function PriceManagementPage() {
 
       {/* Price List */}
       {prices.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
+        <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(61,50,45,0.06)] border border-border overflow-hidden">
           <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-border">
             <h2 className="font-semibold text-foreground">服务项目价格</h2>
             <p className="text-xs text-muted-foreground mt-1">价格单位：元</p>

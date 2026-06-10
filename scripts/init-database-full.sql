@@ -455,12 +455,12 @@ CREATE POLICY "Allow service role full access" ON admin_logs
 -- 15. 初始化默认数据
 -- ============================================
 
--- 插入默认管理员 (密码: admin123)
--- 密码hash是 bcrypt hash of 'admin123'
+-- 插入默认管理员 (账号: bbwfmanager, 密码: bangbangwenfa@123)
+-- 密码hash是 bcrypt hash of 'bangbangwenfa@123'
 INSERT INTO admins (username, password_hash, nickname, role, permissions)
 VALUES (
-    'admin',
-    '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', -- admin123
+    'bbwfmanager',
+    '$2b$10$uXf8MsEG6bqxTt.FDoPE1O.y0KUO78VIdJ8jX21.OlOF0DKvuBULy', -- bangbangwenfa@123
     '系统管理员',
     'super_admin',
     ARRAY['all']

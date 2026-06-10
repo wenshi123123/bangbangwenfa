@@ -115,11 +115,11 @@ export function CivilConsultationWizard({ onBack }: CivilConsultationWizardProps
   // 未登录提示
   if (!isChecking && !isLoggedIn) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white">
+      <div className="min-h-screen bg-gradient-to-b from-[#FAF7F2] to-white">
         <div className="max-w-lg mx-auto px-4 py-16">
-          <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-orange-100 flex items-center justify-center">
-              <Lock className="w-8 h-8 text-orange-500" />
+          <div className="bg-white rounded-xl shadow-[0_4px_16px_rgba(61,50,45,0.08)] p-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-[#FAF7F2] flex items-center justify-center">
+              <Lock className="w-8 h-8 text-[#C47353]" />
             </div>
             <h2 className="text-xl font-bold mb-3">需要登录</h2>
             <p className="text-muted-foreground mb-6">
@@ -127,7 +127,7 @@ export function CivilConsultationWizard({ onBack }: CivilConsultationWizardProps
             </p>
             <button
               onClick={() => window.dispatchEvent(new CustomEvent('open-login-modal'))}
-              className="w-full py-3 px-6 bg-gradient-to-r from-orange-400 to-pink-500 text-white font-semibold rounded-xl hover:from-orange-500 hover:to-pink-600 transition-all"
+              className="w-full py-3 px-6 bg-gradient-to-r from-[#C47353] to-pink-500 text-white font-semibold rounded-xl hover:from-[#A85D40] hover:to-pink-600 transition-all"
             >
               <LogIn className="w-4 h-4 inline mr-2" />
               手机号登录
@@ -141,9 +141,9 @@ export function CivilConsultationWizard({ onBack }: CivilConsultationWizardProps
   // 加载中
   if (isChecking) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-[#FAF7F2] to-white flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-8 h-8 border-4 border-[rgba(196,115,83,0.2)] border-t-[#C47353] rounded-full animate-spin mx-auto mb-4" />
           <p className="text-muted-foreground">加载中...</p>
         </div>
       </div>
@@ -198,14 +198,14 @@ export function CivilConsultationWizard({ onBack }: CivilConsultationWizardProps
   };
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 50%, #F8FAFC 100%)' }}>
+    <div className="min-h-screen bg-[#FAF7F2]">
       {/* Top Navigation Bar */}
-      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-blue-100/50">
+      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-[rgba(196,115,83,0.15)]">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <button
               onClick={handleBack}
-              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors"
+              className="flex items-center gap-2 text-[#C47353] hover:text-[#A85D40] transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
               <span className="font-medium">返回</span>
@@ -218,14 +218,14 @@ export function CivilConsultationWizard({ onBack }: CivilConsultationWizardProps
       </div>
 
       {/* Progress Bar */}
-      <div className="bg-white/50 border-b border-blue-100/50">
+      <div className="bg-white/50 border-b border-[rgba(196,115,83,0.15)]">
         <div className="container mx-auto px-4 py-3">
           <div className="flex gap-1">
             {[1, 2, 3, 4].map((s) => (
               <div
                 key={s}
                 className={`h-1.5 flex-1 rounded-full transition-colors ${
-                  s <= step ? 'bg-blue-500' : 'bg-blue-100'
+                  s <= step ? 'bg-[#C47353]' : 'bg-[#FAF7F2]'
                 }`}
               />
             ))}

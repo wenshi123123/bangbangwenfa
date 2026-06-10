@@ -212,14 +212,14 @@ export default function LawyerLoginPage() {
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
             <div
-              className={`w-18 h-18 rounded-2xl ${iconBg} flex items-center justify-center mx-auto mb-4 shadow-lg`}
+              className={`w-18 h-18 rounded-xl ${iconBg} flex items-center justify-center mx-auto mb-4 shadow-lg`}
             >
               <Icon className={`w-9 h-9 ${iconColor}`} />
             </div>
             <h1 className="text-2xl font-bold text-[#3D322D] font-serif">{title}</h1>
             {subtitle && <p className="text-[#8C7B6E] mt-2 text-sm">{subtitle}</p>}
           </div>
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#EBE3D8]/60">
+          <div className="bg-white rounded-xl p-6 shadow-[0_2px_8px_rgba(61,50,45,0.06)] border border-[#EBE3D8]/60">
             {children}
           </div>
         </div>
@@ -476,7 +476,8 @@ export default function LawyerLoginPage() {
         <div className="text-center space-y-4">
           <div>
             <p className="text-[#3D322D] font-medium text-sm mb-1">申请未通过审核</p>
-            <p className="text-xs text-[#A89B90]">如有疑问，请联系客服。</p>
+            <p className="text-xs text-[#A89B90]">已支付的费用将在 3-5 个工作日内原路退回。</p>
+            <p className="text-xs text-[#A89B90] mt-1">如有疑问，请联系客服。</p>
           </div>
           <button
             onClick={handleRefresh}

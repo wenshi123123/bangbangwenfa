@@ -100,7 +100,7 @@ function LawyerPayContent() {
   if (paid) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)' }}>
-        <div className="max-w-md mx-auto bg-white rounded-2xl shadow-xl p-8 text-center">
+        <div className="max-w-md mx-auto bg-white rounded-xl shadow-xl p-8 text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-green-500" />
           </div>
@@ -135,7 +135,7 @@ function LawyerPayContent() {
       {/* Content */}
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-md mx-auto">
-          <div className="bg-white rounded-2xl shadow-xl p-6 text-center">
+          <div className="bg-white rounded-xl shadow-xl p-6 text-center">
             <h2 className="text-xl font-bold text-foreground mb-4">完成支付</h2>
             <p className="text-sm text-muted-foreground mb-6">
               请完成支付以继续您的律师入驻申请

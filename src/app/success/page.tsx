@@ -57,16 +57,16 @@ function SuccessContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-warm flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+      <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#C47353]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-warm">
+    <div className="min-h-screen bg-[#FAF7F2]">
       {/* Header */}
-      <header className="bg-white/50 backdrop-blur-xl border-b border-black/5 sticky top-0 z-10">
+      <header className="bg-[#FAF7F2]/80 backdrop-blur-md border-b border-[rgba(196,115,83,0.15)] sticky top-0 z-10">
         <div className="container mx-auto px-4 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-3">
@@ -100,7 +100,7 @@ function SuccessContent() {
                   请添加客服微信，发送订单号获取咨询服务
                 </p>
                 {/* 客服微信二维码 */}
-                <div className="bg-white p-2 rounded-xl shadow-lg mb-4">
+                <div className="bg-white p-2 rounded-xl shadow-[0_4px_16px_rgba(61,50,45,0.08)] mb-4">
                   <img 
                     src="/customer-service-qr.jpg"
                     alt="客服微信二维码"
@@ -135,7 +135,7 @@ function SuccessContent() {
             <Card className="card-apple">
               <CardHeader className="pb-3 sm:pb-4">
                 <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                  <Search className="h-4 w-4 sm:h-5 sm:w-5 text-orange-500" />
+                  <Search className="h-4 w-4 sm:h-5 sm:w-5 text-[#C47353]" />
                   订单信息
                 </CardTitle>
               </CardHeader>
@@ -147,7 +147,7 @@ function SuccessContent() {
                   </div>
                   <div>
                     <span className="text-muted-foreground block">支付金额</span>
-                    <p className="font-bold text-gradient text-base sm:text-lg">¥{((order.servicePrice || 0) / 100).toFixed(2)}</p>
+                    <p className="font-serif text-[#C47353] text-base sm:text-lg font-normal">¥{((order.servicePrice || 0) / 100).toFixed(2)}</p>
                   </div>
                   <div className="col-span-2">
                     <span className="text-muted-foreground block">咨询主题</span>
@@ -185,8 +185,8 @@ function SuccessContent() {
 export default function SuccessPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-warm flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+      <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#C47353]" />
       </div>
     }>
       <SuccessContent />
