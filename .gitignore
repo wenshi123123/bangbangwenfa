@@ -41,4 +41,10 @@ assets/image_*.png
 .env
 .edgeone/*
 .tef_dist/*
+
+# AI 工作目录
+.workbuddy/
+
+# pnpm 锁文件（不使用 npm）
+package-lock.json
   
