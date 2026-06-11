@@ -28,6 +28,21 @@ export async function POST(request: NextRequest) {
 
     const supabase = getSupabaseAdmin();
 
+    // 0. 先验证律师是否存在
+    const { data: existingLawyer, error: lawyerCheckError } = await supabase
+      .from('lawyers')
+      .select('id')
+      .eq('id', lawyer_id)
+      .single();
+
+    if (lawyerCheckError || !existingLawyer) {
+      return NextResponse.json({
+        success: false,
+        error: `律师不存在: ${lawyer_id}`,
+        code: 'LAWYER_NOT_FOUND'
+      }, { status: 404 });
+    }
+
     // 1. 创建套餐记录
     const { data: record, error: insertError } = await supabase
       .from('membership_records')
@@ -41,7 +56,13 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError) {
-      return NextResponse.json({ success: false, error: insertError.message }, { status: 500 });
+      console.error('[records] 创建套餐记录失败:', insertError);
+      return NextResponse.json({
+        success: false,
+        error: insertError.message,
+        code: 'INSERT_FAILED',
+        details: insertError.details || null
+      }, { status: 500 });
     }
 
     // 2. 同步更新 lawyers 表主字段（保持向后兼容）
@@ -56,7 +77,7 @@ export async function POST(request: NextRequest) {
       || new Date(expires_at) > new Date(lawyer.member_expires_at);
 
     if (shouldUpdateLawyer) {
-      await supabase
+      const { error: updateLawyerError } = await supabase
         .from('lawyers')
         .update({
           package_type: normalizedType,
@@ -66,24 +87,31 @@ export async function POST(request: NextRequest) {
           is_available: true,
         })
         .eq('id', lawyer_id);
+
+      if (updateLawyerError) {
+        console.error('[records] 更新律师主字段失败:', updateLawyerError);
+        // 非致命错误，继续执行
+      }
     }
 
     // 3. 同步 selected_packages（用于律师工作台显示套餐标签）
-    const { data: activeRecords } = await supabase
+    const { data: activeRecords, error: activeRecordsError } = await supabase
       .from('membership_records')
       .select('package_type')
       .eq('lawyer_id', lawyer_id)
       .in('status', ['active', 'trial']);
 
-    const packages = [...new Set((activeRecords || []).map(r => r.package_type))];
-    await supabase
-      .from('lawyers')
-      .update({ selected_packages: packages })
-      .eq('id', lawyer_id);
+    if (!activeRecordsError) {
+      const packages = [...new Set((activeRecords || []).map(r => r.package_type))];
+      await supabase
+        .from('lawyers')
+        .update({ selected_packages: packages })
+        .eq('id', lawyer_id);
+    }
 
     // 4. 写操作日志
     try {
-      await supabase.from('membership_logs').insert({
+      const { error: logError } = await supabase.from('membership_logs').insert({
         lawyer_id,
         action: 'activate',
         package_type: normalizedType,
@@ -91,12 +119,21 @@ export async function POST(request: NextRequest) {
         new_expires_at: expires_at,
         note: note || null,
       });
-    } catch {
-      // 日志失败不影响主操作
+      if (logError) {
+        console.warn('[records] 写操作日志失败（非致命）:', logError.message);
+      }
+    } catch (logErr: any) {
+      console.warn('[records] 写操作日志异常（非致命）:', logErr?.message || logErr);
     }
 
     return NextResponse.json({ success: true, data: record });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: '服务器错误' }, { status: 500 });
+  } catch (error: any) {
+    console.error('[records] 开通套餐异常:', error);
+    return NextResponse.json({
+      success: false,
+      error: '服务器内部错误',
+      code: 'SERVER_ERROR',
+      message: error?.message || String(error)
+    }, { status: 500 });
   }
 }

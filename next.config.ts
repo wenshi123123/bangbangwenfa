@@ -1,6 +1,9 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
+  // 隐藏 X-Powered-By 头，不暴露 Next.js 技术栈
+  poweredByHeader: false,
   allowedDevOrigins: ['localhost:5000', 'localhost:3000', 'localhost', 'localhost:3007'],
   images: {
     unoptimized: true, // 禁用图片优化，避免缓存目录问题

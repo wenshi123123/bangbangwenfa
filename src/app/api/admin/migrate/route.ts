@@ -3,8 +3,6 @@ import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { requireAdminAuth, adminUnauthorizedResponse } from '@/lib/auth/admin-middleware';
 
 // POST /api/admin/migrate - Execute database migration
-// This endpoint uses Supabase's rpc() to execute SQL via a pre-created function,
-// or falls back to direct SQL if the admin has database access.
 export async function POST(request: NextRequest) {
   const authResult = await requireAdminAuth(request);
   if (!authResult.success) {
@@ -15,30 +13,26 @@ export async function POST(request: NextRequest) {
 
   try {
     const results: string[] = [];
+    const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    const ref = projectUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] || '';
 
     // Step 1: Check if membership_logs table already exists
-    const { data: existingTable, error: checkError } = await supabase
+    const { error: checkError } = await supabase
       .from('membership_logs')
       .select('id')
       .limit(1);
 
-    if (!checkError || !checkError.message?.includes('does not exist')) {
-      results.push('membership_logs 表已存在，跳过创建');
-    } else {
-      // Table doesn't exist - try to create via raw SQL through Supabase
-      // Since we can't execute DDL via JS client, we'll use a workaround:
-      // Create the table using the Supabase admin API's SQL execution
+    if (!checkError) {
+      results.push('✅ membership_logs 表已存在');
+    } else if (checkError.message?.includes('does not exist') || checkError.code === '42P01') {
+      // Table doesn't exist - try to create via Supabase Management API
+      results.push('⚠️ membership_logs 表不存在，尝试创建...');
 
-      // Attempt 1: Use the Supabase project URL to hit the internal SQL API
-      const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-      const ref = projectUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] || '';
-
-      // Build the SQL
       const createTableSQL = `
         CREATE TABLE IF NOT EXISTS membership_logs (
             id BIGSERIAL PRIMARY KEY,
-            lawyer_id BIGINT NOT NULL REFERENCES lawyers(id) ON DELETE CASCADE,
+            lawyer_id UUID NOT NULL REFERENCES lawyers(id) ON DELETE CASCADE,
             action VARCHAR(20) NOT NULL,
             package_type VARCHAR(20),
             is_trial BOOLEAN DEFAULT FALSE,
@@ -54,48 +48,79 @@ export async function POST(request: NextRequest) {
         CREATE POLICY "Admin full access to membership_logs" ON membership_logs FOR ALL USING (true) WITH CHECK (true);
       `;
 
-      // Try Supabase's internal pgapi SQL endpoint
-      const sqlRes = await fetch(`https://${ref}.supabase.co/rest/v1/rpc/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': serviceKey,
-          'Authorization': `Bearer ${serviceKey}`,
-          'Prefer': 'return=minimal',
-        },
-        body: JSON.stringify({}),
-      });
+      if (ref && serviceKey) {
+        try {
+          // Use Supabase Management API to execute SQL
+          const mgmtRes = await fetch(`https://api.supabase.com/v1/projects/${ref}/sql`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${serviceKey}`,
+            },
+            body: JSON.stringify({ query: createTableSQL }),
+          });
 
-      // If pgapi works, try direct SQL execution
-      // Otherwise, fall back to manual table creation via Supabase JS
-      if (!sqlRes.ok) {
-        results.push('无法通过 API 执行 DDL，尝试替代方案...');
+          if (mgmtRes.ok) {
+            results.push('✅ 通过 Management API 创建 membership_logs 成功');
+          } else {
+            const errBody = await mgmtRes.text();
+            results.push(`⚠️ Management API 创建失败 (${mgmtRes.status}): ${errBody.substring(0, 200)}`);
+          }
+        } catch (apiErr: any) {
+          results.push(`⚠️ Management API 调用异常: ${apiErr.message}`);
+        }
+
+        // Fallback: Try Supabase REST API rpc
+        try {
+          const rpcRes = await fetch(`https://${ref}.supabase.co/rest/v1/rpc/exec_sql`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': serviceKey,
+              'Authorization': `Bearer ${serviceKey}`,
+            },
+            body: JSON.stringify({ sql: createTableSQL }),
+          });
+          if (rpcRes.ok) {
+            results.push('✅ 通过 RPC 创建 membership_logs 成功');
+          }
+        } catch {
+          // RPC fallback failed, that's ok
+        }
+      } else {
+        results.push('❌ 缺少 SUPABASE_URL 或 SUPABASE_SERVICE_ROLE_KEY 环境变量');
       }
+    } else {
+      results.push(`⚠️ 检查 membership_logs 时出错: ${checkError.message}`);
     }
 
-    // Step 2: Try creating the expire_overdue_memberships function
-    // (Can't create functions via JS client either, but we check)
-
-    // Step 3: Verify by attempting to insert/read from the table
+    // Step 2: Final verification
     const { error: verifyError } = await supabase
       .from('membership_logs')
       .select('id')
       .limit(1);
 
-    if (verifyError?.message?.includes('does not exist')) {
+    if (verifyError?.message?.includes('does not exist') || verifyError?.code === '42P01') {
       return NextResponse.json({
         success: false,
-        message: '无法自动创建 membership_logs 表。请在 Supabase Dashboard > SQL Editor 中执行 scripts/membership-logs-migration.sql',
+        message: '无法自动创建 membership_logs 表。请在 Supabase Dashboard > SQL Editor 中执行 scripts/membership-logs-migration-v2.sql',
         results,
+        manualSteps: [
+          '1. 登录 Supabase Dashboard',
+          '2. 打开 SQL Editor',
+          '3. 复制并执行 scripts/membership-logs-migration-v2.sql 的内容',
+          '4. 刷新此页面验证',
+        ],
       });
     }
 
     return NextResponse.json({
       success: true,
       message: '迁移检查完成',
-      results: [...results, 'membership_logs 表已就绪'],
+      results: [...results, '✅ membership_logs 表已就绪'],
     });
-  } catch (e) {
-    return NextResponse.json({ success: false, error: '迁移失败', details: String(e) }, { status: 500 });
+  } catch (e: any) {
+    console.error('[migrate] 迁移失败:', e);
+    return NextResponse.json({ success: false, error: '迁移失败', details: e?.message || String(e) }, { status: 500 });
   }
 }

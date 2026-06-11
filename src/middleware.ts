@@ -4,13 +4,17 @@ import type { NextRequest } from 'next/server';
 /**
  * 全局中间件
  * 1. 添加安全响应头
- * 2. 静默放行业务请求（各 API 自行验证权限）
+ * 2. 隐藏技术栈信息（移除 X-Powered-By）
+ * 3. 静默放行业务请求（各 API 自行验证权限）
  */
 export function middleware(request: NextRequest) {
   const isProd = process.env.DEPLOY_ENV === 'PROD' || process.env.NODE_ENV === 'production';
 
   // 添加安全响应头
   const response = NextResponse.next();
+
+  // 隐藏技术栈信息
+  response.headers.delete('X-Powered-By');
 
   // 防止 MIME 类型嗅探
   response.headers.set('X-Content-Type-Options', 'nosniff');
