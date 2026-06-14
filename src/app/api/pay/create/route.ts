@@ -1,39 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getWechatPayClient } from '@/lib/payment/wechat-pay';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
-import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
-import crypto from 'crypto';
+import { createWechatPayOrder } from '@/lib/payment/wechat-pay';
+import { supabase } from '@/lib/supabase';
 
 /**
- * 创建微信支付订单
  * POST /api/pay/create
- * Body: { orderId: number }
+ * 创建微信支付订单
  */
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
+  console.log('===== 创建支付订单 =====');
+
   try {
-    // 必须登录才能创建支付
-    const auth = authenticateRequest(request);
-    if (!auth.success) {
-      return unauthorizedResponse(auth.error);
-    }
+    const body = await req.json().catch(() => null);
+    console.log('请求体:', JSON.stringify(body));
 
-    const body = await request.json();
-    const { orderId } = body;
-
-    if (!orderId) {
+    if (!body || !body.orderId) {
       return NextResponse.json(
-        { success: false, error: '缺少订单号' },
+        { success: false, error: '缺少订单ID' },
         { status: 400 }
       );
     }
 
-    // 查询订单信息
-    const supabase = getSupabaseClient();
+    const orderId = Number(body.orderId);
+    const openid = body.openid || '';
+
+    // 查询订单
     const { data: order, error: orderError } = await supabase
-      .from('consult_orders')
+      .from('payment_orders')
       .select('*')
       .eq('id', orderId)
       .single();
+
+    console.log('订单查询结果:', { order: order ? 'found' : 'not found', error: orderError });
 
     if (orderError || !order) {
       return NextResponse.json(
@@ -42,75 +39,68 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 验证订单归属：从 Token 获取用户ID，不允许为他人订单创建支付
-    const tokenUserId = auth.userId || auth.guardianId || auth.lawyerId;
-    if (order.user_id && tokenUserId && String(order.user_id) !== String(tokenUserId)) {
-      return NextResponse.json(
-        { success: false, error: '无权操作此订单' },
-        { status: 403 }
-      );
-    }
-
-    // 检查订单状态
-    if (order.payment_status === 'paid') {
+    if (order.status === 'paid') {
       return NextResponse.json(
         { success: false, error: '订单已支付' },
         { status: 400 }
       );
     }
 
-    // 生成微信支付订单号（符合微信要求：6~32字符，仅数字字母）
-    // 格式: WX + 时间戳后8位 + 随机10字符 = 20字符，安全范围内
-    const timestamp = Date.now().toString().slice(-8);
-    const randomStr = crypto.randomBytes(5).toString('hex').toUpperCase();
-    const payTradeNo = `WX${timestamp}${randomStr}`;
+    if (order.status === 'expired') {
+      return NextResponse.json(
+        { success: false, error: '订单已过期' },
+        { status: 400 }
+      );
+    }
 
-    // 正式模式：使用真实微信支付
-    const wechatPay = getWechatPayClient();
-    const callbackUrl = process.env.WEIXIN_CALLBACK_URL || 'https://www.bangbangwenfa.com/api/pay/callback';
+    // 创建微信支付订单
+    const amount = Number(order.amount);
+    const description = order.description || '帮帮问法-法律服务';
+    const outTradeNo = order.out_trade_no;
 
-    // 创建 Native 支付订单
-    const result = await wechatPay.createNativeOrder({
-      outTradeNo: payTradeNo,
-      description: `法律咨询服务 - ${order.case_title || '咨询订单'}`,
-      amount: order.service_price, // 单位：分
-      notifyUrl: callbackUrl,
+    console.log('创建微信支付:', { outTradeNo, amount, description, openid });
+
+    const payResult = await createWechatPayOrder({
+      outTradeNo,
+      amount,
+      description,
+      openid
     });
 
-    // 更新订单表，添加微信支付订单号
-    await supabase
-      .from('consult_orders')
-      .update({
-        pay_trade_no: payTradeNo,
-        pay_prepay_id: result.prepayId,
-      })
-      .eq('id', orderId);
+    console.log('微信支付创建结果:', JSON.stringify(payResult).substring(0, 300));
 
+    if (!payResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: payResult.error || '微信支付创建失败',
+          debug: payResult.debug
+        },
+        { status: 502 }
+      );
+    }
+
+    // 返回支付参数给前端
     return NextResponse.json({
       success: true,
       data: {
+        codeUrl: payResult.code_url,
+        prepayId: payResult.prepay_id,
         orderId: orderId,
-        payTradeNo: payTradeNo,
-        codeUrl: result.codeUrl, // 二维码链接
-        prepayId: result.prepayId,
-      },
+        outTradeNo: outTradeNo,
+        amount: amount,
+        // JSAPI 支付参数（移动端/微信内）
+        jsapiConfig: payResult.jsapi_config
+      }
     });
-
   } catch (error: any) {
-    console.error('创建微信支付订单失败:', error);
-    
-    // 返回具体错误信息（临时用于排查）
-    const errMsg = error?.message || error || '未知错误';
-    const isConfigError = typeof errMsg === 'string' && errMsg.includes('配置');
-    const isKeyError = typeof errMsg === 'string' && (
-      errMsg.includes('私钥') || 
-     errMsg.includes('privateKey') ||
-      errMsg.includes('PRIVATE') ||
-      errMsg.includes('环境变量')
-    );
-
+    console.error('创建支付订单异常:', error);
     return NextResponse.json(
-      { success: false, error: isConfigError ? '支付配置错误，请联系管理员' : `创建支付订单失败: ${errMsg}`, debug: errMsg },
+      {
+        success: false,
+        error: error?.message || '服务器内部错误',
+        debug: process.env.NODE_ENV !== 'production' ? error?.stack : undefined
+      },
       { status: 500 }
     );
   }
