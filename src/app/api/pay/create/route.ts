@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWechatPayClient } from '@/lib/payment/wechat-pay';
-import { getSupabaseClient, getSupabaseAdmin } from '@/storage/database/supabase-client';
+import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
 import crypto from 'crypto';
 
 /**
- * 创建微信支付订单（H5 支付）
+ * 创建微信支付订单
  * POST /api/pay/create
  * Body: { orderId: number }
- *
- * H5 支付不需要 openid，微信内跳出浏览器拉起微信支付。
  */
 export async function POST(request: NextRequest) {
   try {
@@ -44,7 +42,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 验证订单归属
+    // 验证订单归属：从 Token 获取用户ID，不允许为他人订单创建支付
     const tokenUserId = auth.userId || auth.guardianId || auth.lawyerId;
     if (order.user_id && tokenUserId && String(order.user_id) !== String(tokenUserId)) {
       return NextResponse.json(
@@ -61,42 +59,55 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 获取用户真实 IP
-    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      request.headers.get('x-real-ip') ||
-      '127.0.0.1';
+    // 生成微信支付订单号（增强随机性，16字节不可预测）
+    const payTradeNo = `WX${Date.now()}${crypto.randomBytes(16).toString('hex').toUpperCase()}`;
 
-    // 调用微信支付 H5 下单
+    // 正式模式：使用真实微信支付
     const wechatPay = getWechatPayClient();
     const callbackUrl = process.env.WEIXIN_CALLBACK_URL || 'https://www.bangbangwenfa.com/api/pay/callback';
 
-    const result = await wechatPay.createH5Order({
-      outTradeNo: `WX${Date.now()}${crypto.randomBytes(16).toString('hex').toUpperCase()}`,
+    // 创建 Native 支付订单
+    const result = await wechatPay.createNativeOrder({
+      outTradeNo: payTradeNo,
       description: `法律咨询服务 - ${order.case_title || '咨询订单'}`,
       amount: order.service_price, // 单位：分
       notifyUrl: callbackUrl,
-      clientIp,
     });
+
+    // 更新订单表，添加微信支付订单号
+    await supabase
+      .from('consult_orders')
+      .update({
+        pay_trade_no: payTradeNo,
+        pay_prepay_id: result.prepayId,
+      })
+      .eq('id', orderId);
 
     return NextResponse.json({
       success: true,
       data: {
-        h5_url: result.h5Url,
+        orderId: orderId,
+        payTradeNo: payTradeNo,
+        codeUrl: result.codeUrl, // 二维码链接
+        prepayId: result.prepayId,
       },
     });
 
   } catch (error: any) {
     console.error('创建微信支付订单失败:', error);
-
-    if (error.message?.includes('配置')) {
-      return NextResponse.json(
-        { success: false, error: '支付配置错误，请联系管理员' },
-        { status: 500 }
-      );
-    }
+    
+    // 返回具体错误信息（临时用仦排查）
+    const errMsg = error?.message || error || '未知错误';
+    const isConfigError = typeof errMsg === 'string' && errMsg.includes('配置');
+    const isKeyError = typeof errMsg === 'string' && (
+      errMsg.includes('私钥') || 
+     errMsg.includes('privateKey') ||
+      errMsg.includes('PRIVATE') ||
+      errMsg.includes('环境变量')
+    );
 
     return NextResponse.json(
-      { success: false, error: '创建支付订单失败' },
+      { success: false, error: isConfigError ? '支付配置错误，请联系管理员' : `创建支付订单失败: ${errMsg}`, debug: errMsg },
       { status: 500 }
     );
   }
