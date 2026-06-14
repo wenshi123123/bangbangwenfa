@@ -1,6 +1,5 @@
-﻿"use client";
+"use client";
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { CursorFollower, ScrollProgress, AnimatedNumber } from "@/components/ui/animated-effects";
 import { Footer } from "@/components/layout/footer";
@@ -291,10 +290,10 @@ function FAQSection() {
 
 
 const heroImages = [
-    { src: "/hero-1.jpg", alt: "王律师 - 民商事争议解决", name: "王律师", specialty: "民商事争议解决", years: "执业 12 年" },
-    { src: "/hero-2.jpg", alt: "陈律师 - 婚姻家庭", name: "陈律师", specialty: "婚姻家庭", years: "执业 10 年" },
-    { src: "/hero-3.jpg", alt: "赵律师 - 劳动争议", name: "赵律师", specialty: "劳动争议", years: "执业 9 年" },
-    { src: "/hero-4.jpg", alt: "温律师 - 公司股东权益", name: "温律师", specialty: "公司股东权益", years: "执业 5 年" },
+    { name: "王律师", specialty: "民商事争议解决", years: "执业 12 年", color: "#C47353", icon: "⚖️" },
+    { name: "陈律师", specialty: "婚姻家庭", years: "执业 10 年", color: "#D4957A", icon: "🏛️" },
+    { name: "赵律师", specialty: "劳动争议", years: "执业 9 年", color: "#8B5E3C", icon: "📋" },
+    { name: "温律师", specialty: "公司股东权益", years: "执业 5 年", color: "#A0522D", icon: "💼" },
 ];
 
 export default function Home() {
@@ -373,24 +372,29 @@ export default function Home() {
                                     {heroImages.map((img, i) => (
                                         <div
                                             key={i}
-                                            className={`absolute inset-0 transition-opacity duration-[800ms] ease-in-out ${
+                                            className={`absolute inset-0 transition-opacity duration-[800ms] ease-in-out flex items-center justify-center ${
                                                 currentImage === i ? "opacity-100 z-10" : "opacity-0 z-0"
                                             }`}
+                                            style={{ background: `linear-gradient(135deg, ${img.color}15 0%, ${img.color}08 50%, #F5EDE5 100%)` }}
                                         >
-                                            <Image
-                                                src={img.src}
-                                                alt={img.alt}
-                                                width={600}
-                                                height={750}
-                                                className="w-full h-full object-cover"
-                                                style={{ maxHeight: "650px" }}
-                                                priority={i === 0}
-                                            />
-                                            {/* Lawyer info overlay */}
-                                            <div className="absolute inset-x-0 bottom-0 pt-10 pb-6 px-5 bg-gradient-to-t from-[rgba(61,50,45,0.85)] via-[rgba(61,50,45,0.4)] to-transparent text-center">
-                                                <div className="font-serif text-[1.3rem] text-white mb-1.5 font-medium">{img.name}</div>
-                                                <div className="font-sans text-[13px] text-white/85 mb-1">{img.specialty}</div>
-                                                <div className="font-sans text-[12px] text-[#D4957A]">{img.years}</div>
+                                            {/* 律师卡片 - 纯CSS设计 */}
+                                            <div className="text-center px-8 py-10">
+                                                {/* 图标 */}
+                                                <div
+                                                    className="mx-auto w-20 h-20 rounded-full flex items-center justify-center text-3xl mb-5 shadow-lg"
+                                                    style={{ background: `linear-gradient(135deg, ${img.color}, ${img.color}dd)` }}
+                                                >
+                                                    <span>{img.icon}</span>
+                                                </div>
+                                                {/* 名字 */}
+                                                <div className="font-serif text-[1.5rem] text-[#3D322D] mb-2 font-medium">{img.name}</div>
+                                                {/* 专长 */}
+                                                <div className="font-sans text-[14px] text-[#8C7B6E] mb-2">{img.specialty}</div>
+                                                {/* 年限 */}
+                                                <div
+                                                    className="inline-block font-sans text-[12px] font-medium rounded-full px-4 py-1"
+                                                    style={{ color: img.color, background: `${img.color}18` }}
+                                                >{img.years}</div>
                                             </div>
                                         </div>
                                     ))}
