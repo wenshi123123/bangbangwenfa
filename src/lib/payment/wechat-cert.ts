@@ -22,7 +22,12 @@ function generateSignature(
   body: string,
   privateKey: string
 ): string {
-  const signStr = `${method}\n${url}\n${timestamp}\n${nonce}\n${body}\n`;
+  const signStr = `${method}
+${url}
+${timestamp}
+${nonce}
+${body}
+`;
   const sign = crypto.createSign('RSA-SHA256');
   sign.update(signStr);
   return sign.sign(privateKey, 'base64');
@@ -133,8 +138,9 @@ async function fetchCertificatesFromWechat(): Promise<Map<string, string>> {
     console.log('成功获取微信平台证书，数量:', certificates.size);
     
     return certificates;
-  } catch (error) {
-    console.error('获取平台证书异常:', error);
+  } catch (error: any) {
+    const errMsg = error?.message || error?.toString?.() || '未知错误';
+    console.error('获取平台证书异常:', { error: errMsg, stack: error?.stack });
     return new Map();
   }
 }
@@ -189,7 +195,10 @@ export async function verifyWechatPaySignature(
   body: string,
   serialNo: string
 ): Promise<{ valid: boolean; reason?: string }> {
-  const signStr = `${timestamp}\n${nonce}\n${body}\n`;
+  const signStr = `${timestamp}
+${nonce}
+${body}
+`;
   
   try {
     // 获取平台证书
@@ -213,9 +222,10 @@ export async function verifyWechatPaySignature(
     }
     
     return { valid: true };
-  } catch (error) {
-    console.error('签名验证异常:', error);
-    return { valid: false, reason: '验证异常' };
+  } catch (error: any) {
+    const errMsg = error?.message || error?.toString?.() || '未知错误';
+    console.error('签名验证异常:', { error: errMsg, stack: error?.stack });
+    return { valid: false, reason: `验证异常: ${errMsg}` };
   }
 }
 
