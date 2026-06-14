@@ -500,9 +500,9 @@ function FAQSection() {
 
 
 const heroImages = [
-    { src: "/hero-1.jpg", alt: "律师咨询服务 - 专业法律团队" },
-    { src: "/hero-2.jpg", alt: "律师咨询服务 - 解读案情" },
-    { src: "/hero-3.jpg", alt: "律师咨询服务 - 法律保障" },
+    { name: "专业法律团队", desc: "资深律师为您保驾护航", color: "#C47353", icon: "⚖️" },
+    { name: "精准解读案情", desc: "深度分析，找到最优解", color: "#D4957A", icon: "🔍" },
+    { name: "全面法律保障", desc: "全方位守护您的权益", color: "#8B5E3C", icon: "🛡️" },
 ];
 
 export default function Home() {
@@ -717,19 +717,24 @@ export default function Home() {
                                     {heroImages.map((img, i) => (
                                         <div
                                             key={i}
-                                            className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+                                            className={`absolute inset-0 transition-opacity duration-700 ease-in-out flex items-center justify-center ${
                                                 currentImage === i ? "opacity-100 z-10" : "opacity-0 z-0"
                                             }`}
+                                            style={{ background: `linear-gradient(135deg, ${img.color}12 0%, ${img.color}06 50%, #F5EDE5 100%)` }}
                                         >
-                                            <Image
-                                                src={img.src}
-                                                alt={img.alt}
-                                                width={600}
-                                                height={750}
-                                                className="w-full h-full object-cover"
-                                                style={{ maxHeight: "650px" }}
-                                                priority={i === 0}
-                                            />
+                                            <div className="text-center px-8 py-10">
+                                                <div
+                                                    className="mx-auto w-20 h-20 rounded-full flex items-center justify-center text-3xl mb-5 shadow-lg"
+                                                    style={{ background: `linear-gradient(135deg, ${img.color}, ${img.color}dd)` }}
+                                                >
+                                                    <span>{img.icon}</span>
+                                                </div>
+                                                <div className="font-serif text-[1.5rem] text-[#3D322D] mb-2 font-medium">{img.name}</div>
+                                                <div
+                                                    className="inline-block font-sans text-[13px] font-medium rounded-full px-4 py-1"
+                                                    style={{ color: img.color, background: `${img.color}18` }}
+                                                >{img.desc}</div>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
