@@ -95,7 +95,12 @@ function generateRequestSignature(
   body: string,
   privateKey: string
 ): string {
-  const signStr = `${method}\n${url}\n${timestamp}\n${nonce}\n${body}\n`;
+  const signStr = `${method}
+${url}
+${timestamp}
+${nonce}
+${body}
+`;
   const sign = crypto.createSign('RSA-SHA256');
   sign.update(signStr);
   return sign.sign(privateKey, 'base64');
@@ -340,8 +345,8 @@ export function getEnvValue(mainKey: string): string {
       if (fs.existsSync(filePath)) {
         return fs.readFileSync(filePath, 'utf8');
       }
-    } catch (e) {
-      console.warn(`无法读取环境变量文件 ${filePath}:`, e);
+    } catch (e: any) {
+      console.warn(`无法读取环境变量文件 ${filePath}:`, e?.message || e);
     }
   }
 
@@ -370,7 +375,8 @@ export function normalizePem(input: string, type: 'PRIVATE KEY' | 'CERTIFICATE')
   if (!input) return input;
 
   // 1) 替换 \n 字面量（用户从 .env 文件复制时的转义序列）
-  let pem = input.replace(/\\n/g, '\n');
+  let pem = input.replace(/\\n/g, '
+');
 
   // 2) 查找 PEM 头尾标记（兼容各种变异写法）
   const beginRegex = /-----BEGIN\s+[\w\s]+-----/;
@@ -384,10 +390,14 @@ export function normalizePem(input: string, type: 'PRIVATE KEY' | 'CERTIFICATE')
     const start = beginMatch.index + beginMatch[0].length;
     const end = endMatch.index;
     const base64Content = pem.slice(start, end).replace(/\s+/g, '');
-    return `${beginMatch[0]}\n${base64Content}\n${endMatch[0]}`;
+    return `${beginMatch[0]}
+${base64Content}
+${endMatch[0]}`;
   }
 
   // 3) 没有头尾标记 → 移除所有空白，补充标准头尾
   const cleanContent = pem.replace(/\s+/g, '');
-  return `-----BEGIN ${type}-----\n${cleanContent}\n-----END ${type}-----`;
+  return `-----BEGIN ${type}-----
+${cleanContent}
+-----END ${type}-----`;
 }
