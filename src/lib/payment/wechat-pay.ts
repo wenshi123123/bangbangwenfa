@@ -116,9 +116,7 @@ function generateAuthorizationHeader(
 
 /**
  * 验证微信支付回调签名
- * 
- * 优先使用微信支付公钥模式（新版），回退到平台证书模式（旧版）。
- * 
+ * 使用微信平台证书验证签名，确保回调来自微信支付
  * @param wechatpayTimestamp 微信回调头 Wechatpay-Timestamp
  * @param wechatpayNonce 微信回调头 Wechatpay-Nonce
  * @param body 原始请求体字符串
@@ -133,26 +131,25 @@ export async function verifyWechatPaySignature(
   wechatpaySignature: string,
   wechatpaySerial: string
 ): Promise<{ valid: boolean; reason?: string }> {
-  // 优先使用微信支付公钥模式
-  const publicKey = getEnvValue('WEIXIN_PUBLIC_KEY');
-  if (publicKey) {
-    console.log('使用微信支付公钥验证签名');
-    const { verifyWithPublicKey } = await import('./wechat-cert');
-    return verifyWithPublicKey(wechatpaySignature, wechatpayTimestamp, wechatpayNonce, body, wechatpaySerial);
-  }
-
-  // 回退到平台证书模式
   const signStr = `${wechatpayTimestamp}\n${wechatpayNonce}\n${body}\n`;
 
   try {
+    // 尝试获取平台证书进行验签
     const { getPlatformCertificate } = await import('./wechat-cert');
     const cert = await getPlatformCertificate(wechatpaySerial);
 
     if (!cert) {
-      console.error('未配置微信平台证书/公钥，签名验证失败');
+      // 生产环境：没有证书必须拒绝
+      if (process.env.DEPLOY_ENV === 'PROD') {
+        console.error('生产环境未配置微信平台证书，签名验证失败');
+        return { valid: false, reason: '未配置平台证书，无法验证签名' };
+      }
+      // 开发环境：记录警告，但仍拒绝（安全优先）
+      console.warn('开发环境未获取到平台证书，签名验证失败');
       return { valid: false, reason: '未获取到平台证书' };
     }
 
+    // 使用平台证书验证签名
     const verifier = crypto.createVerify('RSA-SHA256');
     verifier.update(signStr);
 
@@ -192,33 +189,9 @@ interface CreateNativeOrderResult {
   codeUrl: string;
 }
 
-interface CreateJsapiOrderParams {
-  outTradeNo: string;
-  description: string;
-  amount: number;
-  notifyUrl: string;
-  openid: string;
-}
-
-interface CreateJsapiOrderResult {
-  prepayId: string;
-}
-
-interface CreateH5OrderParams {
-  outTradeNo: string;
-  description: string;
-  amount: number;
-  notifyUrl: string;
-  clientIp: string;
-}
-
-interface CreateH5OrderResult {
-  h5Url: string;
-}
-
 /**
  * 微信支付客户端类
- * 对接微信支付 APIv3 JSAPI 下单接口
+ * 对接微信支付 APIv3 Native 下单接口
  */
 class WechatPayClient {
   private config: WechatPayConfig;
@@ -233,7 +206,7 @@ class WechatPayClient {
    * 支持分段环境变量（EdgeOne Pages 单变量限 1000 字符）
    */
   private getPrivateKey(): string {
-    const key = this.config.privateKey || getEnvValue('WEIXIN_PRIVATE_KEY');
+    let key = this.config.privateKey || getEnvValue('WEIXIN_PRIVATE_KEY');
 
     if (!key) {
       throw new Error('微信支付商户私钥未配置，请设置 WEIXIN_PRIVATE_KEY 环境变量');
@@ -243,15 +216,42 @@ class WechatPayClient {
   }
 
   /**
-   * 发送签名请求到微信支付 API
+   * 创建 Native 支付订单（扫码支付）
+   * 文档: https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_4_1.shtml
    */
-  private async signedRequest(urlPath: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+  async createNativeOrder(params: CreateNativeOrderParams): Promise<CreateNativeOrderResult> {
+    const { outTradeNo, description, amount, notifyUrl } = params;
     const privateKey = this.getPrivateKey();
+
+    // 构建请求体
+    const payload = {
+      appid: this.config.appId,
+      mchid: this.config.mchId,
+      description,
+      out_trade_no: outTradeNo,
+      notify_url: notifyUrl,
+      amount: {
+        total: amount,
+        currency: 'CNY',
+      },
+    };
+
     const bodyStr = JSON.stringify(payload);
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const nonce = crypto.randomBytes(16).toString('hex');
+    const urlPath = '/v3/pay/transactions/native';
 
-    const signature = generateRequestSignature('POST', urlPath, timestamp, nonce, bodyStr, privateKey);
+    // 生成签名
+    const signature = generateRequestSignature(
+      'POST',
+      urlPath,
+      timestamp,
+      nonce,
+      bodyStr,
+      privateKey
+    );
+
+    // 生成 Authorization 头
     const authorization = generateAuthorizationHeader(
       this.config.mchId,
       this.config.serialNo,
@@ -260,6 +260,7 @@ class WechatPayClient {
       signature
     );
 
+    // 调用微信支付 API
     const response = await fetch(`${this.baseUrl}${urlPath}`, {
       method: 'POST',
       headers: {
@@ -271,7 +272,7 @@ class WechatPayClient {
       body: bodyStr,
     });
 
-    const responseData = await response.json() as Record<string, unknown>;
+    const responseData = await response.json();
 
     if (!response.ok) {
       const errMsg = responseData?.message || '未知错误';
@@ -280,130 +281,9 @@ class WechatPayClient {
       throw new Error(`微信支付下单失败: [${errCode}] ${errMsg}`);
     }
 
-    return responseData;
-  }
-
-  /**
-   * 创建 JSAPI 支付订单（微信内H5/小程序支付）
-   * 文档: https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_1_1.shtml
-   */
-  async createJsapiOrder(params: CreateJsapiOrderParams): Promise<CreateJsapiOrderResult> {
-    const { outTradeNo, description, amount, notifyUrl, openid } = params;
-
-    const payload = {
-      appid: this.config.appId,
-      mchid: this.config.mchId,
-      description,
-      out_trade_no: outTradeNo,
-      notify_url: notifyUrl,
-      amount: {
-        total: amount,
-        currency: 'CNY',
-      },
-      payer: {
-        openid,
-      },
-    };
-
-    const responseData = await this.signedRequest('/v3/pay/transactions/jsapi', payload);
-
     return {
-      prepayId: (responseData.prepay_id as string) || '',
-    };
-  }
-
-  /**
-   * 生成 JSAPI 调起支付参数（前端 wx.chooseWXPay 所需）
-   * 文档: https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_1_4.shtml
-   */
-  generateJsapiPayParams(prepayId: string): {
-    appId: string;
-    timeStamp: string;
-    nonceStr: string;
-    package: string;
-    signType: string;
-    paySign: string;
-  } {
-    const privateKey = this.getPrivateKey();
-    const timeStamp = Math.floor(Date.now() / 1000).toString();
-    const nonceStr = crypto.randomBytes(16).toString('hex');
-    const packageStr = `prepay_id=${prepayId}`;
-
-    // 签名串: appId + timeStamp + nonceStr + package
-    const signStr = `${this.config.appId}\n${timeStamp}\n${nonceStr}\n${packageStr}\n`;
-    const sign = crypto.createSign('RSA-SHA256');
-    sign.update(signStr);
-    const paySign = sign.sign(privateKey, 'base64');
-
-    return {
-      appId: this.config.appId,
-      timeStamp,
-      nonceStr,
-      package: packageStr,
-      signType: 'RSA',
-      paySign,
-    };
-  }
-
-  /**
-   * 创建 H5 支付订单（MWEB 支付）
-   * 不需要 openid，微信内跳出浏览器拉起支付
-   * 文档: https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_3_1.shtml
-   */
-  async createH5Order(params: CreateH5OrderParams): Promise<CreateH5OrderResult> {
-    const { outTradeNo, description, amount, notifyUrl, clientIp } = params;
-
-    const payload: Record<string, unknown> = {
-      appid: this.config.appId,
-      mchid: this.config.mchId,
-      description,
-      out_trade_no: outTradeNo,
-      notify_url: notifyUrl,
-      amount: {
-        total: amount,
-        currency: 'CNY',
-      },
-      scene_info: {
-        payer_client_ip: clientIp,
-        h5_info: {
-          type: 'Wap',
-          app_name: '帮帮问法',
-          app_url: process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com',
-        },
-      },
-    };
-
-    const responseData = await this.signedRequest('/v3/pay/transactions/h5', payload);
-
-    return {
-      h5Url: (responseData.h5_url as string) || '',
-    };
-  }
-
-  /**
-   * @deprecated 使用 createJsapiOrder 替代
-   * 创建 Native 支付订单（扫码支付）- 需要开放平台网站应用 AppID
-   */
-  async createNativeOrder(params: CreateNativeOrderParams): Promise<CreateNativeOrderResult> {
-    const { outTradeNo, description, amount, notifyUrl } = params;
-
-    const payload = {
-      appid: this.config.appId,
-      mchid: this.config.mchId,
-      description,
-      out_trade_no: outTradeNo,
-      notify_url: notifyUrl,
-      amount: {
-        total: amount,
-        currency: 'CNY',
-      },
-    };
-
-    const responseData = await this.signedRequest('/v3/pay/transactions/native', payload);
-
-    return {
-      prepayId: (responseData.prepay_id as string) || '',
-      codeUrl: (responseData.code_url as string) || '',
+      prepayId: responseData.prepay_id || '',
+      codeUrl: responseData.code_url || '',
     };
   }
 }
@@ -486,7 +366,7 @@ export function normalizePem(input: string, type: 'PRIVATE KEY' | 'CERTIFICATE')
   if (!input) return input;
 
   // 1) 替换 \n 字面量（用户从 .env 文件复制时的转义序列）
-  const pem = input.replace(/\\n/g, '\n');
+  let pem = input.replace(/\\n/g, '\n');
 
   // 2) 查找 PEM 头尾标记（兼容各种变异写法）
   const beginRegex = /-----BEGIN\s+[\w\s]+-----/;
