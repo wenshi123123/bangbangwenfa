@@ -59,8 +59,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 生成微信支付订单号（增强随机性，16字节不可预测）
-    const payTradeNo = `WX${Date.now()}${crypto.randomBytes(16).toString('hex').toUpperCase()}`;
+    // 生成微信支付订单号（符合微信要求：6~32字符，仅数字字母）
+    // 格式: WX + 时间戳后8位 + 随机10字符 = 20字符，安全范围内
+    const timestamp = Date.now().toString().slice(-8);
+    const randomStr = crypto.randomBytes(5).toString('hex').toUpperCase();
+    const payTradeNo = `WX${timestamp}${randomStr}`;
 
     // 正式模式：使用真实微信支付
     const wechatPay = getWechatPayClient();
@@ -96,7 +99,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('创建微信支付订单失败:', error);
     
-    // 返回具体错误信息（临时用仦排查）
+    // 返回具体错误信息（临时用于排查）
     const errMsg = error?.message || error || '未知错误';
     const isConfigError = typeof errMsg === 'string' && errMsg.includes('配置');
     const isKeyError = typeof errMsg === 'string' && (
