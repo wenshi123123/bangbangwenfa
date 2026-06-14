@@ -72,7 +72,8 @@ async function fetchCertificatesFromWechat(): Promise<Map<string, string>> {
   const mchid = process.env.WEIXIN_MCHID || '';
   const serialNo = process.env.WEIXIN_SERIAL_NO || '';
   const apiV3Key = process.env.WEIXIN_APIV3_KEY || '';
-  const privateKey = process.env.WEIXIN_PRIVATE_KEY || '';
+  // 必须使用 getEnvValue 支持 PART1~PART9 分段拼接
+  const privateKey = getEnvValue('WEIXIN_PRIVATE_KEY');
   
   if (!mchid || !serialNo || !apiV3Key || !privateKey) {
     console.warn('微信支付配置不完整，无法获取平台证书');
@@ -229,9 +230,9 @@ export async function initPlatformCertificates(): Promise<boolean> {
   }
   
   // 如果没有配置商户私钥，跳过自动获取
-  if (!process.env.WEIXIN_PRIVATE_KEY) {
+  if (!getEnvValue('WEIXIN_PRIVATE_KEY')) {
     console.warn('未配置商户私钥(WEIXIN_PRIVATE_KEY)，无法自动获取平台证书');
-    console.warn('请配置 WEIXIN_PRIVATE_KEY 或 WEIXIN_PLATFORM_CERT');
+    console.warn('请配置 WEIXIN_PRIVATE_KEY 或 WEIXIN_PLATFORM_CERT（支持 PART1~PART9 分段）');
     return false;
   }
   
