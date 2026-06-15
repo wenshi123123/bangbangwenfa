@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, QrCode, Loader2, AlertCircle, CheckCircle, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { isMockAuthEnabled } from "@/lib/auth/mock-auth";
 import { useAuth } from "@/hooks/use-auth";
 
 // 支付页面 - 咨询下单后跳转此页面完成支付
@@ -55,7 +54,7 @@ async function apiRequest(path: string, options?: { method?: string; body?: any;
   return res.json();
 }
 
-export default function PayPage() {
+function PayPageInner() {
   const formatPrice = (price: number) => price.toFixed(2);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -389,5 +388,13 @@ export default function PayPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function PayPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#C47353]" /></div>}>
+      <PayPageInner />
+    </Suspense>
   );
 }
