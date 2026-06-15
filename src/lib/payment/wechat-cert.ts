@@ -22,12 +22,7 @@ function generateSignature(
   body: string,
   privateKey: string
 ): string {
-  const signStr = `${method}
-${url}
-${timestamp}
-${nonce}
-${body}
-`;
+  const signStr = `${method}\n${url}\n${timestamp}\n${nonce}\n${body}\n`;
   const sign = crypto.createSign('RSA-SHA256');
   sign.update(signStr);
   return sign.sign(privateKey, 'base64');
@@ -77,8 +72,9 @@ async function fetchCertificatesFromWechat(): Promise<Map<string, string>> {
   const mchid = process.env.WEIXIN_MCHID || '';
   const serialNo = process.env.WEIXIN_SERIAL_NO || '';
   const apiV3Key = process.env.WEIXIN_APIV3_KEY || '';
-  // 必须使用 getEnvValue 支持 PART1~PART9 分段拼接
-  const privateKey = getEnvValue('WEIXIN_PRIVATE_KEY');
+  // 修复：使用 getEnvValue 支持分段环境变量（EdgeOne Pages 单变量限 1000 字符）
+  const rawKey = getEnvValue('WEIXIN_PRIVATE_KEY');
+  const privateKey = rawKey ? normalizePem(rawKey, 'PRIVATE KEY') : '';
   
   if (!mchid || !serialNo || !apiV3Key || !privateKey) {
     console.warn('微信支付配置不完整，无法获取平台证书');
@@ -138,9 +134,8 @@ async function fetchCertificatesFromWechat(): Promise<Map<string, string>> {
     console.log('成功获取微信平台证书，数量:', certificates.size);
     
     return certificates;
-  } catch (error: any) {
-    const errMsg = error?.message || error?.toString?.() || '未知错误';
-    console.error('获取平台证书异常:', { error: errMsg, stack: error?.stack });
+  } catch (error) {
+    console.error('获取平台证书异常:', error);
     return new Map();
   }
 }
@@ -195,10 +190,7 @@ export async function verifyWechatPaySignature(
   body: string,
   serialNo: string
 ): Promise<{ valid: boolean; reason?: string }> {
-  const signStr = `${timestamp}
-${nonce}
-${body}
-`;
+  const signStr = `${timestamp}\n${nonce}\n${body}\n`;
   
   try {
     // 获取平台证书
@@ -222,10 +214,9 @@ ${body}
     }
     
     return { valid: true };
-  } catch (error: any) {
-    const errMsg = error?.message || error?.toString?.() || '未知错误';
-    console.error('签名验证异常:', { error: errMsg, stack: error?.stack });
-    return { valid: false, reason: `验证异常: ${errMsg}` };
+  } catch (error) {
+    console.error('签名验证异常:', error);
+    return { valid: false, reason: '验证异常' };
   }
 }
 
@@ -240,9 +231,9 @@ export async function initPlatformCertificates(): Promise<boolean> {
   }
   
   // 如果没有配置商户私钥，跳过自动获取
-  if (!getEnvValue('WEIXIN_PRIVATE_KEY')) {
+  if (!process.env.WEIXIN_PRIVATE_KEY) {
     console.warn('未配置商户私钥(WEIXIN_PRIVATE_KEY)，无法自动获取平台证书');
-    console.warn('请配置 WEIXIN_PRIVATE_KEY 或 WEIXIN_PLATFORM_CERT（支持 PART1~PART9 分段）');
+    console.warn('请配置 WEIXIN_PRIVATE_KEY 或 WEIXIN_PLATFORM_CERT');
     return false;
   }
   
