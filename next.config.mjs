@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  // 不使用 standalone 输出，因为项目使用自定义 server (server.mts)
   poweredByHeader: false,
   allowedDevOrigins: ['localhost:5000', 'localhost:3000', 'localhost', 'localhost:3007'],
   images: {
