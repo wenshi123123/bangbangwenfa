@@ -27,8 +27,10 @@ RUN pnpm next build
 # 构建 server bundle
 RUN pnpm tsup src/server.mts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
 
-# 清理 dev 依赖，减小镜像体积
+# 清理 dev 依赖，减小镜像体积（保留 typescript，Next.js 运行时加载 next.config.ts 需要）
 RUN pnpm prune --prod
+# 重新安装 typescript 为 prod 依赖，避免运行时 yarn 安装被 only-allow pnpm 拦截
+RUN pnpm add -P typescript
 
 # 运行阶段
 FROM node:20-alpine AS runner
