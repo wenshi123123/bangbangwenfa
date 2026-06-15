@@ -17,6 +17,10 @@ RUN pnpm install --prefer-frozen-lockfile --prefer-offline --prod=false
 # 复制所有源码
 COPY . .
 
+# 构建参数 - 用于破坏 Docker 缓存，确保每次构建使用最新代码
+ARG CACHE_BUST=unknown
+RUN echo "Cache bust: ${CACHE_BUST}"
+
 # 构建应用
 RUN pnpm next build
 
@@ -43,12 +47,12 @@ COPY --from=base /app/dist ./dist
 COPY --from=base /app/scripts ./scripts
 
 # 与 start.sh 中的 DEPLOY_RUN_PORT 保持一致
-ENV DEPLOY_RUN_PORT=3000
-ENV PORT=3000
+ENV DEPLOY_RUN_PORT=5000
+ENV PORT=5000
 ENV NODE_ENV=production
 ENV DEPLOY_ENV=PROD
 
-EXPOSE 3000
+EXPOSE 5000
 
 # 使用 bash 运行启动脚本
 CMD ["bash", "./scripts/start.sh"]
