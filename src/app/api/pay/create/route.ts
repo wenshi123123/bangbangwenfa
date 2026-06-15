@@ -8,6 +8,7 @@ import crypto from 'crypto';
  * 创建微信支付订单
  * POST /api/pay/create
  * Body: { orderId: number }
+ * 支持三种场景：PC(Native扫码)、手机浏览器(H5跳转)、微信内(JSAPI)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -18,12 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { orderId, openid: bodyOpenid, payMethod } = body;
-
-    // 也支持从 URL query 参数获取 openid（小程序 webview 传参场景）
-    const { searchParams } = new URL(request.url);
-    const queryOpenid = searchParams.get('openid') || '';
-    let openid = bodyOpenid || queryOpenid || '';
+    const { orderId } = body;
 
     if (!orderId) {
       return NextResponse.json(
@@ -72,55 +68,53 @@ export async function POST(request: NextRequest) {
     const wechatPay = getWechatPayClient();
     const callbackUrl = process.env.WEIXIN_CALLBACK_URL || 'https://www.bangbangwenfa.com/api/pay/callback';
 
-    // 如果请求了 JSAPI 但没有 openid，尝试从数据库查找
-    if (payMethod === 'jsapi' && !openid) {
-      const userId = auth.userId || auth.guardianId;
-      if (userId) {
-        const { data: guardian } = await supabase
-          .from('guardian_users')
-          .select('openid')
-          .eq('id', userId)
-          .single();
-        if (guardian?.openid) {
-          openid = guardian.openid;
-          console.log('[PayCreate] 从 guardian_users 表查找到 openid:', openid.slice(0, 6) + '***');
-        }
-      }
-      // 也尝试从 consult_orders 表的 openid 字段查找
-      if (!openid && order.openid) {
-        openid = order.openid;
-        console.log('[PayCreate] 从 consult_orders 表查找到 openid');
-      }
-    }
+    // 获取客户端 IP（H5 支付必须）
+    const clientIp =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      '127.0.0.1';
 
-    let result: { prepayId: string; codeUrl?: string };
-    let jsapiPayParams: any = null;
+    // 判断是否移动端请求（前端通过 header 传递）
+    const isMobile = request.headers.get('x-client-device') === 'mobile';
+    const isWechat = (request.headers.get('x-user-agent') || '').includes('micromessenger');
 
-    // 重新判断（可能从数据库获取到了 openid）
-    const shouldUseJsapi = payMethod === 'jsapi' && openid;
+    // 微信内用 JSAPI，手机浏览器用 H5，PC 用 Native（二维码）
+    let payData: { orderId: number; payTradeNo: string; prepayId: string; codeUrl?: string; h5Url?: string };
 
-    if (shouldUseJsapi) {
-      // 微信内 JSAPI 支付
-      const jsapiResult = await wechatPay.createJsapiOrder({
+    if (isWechat) {
+      // 微信内：JSAPI 下单（需要 openid）
+      throw new Error('微信内支付请通过 JSAPI 接口发起');
+    } else if (isMobile) {
+      // 手机浏览器：H5 下单
+      const result = await wechatPay.createH5Order({
         outTradeNo: payTradeNo,
         description: `法律咨询服务 - ${order.case_title || '咨询订单'}`,
         amount: order.service_price,
         notifyUrl: callbackUrl,
-        openid,
+        clientIp,
       });
-      result = { prepayId: jsapiResult.prepayId, codeUrl: '' };
-      // 生成 JSAPI 调起参数
-      jsapiPayParams = wechatPay.generateJsapiPayParams(jsapiResult.prepayId);
-      console.log('[PayCreate] JSAPI 支付参数已生成, prepayId:', jsapiResult.prepayId);
+      payData = {
+        orderId,
+        payTradeNo,
+        prepayId: result.prepayId,
+        h5Url: result.h5Url,
+      };
+      console.log('[Pay/Create] H5订单创建成功:', { h5Url: result.h5Url.substring(0, 60) + '...' });
     } else {
-      // Native 支付（扫码）
-      const nativeResult = await wechatPay.createNativeOrder({
+      // PC：Native 扫码支付（原有逻辑）
+      const result = await wechatPay.createNativeOrder({
         outTradeNo: payTradeNo,
         description: `法律咨询服务 - ${order.case_title || '咨询订单'}`,
-        amount: order.service_price,
+        amount: order.service_price, // 单位：分
         notifyUrl: callbackUrl,
       });
-      result = nativeResult;
+      payData = {
+        orderId,
+        payTradeNo,
+        prepayId: result.prepayId,
+        codeUrl: result.codeUrl,
+      };
+      console.log('[Pay/Create] Native订单创建成功');
     }
 
     // 更新订单表，添加微信支付订单号
@@ -128,19 +122,13 @@ export async function POST(request: NextRequest) {
       .from('consult_orders')
       .update({
         pay_trade_no: payTradeNo,
-        pay_prepay_id: result.prepayId,
+        pay_prepay_id: payData.prepayId,
       })
       .eq('id', orderId);
 
     return NextResponse.json({
       success: true,
-      data: {
-        orderId: orderId,
-        payTradeNo: payTradeNo,
-        codeUrl: result.codeUrl || '', // 二维码链接（Native模式）
-        prepayId: result.prepayId,
-        jsapiPayParams: jsapiPayParams || null, // JSAPI 调起参数（微信内）
-      },
+      data: payData,
     });
 
   } catch (error: any) {

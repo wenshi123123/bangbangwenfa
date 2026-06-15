@@ -30,51 +30,14 @@ export async function updateOrderStatusAfterPayment(body: string): Promise<Payme
     const supabase = getSupabaseAdmin();
 
     // 查询当前订单状态，避免重复处理
-    // 注意：微信回调的 out_trade_no 是 pay_trade_no（WX开头），不是业务 order_no
     const { data: existingOrder } = await supabase
       .from('consult_orders')
-      .select('payment_status, openid, order_no')
-      .eq('pay_trade_no', out_trade_no)
+      .select('payment_status, openid')
+      .eq('order_no', out_trade_no)
       .single();
 
     if (!existingOrder) {
-      // 兼容旧订单：如果没有 pay_trade_no 匹配，尝试用 order_no 兜底
-      console.warn('未通过 pay_trade_no 找到订单，尝试 order_no 兜底匹配:', out_trade_no);
-      const { data: fallbackOrder } = await supabase
-        .from('consult_orders')
-        .select('payment_status, openid, order_no')
-        .eq('order_no', out_trade_no)
-        .single();
-      if (!fallbackOrder) {
-        return { success: false, error: '订单不存在' };
-      }
-      // 如果已经是已支付状态，跳过更新（幂等性）
-      if (fallbackOrder.payment_status === 'paid') {
-        console.log('订单已支付，跳过重复处理:', out_trade_no);
-        return {
-          success: true,
-          order: { order_no: fallbackOrder.order_no, openid: fallbackOrder.openid }
-        };
-      }
-      // 更新订单状态（兜底路径也用 order_no 匹配）
-      const { error: fallbackError } = await supabase
-        .from('consult_orders')
-        .update({
-          payment_status: 'paid',
-          paid_at: new Date().toISOString(),
-          wechat_transaction_id: transaction_id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('order_no', out_trade_no);
-      if (fallbackError) {
-        console.error('更新订单失败(兜底):', fallbackError);
-        return { success: false, error: '更新订单失败' };
-      }
-      console.log('支付成功(兜底匹配)，订单已更新:', out_trade_no);
-      return {
-        success: true,
-        order: { order_no: fallbackOrder.order_no, user_wechat_openid: fallbackOrder.openid }
-      };
+      return { success: false, error: '订单不存在' };
     }
 
     // 如果已经是已支付状态，跳过更新（幂等性）
@@ -82,7 +45,7 @@ export async function updateOrderStatusAfterPayment(body: string): Promise<Payme
       console.log('订单已支付，跳过重复处理:', out_trade_no);
       return { 
         success: true, 
-        order: { order_no: existingOrder.order_no, openid: existingOrder.openid }
+        order: { order_no: out_trade_no, openid: existingOrder.openid }
       };
     }
 
@@ -95,7 +58,7 @@ export async function updateOrderStatusAfterPayment(body: string): Promise<Payme
         wechat_transaction_id: transaction_id,
         updated_at: new Date().toISOString(),
       })
-      .eq('pay_trade_no', out_trade_no);
+      .eq('order_no', out_trade_no);
 
     if (error) {
       console.error('更新订单失败:', error);
@@ -148,7 +111,7 @@ function generateAuthorizationHeader(
   timestamp: string,
   signature: string
 ): string {
-  return `WECHATPAY2-SHA256-RSA2048 mchid="${mchId}",nonce_str="${nonce}",signature="${signature}",serial_no="${serialNo}",timestamp="${timestamp}"`;
+  return `WECHATPAY2-SHA256-RSA2048 mchid="${mchid}",nonce_str="${nonce}",signature="${signature}",serial_no="${serialNo}",timestamp="${timestamp}"`;
 }
 
 /**
@@ -226,30 +189,22 @@ interface CreateNativeOrderResult {
   codeUrl: string;
 }
 
-interface CreateJsapiOrderParams {
+interface CreateH5OrderParams {
   outTradeNo: string;
   description: string;
   amount: number;
   notifyUrl: string;
-  openid: string;
+  clientIp: string;
 }
 
-interface CreateJsapiOrderResult {
+interface CreateH5OrderResult {
   prepayId: string;
-}
-
-export interface JsapiPayParams {
-  appId: string;
-  timeStamp: string;
-  nonceStr: string;
-  package: string;
-  signType: string;
-  paySign: string;
+  h5Url: string;
 }
 
 /**
  * 微信支付客户端类
- * 对接微信支付 APIv3 Native 下单接口
+ * 对接微信支付 APIv3 Native 下单接口 + H5 下单接口
  */
 class WechatPayClient {
   private config: WechatPayConfig;
@@ -284,7 +239,7 @@ class WechatPayClient {
     // 构建请求体
     const payload = {
       appid: this.config.appId,
-      mchid: this.config.mchId,
+      mchid: this.config.mchid,
       description,
       out_trade_no: outTradeNo,
       notify_url: notifyUrl,
@@ -370,16 +325,17 @@ class WechatPayClient {
   }
 
   /**
-   * 创建 JSAPI 支付订单（微信内 H5 支付）
-   * 文档: https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_1_1.shtml
+   * 创建 H5 支付订单（手机浏览器跳转微信支付）
+   * 文档: https://pay.weixin.qq.com/doc/v3/apis/chapter3_4_3.shtml
    */
-  async createJsapiOrder(params: CreateJsapiOrderParams): Promise<CreateJsapiOrderResult> {
-    const { outTradeNo, description, amount, notifyUrl, openid } = params;
+  async createH5Order(params: CreateH5OrderParams): Promise<CreateH5OrderResult> {
+    const { outTradeNo, description, amount, notifyUrl, clientIp } = params;
     const privateKey = this.getPrivateKey();
 
+    // 构建请求体（H5 支付必须包含 scene_info 和 payer_client_ip）
     const payload = {
       appid: this.config.appId,
-      mchid: this.config.mchId,
+      mchid: this.config.mchid,
       description,
       out_trade_no: outTradeNo,
       notify_url: notifyUrl,
@@ -387,27 +343,29 @@ class WechatPayClient {
         total: amount,
         currency: 'CNY',
       },
-      payer: {
-        openid,
+      scene_info: {
+        payer_client_ip: clientIp,
+        h5_info: {
+          type: 'Wap',
+        },
       },
     };
 
     const bodyStr = JSON.stringify(payload);
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const nonce = crypto.randomBytes(16).toString('hex');
-    const urlPath = '/v3/pay/transactions/jsapi';
+    const urlPath = '/v3/pay/transactions/h5';
 
-    console.log('[WechatPay JSAPI] 下单参数:', {
+    console.log('[WechatPay] H5下单参数:', {
       appid: this.config.appId,
       mchid: this.config.mchId,
       outTradeNo,
       amount,
-      description,
+      clientIp,
       notifyUrl,
-      openid,
-      openidLength: openid?.length || 0,
     });
 
+    // 生成签名
     const signature = generateRequestSignature(
       'POST',
       urlPath,
@@ -417,6 +375,7 @@ class WechatPayClient {
       privateKey
     );
 
+    // 生成 Authorization 头
     const authorization = generateAuthorizationHeader(
       this.config.mchId,
       this.config.serialNo,
@@ -425,6 +384,7 @@ class WechatPayClient {
       signature
     );
 
+    // 调用微信支付 API
     const response = await fetch(`${this.baseUrl}${urlPath}`, {
       method: 'POST',
       headers: {
@@ -441,46 +401,17 @@ class WechatPayClient {
     if (!response.ok) {
       const errMsg = responseData?.message || '未知错误';
       const errCode = responseData?.code || 'UNKNOWN';
-      const errDetail = responseData?.detail || '';
-      console.error('微信支付 JSAPI 下单失败:', {
+      console.error('微信支付H5下单失败:', {
         code: errCode,
         message: errMsg,
-        detail: errDetail,
         status: response.status,
-        fullResponse: JSON.stringify(responseData),
       });
-      throw new Error(`微信支付JSAPI下单失败: [${errCode}] ${errMsg}${errDetail ? ` - ${JSON.stringify(errDetail)}` : ''}`);
+      throw new Error(`微信支付H5下单失败: [${errCode}] ${errMsg}`);
     }
 
     return {
       prepayId: responseData.prepay_id || '',
-    };
-  }
-
-  /**
-   * 生成 JSAPI 调起支付参数（用于 WeixinJSBridge.invoke）
-   * 文档: https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_1_4.shtml
-   */
-  generateJsapiPayParams(prepayId: string): JsapiPayParams {
-    const privateKey = this.getPrivateKey();
-    const timeStamp = Math.floor(Date.now() / 1000).toString();
-    const nonceStr = crypto.randomBytes(16).toString('hex');
-    const packageStr = `prepay_id=${prepayId}`;
-
-    // 签名串格式: appId + "\n" + timeStamp + "\n" + nonceStr + "\n" + packageStr + "\n"
-    const signStr = `${this.config.appId}\n${timeStamp}\n${nonceStr}\n${packageStr}\n`;
-
-    const sign = crypto.createSign('RSA-SHA256');
-    sign.update(signStr);
-    const paySign = sign.sign(privateKey, 'base64');
-
-    return {
-      appId: this.config.appId,
-      timeStamp,
-      nonceStr,
-      package: packageStr,
-      signType: 'RSA',
-      paySign,
+      h5Url: responseData.h5_url || '',
     };
   }
 }
