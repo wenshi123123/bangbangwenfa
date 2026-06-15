@@ -8,7 +8,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { cn } from "@/lib/utils";
 import { isMockAuthEnabled } from "@/lib/auth/mock-auth";
 import { useAuth } from "@/hooks/use-auth";
-import { formatPrice } from "@/lib/price-utils";
 
 // 支付页面 - 咨询下单后跳转此页面完成支付
 
@@ -57,6 +56,7 @@ async function apiRequest(path: string, options?: { method?: string; body?: any;
 }
 
 export default function PayPage() {
+  const formatPrice = (price: number) => price.toFixed(2);
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderNo = searchParams.get('orderNo');
