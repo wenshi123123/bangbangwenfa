@@ -82,11 +82,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 获取用户真实 IP
-    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      request.headers.get('x-real-ip') ||
-      '127.0.0.1';
-
     // 生成订单号
     const orderNo = generateOrderNo();
 
@@ -100,13 +95,12 @@ export async function POST(request: NextRequest) {
                   : isCriminal ? '刑事律师（臻选）' 
                   : '律师入驻';
 
-    // 调用微信支付 H5 创建订单
-    const result = await wechatPay.createH5Order({
+    // 调用微信支付 Native API 创建订单
+    const result = await wechatPay.createNativeOrder({
       description: `律师入驻会员费 - ${packageName}`,
       outTradeNo: orderNo,
-      amount: application.package_price,
+      amount: application.package_price, // 单位：分
       notifyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.bangbangwenfa.com'}/api/lawyer/pay/callback`,
-      clientIp,
     });
 
     // 保存订单号到数据库
@@ -119,14 +113,14 @@ export async function POST(request: NextRequest) {
       orderNo,
       applicationId,
       packagePrice: application.package_price,
-      h5Url: result.h5Url,
+      codeUrl: result.codeUrl,
     });
 
     return NextResponse.json({
       success: true,
       data: {
         orderId: orderNo,
-        h5_url: result.h5Url,
+        codeUrl: result.codeUrl, // 微信支付二维码链接
         amount: application.package_price,
         status: 'pending',
       },
