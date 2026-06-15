@@ -47,4 +47,17 @@ assets/image_*.png
 
 # pnpm 锁文件（不使用 npm）
 package-lock.json
-  
+
+# 调试和临时文件
+_check_*.js
+_debug_*.mjs
+_deploy_*.js
+_query.js
+deploy-now.js
+nul
+*.yaml
+*.png
+cr_deploy*.txt
+console.error*
+.playwright-cli/
+test-results/
