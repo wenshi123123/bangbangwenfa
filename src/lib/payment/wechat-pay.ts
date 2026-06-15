@@ -124,9 +124,48 @@ function generateAuthorizationHeader(
  * @param wechatpaySerial 微信回调头 Wechatpay-Serial
  * @returns 验证结果
  */
-// verifyWechatPaySignature 统一由 wechat-cert.ts 提供
-// 参数顺序: (signature, timestamp, nonce, body, serialNo)
-export { verifyWechatPaySignature } from './wechat-cert';
+export async function verifyWechatPaySignature(
+  wechatpayTimestamp: string,
+  wechatpayNonce: string,
+  body: string,
+  wechatpaySignature: string,
+  wechatpaySerial: string
+): Promise<{ valid: boolean; reason?: string }> {
+  const signStr = `${wechatpayTimestamp}\n${wechatpayNonce}\n${body}\n`;
+
+  try {
+    // 尝试获取平台证书进行验签
+    const { getPlatformCertificate } = await import('./wechat-cert');
+    const cert = await getPlatformCertificate(wechatpaySerial);
+
+    if (!cert) {
+      // 生产环境：没有证书必须拒绝
+      if (process.env.DEPLOY_ENV === 'PROD') {
+        console.error('生产环境未配置微信平台证书，签名验证失败');
+        return { valid: false, reason: '未配置平台证书，无法验证签名' };
+      }
+      // 开发环境：记录警告，但仍拒绝（安全优先）
+      console.warn('开发环境未获取到平台证书，签名验证失败');
+      return { valid: false, reason: '未获取到平台证书' };
+    }
+
+    // 使用平台证书验证签名
+    const verifier = crypto.createVerify('RSA-SHA256');
+    verifier.update(signStr);
+
+    const isValid = verifier.verify(cert, wechatpaySignature, 'base64');
+
+    if (!isValid) {
+      console.error('微信支付回调签名验证失败');
+      return { valid: false, reason: '签名不匹配' };
+    }
+
+    return { valid: true };
+  } catch (error) {
+    console.error('签名验证异常:', error);
+    return { valid: false, reason: '验证异常' };
+  }
+}
 
 // ==================== 微信支付客户端 ====================
 
@@ -150,22 +189,9 @@ interface CreateNativeOrderResult {
   codeUrl: string;
 }
 
-interface CreateH5OrderParams {
-  outTradeNo: string;
-  description: string;
-  amount: number;
-  notifyUrl: string;
-  clientIp: string;
-}
-
-interface CreateH5OrderResult {
-  prepayId: string;
-  h5Url: string;
-}
-
 /**
  * 微信支付客户端类
- * 对接微信支付 APIv3（Native / H5 / JSAPI）
+ * 对接微信支付 APIv3 Native 下单接口
  */
 class WechatPayClient {
   private config: WechatPayConfig;
@@ -177,35 +203,81 @@ class WechatPayClient {
 
   /**
    * 读取商户私钥
+   * 支持分段环境变量（EdgeOne Pages 单变量限 1000 字符）
    */
   private getPrivateKey(): string {
     let key = this.config.privateKey || getEnvValue('WEIXIN_PRIVATE_KEY');
-    if (!key || key.trim() === '') {
-      throw new Error('微信支付商户私钥未配置，请设置 WEIXIN_PRIVATE_KEY 环境变量（支持 PART1~PART9 分段）');
+
+    if (!key) {
+      throw new Error('微信支付商户私钥未配置，请设置 WEIXIN_PRIVATE_KEY 环境变量');
     }
+
     return normalizePem(key, 'PRIVATE KEY');
   }
 
   /**
-   * 通用下单方法：构建签名并发送请求
+   * 创建 Native 支付订单（扫码支付）
+   * 文档: https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_4_1.shtml
    */
-  private async createOrder(
-    urlPath: string,
-    payload: Record<string, any>
-  ): Promise<any> {
+  async createNativeOrder(params: CreateNativeOrderParams): Promise<CreateNativeOrderResult> {
+    const { outTradeNo, description, amount, notifyUrl } = params;
     const privateKey = this.getPrivateKey();
+
+    // 构建请求体
+    const payload = {
+      appid: this.config.appId,
+      mchid: this.config.mchId,
+      description,
+      out_trade_no: outTradeNo,
+      notify_url: notifyUrl,
+      amount: {
+        total: amount,
+        currency: 'CNY',
+      },
+    };
+
     const bodyStr = JSON.stringify(payload);
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const nonce = crypto.randomBytes(16).toString('hex');
+    const urlPath = '/v3/pay/transactions/native';
 
+    // 【诊断日志】打印关键参数，排查 PARAM_ERROR
+    console.log('[WechatPay] 下单参数:', {
+      appid: this.config.appId,
+      mchid: this.config.mchId,
+      serialNo: this.config.serialNo,
+      outTradeNo,
+      outTradeNoLength: outTradeNo.length,
+      amount,
+      description,
+      notifyUrl,
+      privateKeyLength: privateKey.length,
+      privateKeyHasBegin: privateKey.includes('BEGIN'),
+      privateKeyHasEnd: privateKey.includes('END'),
+    });
+
+    // 生成签名
     const signature = generateRequestSignature(
-      'POST', urlPath, timestamp, nonce, bodyStr, privateKey
+      'POST',
+      urlPath,
+      timestamp,
+      nonce,
+      bodyStr,
+      privateKey
     );
 
+    console.log('[WechatPay] 签名长度:', signature.length);
+
+    // 生成 Authorization 头
     const authorization = generateAuthorizationHeader(
-      this.config.mchId, this.config.serialNo, nonce, timestamp, signature
+      this.config.mchId,
+      this.config.serialNo,
+      nonce,
+      timestamp,
+      signature
     );
 
+    // 调用微信支付 API
     const response = await fetch(`${this.baseUrl}${urlPath}`, {
       method: 'POST',
       headers: {
@@ -222,60 +294,20 @@ class WechatPayClient {
     if (!response.ok) {
       const errMsg = responseData?.message || '未知错误';
       const errCode = responseData?.code || 'UNKNOWN';
-      console.error('微信支付下单失败:', { code: errCode, message: errMsg, status: response.status });
-      throw new Error(`微信支付下单失败: [${errCode}] ${errMsg}`);
+      const errDetail = responseData?.detail || '';
+      console.error('微信支付下单失败:', {
+        code: errCode,
+        message: errMsg,
+        detail: errDetail,
+        status: response.status,
+        fullResponse: JSON.stringify(responseData),
+      });
+      throw new Error(`微信支付下单失败: [${errCode}] ${errMsg}${errDetail ? ` - ${JSON.stringify(errDetail)}` : ''}`);
     }
-
-    return responseData;
-  }
-
-  /**
-   * 创建 Native 支付订单（扫码支付）
-   */
-  async createNativeOrder(params: CreateNativeOrderParams): Promise<CreateNativeOrderResult> {
-    const { outTradeNo, description, amount, notifyUrl } = params;
-
-    const responseData = await this.createOrder('/v3/pay/transactions/native', {
-      appid: this.config.appId,
-      mchid: this.config.mchId,
-      description,
-      out_trade_no: outTradeNo,
-      notify_url: notifyUrl,
-      amount: { total: amount, currency: 'CNY' },
-    });
 
     return {
       prepayId: responseData.prepay_id || '',
       codeUrl: responseData.code_url || '',
-    };
-  }
-
-  /**
-   * 创建 H5 支付订单
-   */
-  async createH5Order(params: CreateH5OrderParams): Promise<CreateH5OrderResult> {
-    const { outTradeNo, description, amount, notifyUrl, clientIp } = params;
-
-    const responseData = await this.createOrder('/v3/pay/transactions/h5', {
-      appid: this.config.appId,
-      mchid: this.config.mchId,
-      description,
-      out_trade_no: outTradeNo,
-      notify_url: notifyUrl,
-      amount: { total: amount, currency: 'CNY' },
-      scene_info: {
-        payer_client_ip: clientIp,
-        h5_info: {
-          type: 'Wap',
-          app_name: '帮帮问法',
-          app_url: 'https://bangbangwenfa.com',
-        },
-      },
-    });
-
-    return {
-      prepayId: responseData.prepay_id || '',
-      h5Url: responseData.h5_url || '',
     };
   }
 }
@@ -289,22 +321,15 @@ export function getWechatPayClient(): WechatPayClient {
     mchId: process.env.WEIXIN_MCHID || '',
     serialNo: process.env.WEIXIN_SERIAL_NO || '',
     apiV3Key: process.env.WEIXIN_APIV3_KEY || '',
-    privateKey: getEnvValue('WEIXIN_PRIVATE_KEY'),
+    privateKey: process.env.WEIXIN_PRIVATE_KEY || '',
   };
 
-  const missing: string[] = [];
-  if (!config.appId) missing.push('WEIXIN_APPID');
-  if (!config.mchId) missing.push('WEIXIN_MCHID');
-  if (!config.serialNo) missing.push('WEIXIN_SERIAL_NO');
-  if (!config.apiV3Key) missing.push('WEIXIN_APIV3_KEY');
-  if (!config.privateKey) missing.push('WEIXIN_PRIVATE_KEY（支持 PART1~PART9 分段）');
+  if (!config.appId || !config.mchId) {
+    console.warn('微信支付配置不完整，请检查 WEIXIN_APPID 和 WEIXIN_MCHID 环境变量');
+  }
 
-  if (missing.length > 0) {
-    const msg = `微信支付配置不完整，缺少环境变量: ${missing.join(', ')}`;
-    if (process.env.DEPLOY_ENV === 'PROD') {
-      throw new Error(msg);
-    }
-    console.warn(msg);
+  if (!config.serialNo || !config.apiV3Key) {
+    console.warn('微信支付安全配置不完整，请检查 WEIXIN_SERIAL_NO 和 WEIXIN_APIV3_KEY 环境变量');
   }
 
   return new WechatPayClient(config);
@@ -313,23 +338,19 @@ export function getWechatPayClient(): WechatPayClient {
 // ==================== PEM 工具函数 ====================
 
 /**
- * 读取支持分段的环境变量（CloudBase 单变量长度限制）
+ * 读取支持分段的环境变量（EdgeOne Pages 单变量限 1000 字符）
+ *
+ * 当主变量 WEIXIN_XXX 内容超长时，可拆分为：
+ *   WEIXIN_XXX_PART1 = 前 800 字符
+ *   WEIXIN_XXX_PART2 = 剩余字符
+ *   ...
+ *   WEIXIN_XXX_PART9 = 最后部分
+ *
+ * 此函数会按顺序拼接所有分段。
  */
 export function getEnvValue(mainKey: string): string {
   const main = process.env[mainKey] || '';
   if (main) return main;
-
-  const filePath = process.env[`${mainKey}_FILE`];
-  if (filePath) {
-    try {
-      const fs = require('fs');
-      if (fs.existsSync(filePath)) {
-        return fs.readFileSync(filePath, 'utf8');
-      }
-    } catch (e: any) {
-      console.warn(`无法读取环境变量文件 ${filePath}:`, e?.message || e);
-    }
-  }
 
   const parts: string[] = [];
   for (let i = 1; i <= 9; i++) {
@@ -340,13 +361,25 @@ export function getEnvValue(mainKey: string): string {
 }
 
 /**
- * 将 PEM 内容规范化为标准 PEM 多行格式
+ * 将 PEM 内容规范化为正确的 PEM 多行格式
+ *
+ * 支持各种输入格式：
+ *   - 标准 PEM（含头尾和 Base64，可能含换行）
+ *   - 纯 Base64 单行（无头尾）
+ *   - 含 \n 转义的 PEM
+ *   - 带有多余空白/格式错误的 PEM（如 -----BEGIN PRIVATE KEY---）
+ *   - 分段存储的 PEM（跨 PART1~9 变量拼接）
+ *
+ * EdgeOne Pages 环境变量不能包含空白字符且单变量限 1000 字符，
+ * 此函数负责还原为标准 PEM 格式供 crypto 模块使用。
  */
 export function normalizePem(input: string, type: 'PRIVATE KEY' | 'CERTIFICATE'): string {
   if (!input) return input;
 
+  // 1) 替换 \n 字面量（用户从 .env 文件复制时的转义序列）
   let pem = input.replace(/\\n/g, '\n');
 
+  // 2) 查找 PEM 头尾标记（兼容各种变异写法）
   const beginRegex = /-----BEGIN\s+[\w\s]+-----/;
   const endRegex = /-----END\s+[\w\s]+-----/;
 
@@ -354,12 +387,14 @@ export function normalizePem(input: string, type: 'PRIVATE KEY' | 'CERTIFICATE')
   const endMatch = pem.match(endRegex);
 
   if (beginMatch && endMatch && beginMatch.index !== undefined && endMatch.index !== undefined) {
+    // 有头尾标记 → 提取中间 Base64 内容，移除所有空白，用标准格式重组
     const start = beginMatch.index + beginMatch[0].length;
     const end = endMatch.index;
     const base64Content = pem.slice(start, end).replace(/\s+/g, '');
     return `${beginMatch[0]}\n${base64Content}\n${endMatch[0]}`;
   }
 
+  // 3) 没有头尾标记 → 移除所有空白，补充标准头尾
   const cleanContent = pem.replace(/\s+/g, '');
   return `-----BEGIN ${type}-----\n${cleanContent}\n-----END ${type}-----`;
 }
