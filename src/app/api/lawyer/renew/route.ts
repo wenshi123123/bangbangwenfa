@@ -3,7 +3,6 @@ import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { getWechatPayClient } from '@/lib/payment/wechat-pay';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
 import { notifyOrder } from '@/lib/notify/webhook';
-import crypto from 'crypto';
 
 // 生成订单号
 function generateOrderNo(): string {
@@ -162,26 +161,20 @@ export async function POST(request: NextRequest) {
       expiresAt = calculateExpiry(now, months);
     }
 
-    // 获取用户真实 IP
-    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      request.headers.get('x-real-ip') ||
-      '127.0.0.1';
-
-    // 调用微信支付创建订单（H5 支付）
+    // 调用微信支付 Native API 创建订单
     const wechatPay = getWechatPayClient();
-    const payResult = await wechatPay.createH5Order({
+    const payResult = await wechatPay.createNativeOrder({
       description: `律师会员续费 - ${months}个月`,
       outTradeNo: orderNo,
       amount: price,
       notifyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.bangbangwenfa.com'}/api/lawyer/renew/callback`,
-      clientIp,
     });
 
     console.log('律师续费支付创建成功:', {
       orderNo,
       lawyerId: lawyer.id,
       packagePrice: price,
-      h5Url: payResult.h5Url,
+      codeUrl: payResult.codeUrl,
     });
 
     // Webhook 通知
@@ -198,7 +191,7 @@ export async function POST(request: NextRequest) {
       success: true,
       data: {
         order_id: orderNo,
-        h5_url: payResult.h5Url,
+        code_url: payResult.codeUrl,
         amount: price,
         months: months,
         expires_at: expiresAt.toISOString(),
