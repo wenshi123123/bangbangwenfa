@@ -237,7 +237,7 @@ class WechatPayClient {
 
     const responseData = await this.createOrder('/v3/pay/transactions/native', {
       appid: this.config.appId,
-      mchid: this.config.mchid,
+      mchid: this.config.mchId,
       description,
       out_trade_no: outTradeNo,
       notify_url: notifyUrl,
@@ -258,7 +258,7 @@ class WechatPayClient {
 
     const responseData = await this.createOrder('/v3/pay/transactions/h5', {
       appid: this.config.appId,
-      mchid: this.config.mchid,
+      mchid: this.config.mchId,
       description,
       out_trade_no: outTradeNo,
       notify_url: notifyUrl,
