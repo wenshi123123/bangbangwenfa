@@ -94,18 +94,12 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('创建微信支付订单失败:', error);
+    const errorMsg = error?.message || error?.toString() || '未知错误';
+    console.error('创建微信支付订单失败:', errorMsg);
     
-    // 检查是否是配置错误
-    if (error.message?.includes('配置')) {
-      return NextResponse.json(
-        { success: false, error: '支付配置错误，请联系管理员' },
-        { status: 500 }
-      );
-    }
-
+    // 返回详细错误信息以便调试
     return NextResponse.json(
-      { success: false, error: '创建支付订单失败' },
+      { success: false, error: `创建支付订单失败: ${errorMsg}` },
       { status: 500 }
     );
   }
