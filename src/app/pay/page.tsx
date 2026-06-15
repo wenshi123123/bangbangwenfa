@@ -48,6 +48,36 @@ interface PayResult {
   payTradeNo: string;
   codeUrl: string;
   prepayId: string;
+  jsapiPayParams?: {
+    appId: string;
+    timeStamp: string;
+    nonceStr: string;
+    package: string;
+    signType: string;
+    paySign: string;
+  } | null;
+}
+
+// 声明微信 JSAPI 类型
+declare global {
+  interface Window {
+    WeixinJSBridge?: {
+      invoke: (method: string, params: Record<string, unknown>, callback: (res: { err_msg?: string }) => void) => void;
+    };
+    wx?: {
+      chooseWXPay: (params: {
+        appId: string;
+        timestamp: string;
+        nonceStr: string;
+        package: string;
+        signType: string;
+        paySign: string;
+        success: () => void;
+        fail: (err: unknown) => void;
+        cancel: () => void;
+      }) => void;
+    };
+  }
 }
 
 interface QrCodeResponse {
@@ -74,21 +104,31 @@ function PayContent() {
   const [isPolling, setIsPolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [isWechat, setIsWechat] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 检测是否为移动端设备
+  // 检测是否为移动端设备 + 微信环境
   useEffect(() => {
-    const checkMobile = () => {
+    const checkEnv = () => {
       const userAgent = navigator.userAgent || '';
       const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
       const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
       setIsMobile(isMobileDevice || (isTouchDevice && window.innerWidth < 768));
+      setIsWechat(/micromessenger/i.test(userAgent));
     };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    checkEnv();
+    window.addEventListener('resize', checkEnv);
+    return () => window.removeEventListener('resize', checkEnv);
   }, []);
+
+  // 从 URL 参数中获取 openid 并写入 localStorage（小程序 webview 传参场景）
+  useEffect(() => {
+    const urlOpenid = searchParams.get('openid');
+    if (urlOpenid && urlOpenid.length > 10) {
+      localStorage.setItem('wx_openid', urlOpenid);
+    }
+  }, [searchParams]);
 
   // 获取订单信息
   const fetchOrder = async () => {
@@ -140,21 +180,35 @@ function PayContent() {
     if (!isMobile) setQrLoading(true);
     setError(null);
     try {
+      // 微信内：使用 JSAPI 支付
+      const openid = localStorage.getItem('wx_openid') || '';
+      const requestBody: Record<string, unknown> = { orderId: Number(orderId) };
+      if (isWechat && openid) {
+        requestBody.payMethod = 'jsapi';
+        requestBody.openid = openid;
+      }
+
       const response = await apiRequest('/api/pay/create', {
         method: 'POST',
-        body: JSON.stringify({ orderId: Number(orderId) })
+        body: JSON.stringify(requestBody)
       });
       const data = await response.json();
       if (data.success) {
         setPayResult(data.data);
         setShowQrCode(true);
-        if (!isMobile) {
+
+        if (isWechat && data.data.jsapiPayParams) {
+          // 微信内：调起 JSAPI 支付
+          invokeWechatJsapiPay(data.data.jsapiPayParams);
+        } else if (!isMobile) {
+          // 电脑端：生成二维码
           try {
             await generateQrCode(data.data.codeUrl);
           } catch (qrError: any) {
             console.error('生成二维码失败（支付订单已创建）:', qrError);
           }
         }
+        // 手机非微信环境：展示 Native 支付的 codeUrl 作为兜底
       } else {
         const errMsg = data.error || data.debug || '创建支付订单失败';
         setError(errMsg);
@@ -171,6 +225,54 @@ function PayContent() {
     } finally {
       setPayLoading(false);
       setQrLoading(false);
+    }
+  };
+
+  // 微信内 JSAPI 调起支付
+  const invokeWechatJsapiPay = (params: PayResult['jsapiPayParams']) => {
+    if (!params) return;
+
+    const doPay = () => {
+      if (typeof window.WeixinJSBridge !== 'undefined') {
+        window.WeixinJSBridge.invoke('getBrandWCPayRequest', {
+          appId: params.appId,
+          timeStamp: params.timeStamp,
+          nonceStr: params.nonceStr,
+          package: params.package,
+          signType: params.signType,
+          paySign: params.paySign,
+        }, (res) => {
+          if (res.err_msg === 'get_brand_wcpay_request:ok') {
+            // 支付成功 → 轮询会检测到 paid 状态并跳转
+            console.log('[JSAPI Pay] 支付成功');
+          } else if (res.err_msg === 'get_brand_wcpay_request:cancel') {
+            setError('支付已取消');
+          } else {
+            setError('支付失败，请重试');
+          }
+        });
+      } else if (typeof window.wx !== 'undefined' && window.wx.chooseWXPay) {
+        window.wx.chooseWXPay({
+          appId: params.appId,
+          timestamp: params.timeStamp,
+          nonceStr: params.nonceStr,
+          package: params.package,
+          signType: params.signType,
+          paySign: params.paySign,
+          success: () => { console.log('[wx Pay] 支付成功'); },
+          fail: () => setError('支付失败，请重试'),
+          cancel: () => setError('支付已取消'),
+        });
+      } else {
+        setError('当前环境不支持微信支付，请在微信中打开此页面');
+      }
+    };
+
+    // WeixinJSBridge 可能尚未注入，需要监听 ready 事件
+    if (typeof window.WeixinJSBridge === 'undefined') {
+      document.addEventListener('WeixinJSBridgeReady', doPay, false);
+    } else {
+      doPay();
     }
   };
 
@@ -241,20 +343,35 @@ function PayContent() {
                 <Card className="card-apple mb-4">
                   <CardHeader className="pb-3 sm:pb-4 text-center">
                     <CardTitle className="flex items-center justify-center gap-2 text-base sm:text-lg"><QrCode className="h-5 w-5 text-green-500" />微信支付</CardTitle>
-                    <CardDescription>点击下方按钮唤起微信支付</CardDescription>
+                    <CardDescription>
+                      {isWechat && payResult?.jsapiPayParams ? '正在唤起微信支付...' : isWechat ? '正在准备支付...' : '请使用微信扫一扫支付'}
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="text-center py-4 border-t border-b border-gray-100">
                       <p className="text-sm text-muted-foreground mb-1">应付金额</p>
                       <p className="text-3xl sm:text-4xl font-bold text-gradient">¥{order ? formatPrice(order.servicePrice) : '0.00'}</p>
                     </div>
-                    <Button onClick={() => { if (payResult.codeUrl) { window.location.href = payResult.codeUrl; } }} className="w-full h-14 text-lg font-medium bg-[#07c160] hover:bg-[#06ad56] text-white rounded-xl" disabled={!payResult.codeUrl}>
-                      <Smartphone className="h-5 w-5 mr-2" />确认支付
-                    </Button>
-                    <div className="text-center space-y-2">
-                      {isPolling && (<div className="flex items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /><span>等待支付...</span></div>)}
-                      <p className="text-xs text-muted-foreground">点击按钮后将跳转至微信支付页面</p>
-                    </div>
+                    {isWechat ? (
+                      <div className="text-center space-y-2">
+                        {isPolling && (<div className="flex items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /><span>等待支付...</span></div>)}
+                        {payResult?.jsapiPayParams ? (
+                          <p className="text-xs text-muted-foreground">支付窗口已弹出，请在微信内完成支付</p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">正在准备支付，请稍候...</p>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <Button onClick={() => { if (payResult.codeUrl) { window.location.href = payResult.codeUrl; } }} className="w-full h-14 text-lg font-medium bg-[#07c160] hover:bg-[#06ad56] text-white rounded-xl" disabled={!payResult.codeUrl}>
+                          <Smartphone className="h-5 w-5 mr-2" />确认支付
+                        </Button>
+                        <div className="text-center space-y-2">
+                          {isPolling && (<div className="flex items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /><span>等待支付...</span></div>)}
+                          <p className="text-xs text-muted-foreground">点击按钮后将跳转至微信支付页面</p>
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
                 <Card className="card-apple">

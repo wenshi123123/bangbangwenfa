@@ -189,6 +189,27 @@ interface CreateNativeOrderResult {
   codeUrl: string;
 }
 
+interface CreateJsapiOrderParams {
+  outTradeNo: string;
+  description: string;
+  amount: number;
+  notifyUrl: string;
+  openid: string;
+}
+
+interface CreateJsapiOrderResult {
+  prepayId: string;
+}
+
+export interface JsapiPayParams {
+  appId: string;
+  timeStamp: string;
+  nonceStr: string;
+  package: string;
+  signType: string;
+  paySign: string;
+}
+
 /**
  * 微信支付客户端类
  * 对接微信支付 APIv3 Native 下单接口
@@ -308,6 +329,121 @@ class WechatPayClient {
     return {
       prepayId: responseData.prepay_id || '',
       codeUrl: responseData.code_url || '',
+    };
+  }
+
+  /**
+   * 创建 JSAPI 支付订单（微信内 H5 支付）
+   * 文档: https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_1_1.shtml
+   */
+  async createJsapiOrder(params: CreateJsapiOrderParams): Promise<CreateJsapiOrderResult> {
+    const { outTradeNo, description, amount, notifyUrl, openid } = params;
+    const privateKey = this.getPrivateKey();
+
+    const payload = {
+      appid: this.config.appId,
+      mchid: this.config.mchId,
+      description,
+      out_trade_no: outTradeNo,
+      notify_url: notifyUrl,
+      amount: {
+        total: amount,
+        currency: 'CNY',
+      },
+      payer: {
+        openid,
+      },
+    };
+
+    const bodyStr = JSON.stringify(payload);
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const nonce = crypto.randomBytes(16).toString('hex');
+    const urlPath = '/v3/pay/transactions/jsapi';
+
+    console.log('[WechatPay JSAPI] 下单参数:', {
+      appid: this.config.appId,
+      mchid: this.config.mchId,
+      outTradeNo,
+      amount,
+      description,
+      notifyUrl,
+      openid,
+      openidLength: openid?.length || 0,
+    });
+
+    const signature = generateRequestSignature(
+      'POST',
+      urlPath,
+      timestamp,
+      nonce,
+      bodyStr,
+      privateKey
+    );
+
+    const authorization = generateAuthorizationHeader(
+      this.config.mchId,
+      this.config.serialNo,
+      nonce,
+      timestamp,
+      signature
+    );
+
+    const response = await fetch(`${this.baseUrl}${urlPath}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': authorization,
+        'User-Agent': 'BBWF/1.0',
+      },
+      body: bodyStr,
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+      const errMsg = responseData?.message || '未知错误';
+      const errCode = responseData?.code || 'UNKNOWN';
+      const errDetail = responseData?.detail || '';
+      console.error('微信支付 JSAPI 下单失败:', {
+        code: errCode,
+        message: errMsg,
+        detail: errDetail,
+        status: response.status,
+        fullResponse: JSON.stringify(responseData),
+      });
+      throw new Error(`微信支付JSAPI下单失败: [${errCode}] ${errMsg}${errDetail ? ` - ${JSON.stringify(errDetail)}` : ''}`);
+    }
+
+    return {
+      prepayId: responseData.prepay_id || '',
+    };
+  }
+
+  /**
+   * 生成 JSAPI 调起支付参数（用于 WeixinJSBridge.invoke）
+   * 文档: https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_1_4.shtml
+   */
+  generateJsapiPayParams(prepayId: string): JsapiPayParams {
+    const privateKey = this.getPrivateKey();
+    const timeStamp = Math.floor(Date.now() / 1000).toString();
+    const nonceStr = crypto.randomBytes(16).toString('hex');
+    const packageStr = `prepay_id=${prepayId}`;
+
+    // 签名串格式: appId + "\n" + timeStamp + "\n" + nonceStr + "\n" + packageStr + "\n"
+    const signStr = `${this.config.appId}\n${timeStamp}\n${nonceStr}\n${packageStr}\n`;
+
+    const sign = crypto.createSign('RSA-SHA256');
+    sign.update(signStr);
+    const paySign = sign.sign(privateKey, 'base64');
+
+    return {
+      appId: this.config.appId,
+      timeStamp,
+      nonceStr,
+      package: packageStr,
+      signType: 'RSA',
+      paySign,
     };
   }
 }

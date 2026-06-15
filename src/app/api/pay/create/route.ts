@@ -18,7 +18,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { orderId } = body;
+    const { orderId, openid: bodyOpenid, payMethod } = body;
+
+    // 也支持从 URL query 参数获取 openid（小程序 webview 传参场景）
+    const { searchParams } = new URL(request.url);
+    const queryOpenid = searchParams.get('openid') || '';
+    let openid = bodyOpenid || queryOpenid || '';
 
     if (!orderId) {
       return NextResponse.json(
@@ -67,13 +72,56 @@ export async function POST(request: NextRequest) {
     const wechatPay = getWechatPayClient();
     const callbackUrl = process.env.WEIXIN_CALLBACK_URL || 'https://www.bangbangwenfa.com/api/pay/callback';
 
-    // 创建 Native 支付订单
-    const result = await wechatPay.createNativeOrder({
-      outTradeNo: payTradeNo,
-      description: `法律咨询服务 - ${order.case_title || '咨询订单'}`,
-      amount: order.service_price, // 单位：分
-      notifyUrl: callbackUrl,
-    });
+    // 如果请求了 JSAPI 但没有 openid，尝试从数据库查找
+    if (payMethod === 'jsapi' && !openid) {
+      const userId = auth.userId || auth.guardianId;
+      if (userId) {
+        const { data: guardian } = await supabase
+          .from('guardian_users')
+          .select('openid')
+          .eq('id', userId)
+          .single();
+        if (guardian?.openid) {
+          openid = guardian.openid;
+          console.log('[PayCreate] 从 guardian_users 表查找到 openid:', openid.slice(0, 6) + '***');
+        }
+      }
+      // 也尝试从 consult_orders 表的 openid 字段查找
+      if (!openid && order.openid) {
+        openid = order.openid;
+        console.log('[PayCreate] 从 consult_orders 表查找到 openid');
+      }
+    }
+
+    let result: { prepayId: string; codeUrl?: string };
+    let jsapiPayParams: any = null;
+
+    // 重新判断（可能从数据库获取到了 openid）
+    const shouldUseJsapi = payMethod === 'jsapi' && openid;
+
+    if (shouldUseJsapi) {
+      // 微信内 JSAPI 支付
+      const jsapiResult = await wechatPay.createJsapiOrder({
+        outTradeNo: payTradeNo,
+        description: `法律咨询服务 - ${order.case_title || '咨询订单'}`,
+        amount: order.service_price,
+        notifyUrl: callbackUrl,
+        openid,
+      });
+      result = { prepayId: jsapiResult.prepayId, codeUrl: '' };
+      // 生成 JSAPI 调起参数
+      jsapiPayParams = wechatPay.generateJsapiPayParams(jsapiResult.prepayId);
+      console.log('[PayCreate] JSAPI 支付参数已生成, prepayId:', jsapiResult.prepayId);
+    } else {
+      // Native 支付（扫码）
+      const nativeResult = await wechatPay.createNativeOrder({
+        outTradeNo: payTradeNo,
+        description: `法律咨询服务 - ${order.case_title || '咨询订单'}`,
+        amount: order.service_price,
+        notifyUrl: callbackUrl,
+      });
+      result = nativeResult;
+    }
 
     // 更新订单表，添加微信支付订单号
     await supabase
@@ -89,8 +137,9 @@ export async function POST(request: NextRequest) {
       data: {
         orderId: orderId,
         payTradeNo: payTradeNo,
-        codeUrl: result.codeUrl, // 二维码链接
+        codeUrl: result.codeUrl || '', // 二维码链接（Native模式）
         prepayId: result.prepayId,
+        jsapiPayParams: jsapiPayParams || null, // JSAPI 调起参数（微信内）
       },
     });
 
