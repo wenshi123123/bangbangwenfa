@@ -33,8 +33,10 @@ RUN apk add --no-cache bash curl
 
 WORKDIR /app
 
-# 从构建阶段复制必要文件
-COPY --from=base /app/next.config.ts ./
+# 从构建阶段复制必要文件（使用 .mjs 避免 Docker 运行时 TypeScript trampoline 失败）
+COPY --from=base /app/next.config.mjs ./next.config.mjs
+# 同时保留 next.config.ts 以防某些工具需要
+COPY --from=base /app/next.config.ts ./next.config.ts
 COPY --from=base /app/package.json ./
 COPY --from=base /app/node_modules ./node_modules
 COPY --from=base /app/.next ./.next
