@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     const isWechat = (request.headers.get('x-user-agent') || '').includes('micromessenger');
 
     // 微信内用 JSAPI，手机浏览器用 H5，PC 用 Native（二维码）
-    let payData: { orderId: number; payTradeNo: string; prepayId: string; codeUrl?: string; h5Url?: string };
+    let payData: { orderId: number; payTradeNo: string; prepayId?: string; codeUrl?: string; h5Url?: string };
 
     if (isWechat) {
       // 微信内：JSAPI 下单（需要 openid）
