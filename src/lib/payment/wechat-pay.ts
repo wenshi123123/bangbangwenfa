@@ -30,14 +30,51 @@ export async function updateOrderStatusAfterPayment(body: string): Promise<Payme
     const supabase = getSupabaseAdmin();
 
     // 查询当前订单状态，避免重复处理
+    // 注意：微信回调的 out_trade_no 是 pay_trade_no（WX开头），不是业务 order_no
     const { data: existingOrder } = await supabase
       .from('consult_orders')
-      .select('payment_status, openid')
-      .eq('order_no', out_trade_no)
+      .select('payment_status, openid, order_no')
+      .eq('pay_trade_no', out_trade_no)
       .single();
 
     if (!existingOrder) {
-      return { success: false, error: '订单不存在' };
+      // 兼容旧订单：如果没有 pay_trade_no 匹配，尝试用 order_no 兜底
+      console.warn('未通过 pay_trade_no 找到订单，尝试 order_no 兜底匹配:', out_trade_no);
+      const { data: fallbackOrder } = await supabase
+        .from('consult_orders')
+        .select('payment_status, openid, order_no')
+        .eq('order_no', out_trade_no)
+        .single();
+      if (!fallbackOrder) {
+        return { success: false, error: '订单不存在' };
+      }
+      // 如果已经是已支付状态，跳过更新（幂等性）
+      if (fallbackOrder.payment_status === 'paid') {
+        console.log('订单已支付，跳过重复处理:', out_trade_no);
+        return {
+          success: true,
+          order: { order_no: fallbackOrder.order_no, openid: fallbackOrder.openid }
+        };
+      }
+      // 更新订单状态（兜底路径也用 order_no 匹配）
+      const { error: fallbackError } = await supabase
+        .from('consult_orders')
+        .update({
+          payment_status: 'paid',
+          paid_at: new Date().toISOString(),
+          wechat_transaction_id: transaction_id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('order_no', out_trade_no);
+      if (fallbackError) {
+        console.error('更新订单失败(兜底):', fallbackError);
+        return { success: false, error: '更新订单失败' };
+      }
+      console.log('支付成功(兜底匹配)，订单已更新:', out_trade_no);
+      return {
+        success: true,
+        order: { order_no: fallbackOrder.order_no, user_wechat_openid: fallbackOrder.openid }
+      };
     }
 
     // 如果已经是已支付状态，跳过更新（幂等性）
@@ -45,7 +82,7 @@ export async function updateOrderStatusAfterPayment(body: string): Promise<Payme
       console.log('订单已支付，跳过重复处理:', out_trade_no);
       return { 
         success: true, 
-        order: { order_no: out_trade_no, openid: existingOrder.openid }
+        order: { order_no: existingOrder.order_no, openid: existingOrder.openid }
       };
     }
 
@@ -58,7 +95,7 @@ export async function updateOrderStatusAfterPayment(body: string): Promise<Payme
         wechat_transaction_id: transaction_id,
         updated_at: new Date().toISOString(),
       })
-      .eq('order_no', out_trade_no);
+      .eq('pay_trade_no', out_trade_no);
 
     if (error) {
       console.error('更新订单失败:', error);
