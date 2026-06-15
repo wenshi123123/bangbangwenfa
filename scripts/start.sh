@@ -27,7 +27,7 @@ for COZE_VAR in $COZE_PREFIXED_VARS; do
 done
 echo "COZE_ mapping complete."
 
-PORT=5000
+PORT=3000
 DEPLOY_RUN_PORT="${DEPLOY_RUN_PORT:-$PORT}"
 
 

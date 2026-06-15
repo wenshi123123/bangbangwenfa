@@ -33,10 +33,8 @@ RUN apk add --no-cache bash curl
 
 WORKDIR /app
 
-# 从构建阶段复制必要文件（使用 .mjs 避免 Docker 运行时 TypeScript trampoline 失败）
-COPY --from=base /app/next.config.mjs ./next.config.mjs
-# 同时保留 next.config.ts 以防某些工具需要
-COPY --from=base /app/next.config.ts ./next.config.ts
+# 从构建阶段复制必要文件
+COPY --from=base /app/next.config.ts ./
 COPY --from=base /app/package.json ./
 COPY --from=base /app/node_modules ./node_modules
 COPY --from=base /app/.next ./.next
@@ -45,12 +43,12 @@ COPY --from=base /app/dist ./dist
 COPY --from=base /app/scripts ./scripts
 
 # 与 start.sh 中的 DEPLOY_RUN_PORT 保持一致
-ENV DEPLOY_RUN_PORT=5000
-ENV PORT=5000
+ENV DEPLOY_RUN_PORT=3000
+ENV PORT=3000
 ENV NODE_ENV=production
 ENV DEPLOY_ENV=PROD
 
-EXPOSE 5000
+EXPOSE 3000
 
 # 使用 bash 运行启动脚本
 CMD ["bash", "./scripts/start.sh"]

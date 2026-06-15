@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-PORT=5000
+PORT=3000
 COZE_WORKSPACE_PATH="${COZE_WORKSPACE_PATH:-$(pwd)}"
 
 cd "${COZE_WORKSPACE_PATH}"
