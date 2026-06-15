@@ -95,12 +95,7 @@ function generateRequestSignature(
   body: string,
   privateKey: string
 ): string {
-  const signStr = `${method}
-${url}
-${timestamp}
-${nonce}
-${body}
-`;
+  const signStr = `${method}\n${url}\n${timestamp}\n${nonce}\n${body}\n`;
   const sign = crypto.createSign('RSA-SHA256');
   sign.update(signStr);
   return sign.sign(privateKey, 'base64');
@@ -184,8 +179,6 @@ class WechatPayClient {
    * 读取商户私钥
    */
   private getPrivateKey(): string {
-    // 优先使用构造时传入的值（已通过 getEnvValue 处理过分段）
-    // 再尝试直接读取（兜底，支持 _FILE 方式等）
     let key = this.config.privateKey || getEnvValue('WEIXIN_PRIVATE_KEY');
     if (!key || key.trim() === '') {
       throw new Error('微信支付商户私钥未配置，请设置 WEIXIN_PRIVATE_KEY 环境变量（支持 PART1~PART9 分段）');
@@ -238,14 +231,13 @@ class WechatPayClient {
 
   /**
    * 创建 Native 支付订单（扫码支付）
-   * 文档: https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_4_1.shtml
    */
   async createNativeOrder(params: CreateNativeOrderParams): Promise<CreateNativeOrderResult> {
     const { outTradeNo, description, amount, notifyUrl } = params;
 
     const responseData = await this.createOrder('/v3/pay/transactions/native', {
       appid: this.config.appId,
-      mchid: this.config.mchId,
+      mchid: this.config.mchid,
       description,
       out_trade_no: outTradeNo,
       notify_url: notifyUrl,
@@ -259,15 +251,14 @@ class WechatPayClient {
   }
 
   /**
-   * 创建 H5 支付订单（手机浏览器跳转微信支付）
-   * 文档: https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_3_1.shtml
+   * 创建 H5 支付订单
    */
   async createH5Order(params: CreateH5OrderParams): Promise<CreateH5OrderResult> {
     const { outTradeNo, description, amount, notifyUrl, clientIp } = params;
 
     const responseData = await this.createOrder('/v3/pay/transactions/h5', {
       appid: this.config.appId,
-      mchid: this.config.mchId,
+      mchid: this.config.mchid,
       description,
       out_trade_no: outTradeNo,
       notify_url: notifyUrl,
@@ -298,7 +289,6 @@ export function getWechatPayClient(): WechatPayClient {
     mchId: process.env.WEIXIN_MCHID || '',
     serialNo: process.env.WEIXIN_SERIAL_NO || '',
     apiV3Key: process.env.WEIXIN_APIV3_KEY || '',
-    // 必须使用 getEnvValue 支持 PART1~PART9 分段拼接（CloudBase 单变量长度限制）
     privateKey: getEnvValue('WEIXIN_PRIVATE_KEY'),
   };
 
@@ -323,21 +313,12 @@ export function getWechatPayClient(): WechatPayClient {
 // ==================== PEM 工具函数 ====================
 
 /**
- * 读取支持分段的环境变量（EdgeOne Pages 单变量限 1000 字符）
- *
- * 当主变量 WEIXIN_XXX 内容超长时，可拆分为：
- *   WEIXIN_XXX_PART1 = 前 800 字符
- *   WEIXIN_XXX_PART2 = 剩余字符
- *   ...
- *   WEIXIN_XXX_PART9 = 最后部分
- *
- * 此函数会按顺序拼接所有分段。
+ * 读取支持分段的环境变量（CloudBase 单变量长度限制）
  */
 export function getEnvValue(mainKey: string): string {
   const main = process.env[mainKey] || '';
   if (main) return main;
 
-  // 支持从文件读取（Docker 容器中长 PEM 密钥通过文件注入）
   const filePath = process.env[`${mainKey}_FILE`];
   if (filePath) {
     try {
@@ -359,26 +340,13 @@ export function getEnvValue(mainKey: string): string {
 }
 
 /**
- * 将 PEM 内容规范化为正确的 PEM 多行格式
- *
- * 支持各种输入格式：
- *   - 标准 PEM（含头尾和 Base64，可能含换行）
- *   - 纯 Base64 单行（无头尾）
- *   - 含 \n 转义的 PEM
- *   - 带有多余空白/格式错误的 PEM（如 -----BEGIN PRIVATE KEY---）
- *   - 分段存储的 PEM（跨 PART1~9 变量拼接）
- *
- * EdgeOne Pages 环境变量不能包含空白字符且单变量限 1000 字符，
- * 此函数负责还原为标准 PEM 格式供 crypto 模块使用。
+ * 将 PEM 内容规范化为标准 PEM 多行格式
  */
 export function normalizePem(input: string, type: 'PRIVATE KEY' | 'CERTIFICATE'): string {
   if (!input) return input;
 
-  // 1) 替换 \n 字面量（用户从 .env 文件复制时的转义序列）
-  let pem = input.replace(/\\n/g, '
-');
+  let pem = input.replace(/\\n/g, '\n');
 
-  // 2) 查找 PEM 头尾标记（兼容各种变异写法）
   const beginRegex = /-----BEGIN\s+[\w\s]+-----/;
   const endRegex = /-----END\s+[\w\s]+-----/;
 
@@ -386,18 +354,12 @@ export function normalizePem(input: string, type: 'PRIVATE KEY' | 'CERTIFICATE')
   const endMatch = pem.match(endRegex);
 
   if (beginMatch && endMatch && beginMatch.index !== undefined && endMatch.index !== undefined) {
-    // 有头尾标记 → 提取中间 Base64 内容，移除所有空白，用标准格式重组
     const start = beginMatch.index + beginMatch[0].length;
     const end = endMatch.index;
     const base64Content = pem.slice(start, end).replace(/\s+/g, '');
-    return `${beginMatch[0]}
-${base64Content}
-${endMatch[0]}`;
+    return `${beginMatch[0]}\n${base64Content}\n${endMatch[0]}`;
   }
 
-  // 3) 没有头尾标记 → 移除所有空白，补充标准头尾
   const cleanContent = pem.replace(/\s+/g, '');
-  return `-----BEGIN ${type}-----
-${cleanContent}
------END ${type}-----`;
+  return `-----BEGIN ${type}-----\n${cleanContent}\n-----END ${type}-----`;
 }
