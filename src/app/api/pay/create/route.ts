@@ -59,8 +59,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 生成微信支付订单号（增强随机性，16字节不可预测）
-    const payTradeNo = `WX${Date.now()}${crypto.randomBytes(16).toString('hex').toUpperCase()}`;
+    // 生成微信支付订单号（最多32字符，微信支付限制）
+    // WX(2) + 时间戳(13) + 随机hex(12) = 27字符，在32字符限制内
+    const payTradeNo = `WX${Date.now()}${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
 
     // 正式模式：使用真实微信支付
     const wechatPay = getWechatPayClient();
