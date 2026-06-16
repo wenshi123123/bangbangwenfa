@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { orderId } = body;
+    let { orderId } = body;
 
     if (!orderId) {
       return NextResponse.json(
