@@ -86,10 +86,11 @@ export async function GET(request: NextRequest) {
       isOwner
     });
 
-  } catch (error) {
-    console.error('API错误:', error);
+  } catch (error: any) {
+    const errorMsg = error?.message || error?.toString() || '未知错误';
+    console.error('API错误:', errorMsg);
     return NextResponse.json(
-      { success: false, error: '服务器错误' },
+      { success: false, error: `服务器错误: ${errorMsg}` },
       { status: 500 }
     );
   }

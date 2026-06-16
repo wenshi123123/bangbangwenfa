@@ -95,13 +95,36 @@ export async function POST(request: NextRequest) {
                   : isCriminal ? '刑事律师（臻选）' 
                   : '律师入驻';
 
-    // 调用微信支付 Native API 创建订单
-    const result = await wechatPay.createNativeOrder({
-      description: `律师入驻会员费 - ${packageName}`,
-      outTradeNo: orderNo,
-      amount: application.package_price, // 单位：分
-      notifyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.bangbangwenfa.com'}/api/lawyer/pay/callback`,
-    });
+    // 获取客户端 IP 和设备类型
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+                     request.headers.get('x-real-ip') || '127.0.0.1';
+    const userAgent = request.headers.get('x-user-agent') || '';
+    const isWechat = /MicroMessenger/i.test(userAgent);
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(userAgent);
+
+    // 根据场景调用不同支付 API
+    let payData: any = { orderId: orderNo };
+
+    if (isWechat || isMobile) {
+      // 微信内或手机浏览器：H5 支付
+      const result = await wechatPay.createH5Order({
+        outTradeNo: orderNo,
+        description: `律师入驻会员费 - ${packageName}`,
+        amount: application.package_price,
+        notifyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.bangbangwenfa.com'}/api/lawyer/pay/callback`,
+        clientIp: isWechat ? '127.0.0.1' : clientIp,
+      });
+      payData.h5Url = result.h5Url;
+    } else {
+      // PC：Native 扫码支付
+      const result = await wechatPay.createNativeOrder({
+        description: `律师入驻会员费 - ${packageName}`,
+        outTradeNo: orderNo,
+        amount: application.package_price,
+        notifyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.bangbangwenfa.com'}/api/lawyer/pay/callback`,
+      });
+      payData.codeUrl = result.codeUrl;
+    }
 
     // 保存订单号到数据库
     await supabase
@@ -113,17 +136,12 @@ export async function POST(request: NextRequest) {
       orderNo,
       applicationId,
       packagePrice: application.package_price,
-      codeUrl: result.codeUrl,
+      payData,
     });
 
     return NextResponse.json({
       success: true,
-      data: {
-        orderId: orderNo,
-        codeUrl: result.codeUrl, // 微信支付二维码链接
-        amount: application.package_price,
-        status: 'pending',
-      },
+      data: payData,
     });
   } catch (error) {
     console.error('创建律师入驻支付订单失败:', error);

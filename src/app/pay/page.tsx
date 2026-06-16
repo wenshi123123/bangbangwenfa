@@ -95,9 +95,10 @@ function PayPageInner() {
 
   const loadOrder = async () => {
     try {
-      const data = await apiRequest(`/api/consult/order?orderNo=${orderNo}`, { skipAuth: !isLoggedIn });
-      if (data.success && data.data) {
-        setOrder(data.data);
+      // 修复：API 期望的参数是 orderId（不是 orderNo）
+      const data = await apiRequest(`/api/consult/order?orderId=${orderNo}`, { skipAuth: !isLoggedIn });
+      if (data.success && data.order) {  // 修复：API 返回的是 data.order（不是 data.data）
+        setOrder(data.order);
       } else {
         setError(data.error || '订单不存在');
       }
@@ -139,7 +140,7 @@ function PayPageInner() {
       const data = await apiRequest('/api/pay/create', {
         method: 'POST',
         body: {
-          orderNo: order.orderNo,
+          orderId: order.id,  // 修复：用 order.id（不是 order.orderNo）
           amount: Math.round(order.servicePrice * 100), // 元转分
           description: order.caseTitle || order.serviceName || '法律咨询服务',
         },

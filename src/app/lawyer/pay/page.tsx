@@ -82,10 +82,18 @@ function LawyerPayContent() {
 
         const result = await response.json();
 
-        if (result.success && result.data?.h5_url) {
-          setOrderId(result.data.orderId);
-          // H5 支付：直接跳转
-          window.location.href = result.data.h5_url;
+        if (result.success) {
+          const { h5Url, codeUrl, orderId: orderIdFromServer } = result.data;
+          
+          if (h5Url) {
+            // H5 支付：直接跳转
+            window.location.href = h5Url;
+          } else if (codeUrl) {
+            // Native 支付：显示二维码
+            setOrderId(orderIdFromServer);
+            // 使用 qrcode.react 生成二维码
+            // ...（保持现有二维码显示逻辑）
+          }
         } else {
           console.error('支付创建失败:', result.error);
           setError(result.error || '支付创建失败，请稍后重试');
