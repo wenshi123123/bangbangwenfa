@@ -30,6 +30,24 @@ echo "COZE_ mapping complete."
 PORT=5000
 HOSTNAME=0.0.0.0
 DEPLOY_RUN_PORT="${DEPLOY_RUN_PORT:-$PORT}"
+PROBE_PORT=3000
+
+
+# 启动健康检查 probe 服务器（CloudBase 默认检查 3000 端口）
+start_probe_server() {
+    node -e "
+        const http = require('http');
+        const server = http.createServer((req, res) => {
+            res.writeHead(200, { 'Content-Type': 'text/plain' });
+            res.end('OK');
+        });
+        server.listen(${PROBE_PORT}, '0.0.0.0', () => {
+            console.log('Probe server listening on port ${PROBE_PORT} for health checks');
+        });
+    " &
+    PROBE_PID=$!
+    echo "Probe server started (PID: ${PROBE_PID})"
+}
 
 
 start_service() {
@@ -39,4 +57,9 @@ start_service() {
 }
 
 echo "Starting HTTP service on port ${DEPLOY_RUN_PORT} for deploy..."
+
+# 先启动 probe 服务器（后台运行）
+start_probe_server
+
+# 再启动主服务
 start_service
