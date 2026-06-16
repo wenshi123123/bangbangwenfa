@@ -140,7 +140,7 @@ function PayPageInner() {
       const data = await apiRequest('/api/pay/create', {
         method: 'POST',
         body: {
-          orderId: order.id,  // 修复：用 order.id（不是 order.orderNo）
+          orderId: order.orderNo,  // 使用订单编号作为支付订单ID
           amount: Math.round(order.servicePrice * 100), // 元转分
           description: order.caseTitle || order.serviceName || '法律咨询服务',
         },
