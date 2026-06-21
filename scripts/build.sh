@@ -84,10 +84,10 @@ if [ "${DEPLOY_ENV:-}" = "PROD" ] || [ "${NODE_ENV:-}" = "production" ]; then
 fi
 
 echo "Building the Next.js project..."
-pnpm next build
+pnpm exec next build
 
 echo "Bundling server with tsup..."
-pnpm tsup src/server.mts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
+pnpm exec tsup src/server.mts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
 
 # 构建完成后移除 drizzle-kit，防止扣子平台自动执行 schema 同步
 # 放在 build 之后不影响构建产物完整性

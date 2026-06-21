@@ -3,12 +3,20 @@
  * 文档: https://cloud.tencent.com/document/product/382/43196
  */
 
-// 使用 require 方式导入，避免 ESM 兼容问题
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const tencentcloud = require('tencentcloud-sdk-nodejs');
-
-// 导入短信模块
-const SmsClient = tencentcloud.sms.v20210111.Client;
+// 懒加载短信客户端（避免模块加载时的 require 在 Next.js 热重载时出错）
+let _SmsClient: any = null;
+function getSmsClient(): any {
+  if (_SmsClient) return _SmsClient;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const tencentcloud = require('tencentcloud-sdk-nodejs');
+    _SmsClient = tencentcloud.sms.v20210111.Client;
+    return _SmsClient;
+  } catch (err) {
+    console.warn('[SMS] 腾讯云 SDK 加载失败，将使用 Mock 模式:', err);
+    return null;
+  }
+}
 
 interface SmsConfig {
   secretId: string;
@@ -80,6 +88,10 @@ function getSmsConfig(): SmsConfig {
 
 // 检查是否配置了真实的短信服务
 export function isSmsConfigured(): boolean {
+  // 强制 Mock 模式（开发环境使用）
+  if (process.env.FORCE_SMS_MOCK === 'true') {
+    return false;
+  }
   const config = getSmsConfig();
   return !!(
     config.secretId &&
@@ -95,8 +107,12 @@ export function isSmsConfigured(): boolean {
  */
 function createClient() {
   const config = getSmsConfig();
+  const ClientClass = getSmsClient();
+  if (!ClientClass) {
+    throw new Error('SMS client not available (SDK failed to load)');
+  }
   
-  return new SmsClient({
+  return new ClientClass({
     credential: {
       secretId: config.secretId,
       secretKey: config.secretKey,

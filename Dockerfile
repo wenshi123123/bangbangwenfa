@@ -9,12 +9,12 @@ RUN apk add --no-cache bash
 WORKDIR /app
 
 # 复制依赖文件
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
-# 安装依赖
+# 安装依赖（含 devDependencies，用于构建）
 RUN pnpm install --prefer-frozen-lockfile --prefer-offline --prod=false
 
-# 复制所有源码
+# 复制所有源码（.dockerignore 会过滤掉不需要的文件）
 COPY . .
 
 # 构建参数 - 用于破坏 Docker 缓存，确保每次构建使用最新代码
@@ -22,15 +22,20 @@ ARG CACHE_BUST=unknown
 RUN echo "Cache bust: ${CACHE_BUST}"
 
 # 构建应用
-RUN pnpm next build
+RUN pnpm exec next build
 
 # 构建 server bundle
-RUN pnpm tsup src/server.mts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
+RUN pnpm exec tsup src/server.mts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
 
-# 清理 dev 依赖，减小镜像体积（保留 typescript，Next.js 运行时加载 next.config.ts 需要）
+# ===== 减小镜像体积的关键步骤 =====
+# 清理 dev 依赖，只保留生产依赖
 RUN pnpm prune --prod
-# 重新安装 typescript 为 prod 依赖，避免运行时 yarn 安装被 only-allow pnpm 拦截
-RUN pnpm add -P typescript
+
+# 重新安装 typescript 为 prod 依赖（next.config.ts 运行时需要）
+RUN pnpm add -wP typescript
+
+# 清理 pnpm store 和 npm 缓存，减少镜像层大小
+RUN rm -rf /root/.local/share/pnpm/store /root/.npm /tmp/*
 
 # 运行阶段
 FROM node:20-alpine AS runner
@@ -48,13 +53,21 @@ COPY --from=base /app/public ./public
 COPY --from=base /app/dist ./dist
 COPY --from=base /app/scripts ./scripts
 
-# 与 start.sh 中的 DEPLOY_RUN_PORT 保持一致
-ENV DEPLOY_RUN_PORT=5000
-ENV PORT=5000
+# 修复 Windows CRLF 换行符问题
+RUN sed -i 's/\r$//' ./scripts/start.sh && chmod +x ./scripts/start.sh
+
+# 端口配置
+ENV APP_PORT=5000
+ENV PROBE_PORT=3000
 ENV NODE_ENV=production
 ENV DEPLOY_ENV=PROD
 
+# 健康检查 - 延迟 30 秒给容器充足的启动时间
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+
 EXPOSE 5000
+EXPOSE 3000
 
 # 使用 bash 运行启动脚本
 CMD ["bash", "./scripts/start.sh"]

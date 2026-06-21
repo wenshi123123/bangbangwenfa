@@ -1,13 +1,16 @@
-import { createServer } from 'http';
+import { createServer, IncomingMessage, ServerResponse, request as httpRequest } from 'http';
 import { parse } from 'url';
 import next from 'next';
 
 const dev = process.env.DEPLOY_ENV !== 'PROD';
 const hostname = process.env.HOSTNAME || '0.0.0.0';
-const port = parseInt(process.env.PORT || '5000', 10);
+// 主应用端口（与 deploy 命令 --port 参数一致）
+const appPort = parseInt(process.env.APP_PORT || process.env.PORT || '5000', 10);
+// 健康检查端口（CloudBase 默认探测端口 3000，也可与 appPort 相同）
+const probePort = parseInt(process.env.PROBE_PORT || process.env.PORT || '5000', 10);
 
 // Create Next.js app
-const app = next({ dev, hostname, port });
+const app = next({ dev, hostname, port: appPort });
 const handle = app.getRequestHandler();
 
 process.on('uncaughtException', (err) => {
@@ -19,8 +22,92 @@ process.on('unhandledRejection', (reason) => {
   process.exit(1);
 });
 
+/**
+ * 检查请求是否为健康检查
+ */
+function isHealthCheck(req: IncomingMessage): boolean {
+  const url = req.url || '';
+  // CloudBase 健康检查：GET / 或 GET /health
+  // 可通过 User-Agent、X-Forwarded-For 等进一步识别，但简单路径匹配即可
+  return req.method === 'GET' && (url === '/' || url === '/health' || url.startsWith('/health'));
+}
+
+/**
+ * 将 probe 端口收到的请求反向代理到主应用端口
+ * 确保即使 CloudBase 误将流量路由到 probe 端口，也能正常处理业务请求
+ */
+function proxyToApp(req: IncomingMessage, res: ServerResponse): void {
+  const options = {
+    hostname: '127.0.0.1',
+    port: appPort,
+    path: req.url,
+    method: req.method,
+    headers: req.headers,
+  };
+
+  const proxyReq = httpRequest(options, (proxyRes) => {
+    // 转发状态码和头部
+    res.writeHead(proxyRes.statusCode || 200, proxyRes.headers);
+    // 转发响应体
+    proxyRes.pipe(res);
+  });
+
+  proxyReq.on('error', (err) => {
+    console.error(`Proxy error (${req.url}):`, err.message);
+    res.writeHead(502, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: false, error: 'Service temporarily unavailable' }));
+  });
+
+  // 转发请求体（body 通过 stream 传输）
+  req.pipe(proxyReq);
+}
+
+/**
+ * 健康检查响应
+ */
+function handleHealthCheck(req: IncomingMessage, res: ServerResponse) {
+  res.writeHead(200, {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-store',
+  });
+  res.end(JSON.stringify({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    message: 'BangBangWenFa service is healthy',
+  }));
+}
+
+/**
+ * Probe 服务器请求处理 — 智能分流
+ * - 健康检查请求：直接返回 200
+ * - 其他请求：反向代理到主应用，确保业务不中断
+ */
+function probeRequestHandler(req: IncomingMessage, res: ServerResponse) {
+  if (isHealthCheck(req)) {
+    handleHealthCheck(req, res);
+  } else {
+    proxyToApp(req, res);
+  }
+}
+
+// 立即启动健康检查服务器，不等待 Next.js 初始化
+// 确保 CloudBase 健康检查能立即通过（否则 InitialDelaySeconds 太短会导致部署失败）
+const probeServer = createServer(probeRequestHandler);
+probeServer.listen(probePort, hostname, () => {
+  console.log(
+    `> Health probe + proxy listening at http://${hostname}:${probePort} (started before Next.js prepare)`,
+  );
+});
+probeServer.once('error', err => {
+  console.error('Probe server error', err);
+});
+
 app.prepare().then(() => {
-  const server = createServer(async (req, res) => {
+  /**
+   * 主应用服务器 — 处理所有用户请求
+   * 直接使用 Next.js 的请求处理器，包含 API 路由、页面渲染、认证中间件等
+   */
+  const appServer = createServer(async (req, res) => {
     try {
       const parsedUrl = parse(req.url!, true);
       await handle(req, res, parsedUrl);
@@ -30,17 +117,27 @@ app.prepare().then(() => {
       res.end('Internal server error');
     }
   });
-  server.once('error', err => {
-    console.error('Server error', err);
+
+  // 错误处理
+  appServer.once('error', err => {
+    console.error('App server error', err);
     process.exit(1);
   });
-  server.listen(port, hostname, () => {
+
+  // 启动主应用服务器
+  appServer.listen(appPort, hostname, () => {
     console.log(
-      `> Server listening at http://${hostname}:${port} as ${
+      `> Main app listening at http://${hostname}:${appPort} as ${
         dev ? 'development' : process.env.DEPLOY_ENV
       }`,
     );
   });
+
+  // 如果 probePort 与 appPort 相同，则 probe 服务器已在上面的 listen 中启动
+  // 如果不同，则 probe 服务器已在 app.prepare() 之前启动
+  if (probePort === appPort) {
+    console.log(`> Health probe shares same port as main app (${appPort})`);
+  }
 }).catch((err) => {
   console.error('FATAL: failed to start server', err);
   process.exit(1);

@@ -27,39 +27,20 @@ for COZE_VAR in $COZE_PREFIXED_VARS; do
 done
 echo "COZE_ mapping complete."
 
-PORT=5000
+# ============================================
+# 端口配置
+# - APP_PORT: 主应用端口（处理所有用户请求）
+# - PROBE_PORT: 健康检查端口（CloudBase 默认探测 3000）
+# - 当两者一致时，只需一个服务器
+# - 当不同时，server.mts 会自动启动健康检查服务器
+# ============================================
+APP_PORT="${APP_PORT:-5000}"
+PROBE_PORT="${PROBE_PORT:-3000}"
 HOSTNAME=0.0.0.0
-DEPLOY_RUN_PORT="${DEPLOY_RUN_PORT:-$PORT}"
-PROBE_PORT=3000
 
+echo "Starting HTTP service on port ${APP_PORT} for deploy..."
+echo "Health probe on port ${PROBE_PORT} (managed by server.mts)"
 
-# 启动健康检查 probe 服务器（CloudBase 默认检查 3000 端口）
-start_probe_server() {
-    node -e "
-        const http = require('http');
-        const server = http.createServer((req, res) => {
-            res.writeHead(200, { 'Content-Type': 'text/plain' });
-            res.end('OK');
-        });
-        server.listen(${PROBE_PORT}, '0.0.0.0', () => {
-            console.log('Probe server listening on port ${PROBE_PORT} for health checks');
-        });
-    " &
-    PROBE_PID=$!
-    echo "Probe server started (PID: ${PROBE_PID})"
-}
-
-
-start_service() {
-    cd "${COZE_WORKSPACE_PATH}"
-    echo "Starting HTTP service on port ${DEPLOY_RUN_PORT} for deploy..."
-    PORT=${DEPLOY_RUN_PORT} node dist/server.js
-}
-
-echo "Starting HTTP service on port ${DEPLOY_RUN_PORT} for deploy..."
-
-# 先启动 probe 服务器（后台运行）
-start_probe_server
-
-# 再启动主服务
-start_service
+# 启动主服务（server.mts 内部已集成健康检查处理）
+cd "${COZE_WORKSPACE_PATH}"
+APP_PORT="${APP_PORT}" PROBE_PORT="${PROBE_PORT}" node dist/server.js

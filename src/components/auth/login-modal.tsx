@@ -95,7 +95,13 @@ export default function LoginModal() {
             }
         } catch (error) {
             console.error("发送验证码错误:", error);
-            setErrorMsg("网络错误，请重试");
+            if (error instanceof TypeError && error.message === 'Failed to fetch') {
+                setErrorMsg("网络连接失败，请检查网络后重试");
+            } else if (error instanceof SyntaxError) {
+                setErrorMsg("服务器返回数据异常，请稍后重试");
+            } else {
+                setErrorMsg("网络错误，请重试");
+            }
         } finally {
             setIsSending(false);
         }
@@ -163,7 +169,13 @@ export default function LoginModal() {
         } catch (error) {
             console.error("登录错误:", error);
             setStep("error");
-            setErrorMsg("网络错误，请重试");
+            if (error instanceof TypeError && error.message === 'Failed to fetch') {
+                setErrorMsg("网络连接失败，请检查网络后重试");
+            } else if (error instanceof SyntaxError) {
+                setErrorMsg("服务器返回数据异常，请稍后重试");
+            } else {
+                setErrorMsg("网络错误，请重试");
+            }
         }
     }, [phone, code, onClose, router]);
 
@@ -229,7 +241,13 @@ export default function LoginModal() {
         } catch (error) {
             console.error("登录错误:", error);
             setStep("error");
-            setErrorMsg("网络错误，请重试");
+            if (error instanceof TypeError && error.message === 'Failed to fetch') {
+                setErrorMsg("网络连接失败，请检查网络后重试");
+            } else if (error instanceof SyntaxError) {
+                setErrorMsg("服务器返回数据异常，请稍后重试");
+            } else {
+                setErrorMsg("网络错误，请重试");
+            }
         }
     }, [account, password, onClose, router]);
 

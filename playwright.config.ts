@@ -8,6 +8,9 @@ import { defineConfig, devices } from '@playwright/test';
  *   npx playwright test --ui               # UI 模式
  *   npx playwright test --headed           # 有头模式调试
  */
+// 使用系统已安装的 Chrome，跳过浏览器下载
+process.env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = '1';
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -27,21 +30,28 @@ export default defineConfig({
     baseURL: process.env.TEST_BASE_URL || 'http://localhost:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    video: 'off',
   },
 
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: 'chrome',
+      },
     },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
+    // Firefox 需要额外下载，暂时注释
+    // {
+    //   name: 'firefox',
+    //   use: { ...devices['Desktop Firefox'] },
+    // },
     {
       name: 'mobile-chrome',
-      use: { ...devices['Pixel 5'] },
+      use: {
+        ...devices['Pixel 5'],
+        channel: 'chrome',
+      },
     },
   ],
 

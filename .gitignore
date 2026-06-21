@@ -44,6 +44,8 @@ assets/image_*.png
 
 # AI 工作目录
 .workbuddy/
+.codebuddy/
+.agents/
 
 # pnpm 锁文件（不使用 npm）
 package-lock.json
