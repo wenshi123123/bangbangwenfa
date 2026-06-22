@@ -9,7 +9,7 @@ RUN apk add --no-cache bash
 WORKDIR /app
 
 # 复制依赖文件
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml ./
 
 # 安装依赖（含 devDependencies，用于构建）
 RUN pnpm install --prefer-frozen-lockfile --prefer-offline --prod=false

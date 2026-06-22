@@ -24,7 +24,7 @@ test.describe('咨询支付页面 (/pay)', () => {
     await waitForPageReady(page);
 
     // 应显示"缺少订单号"或错误提示
-    const bodyText = await page.textContent('body');
+    const bodyText = (await page.textContent('body')) ?? '';
     expect(bodyText).toContain('缺少订单号');
   });
 
@@ -35,7 +35,7 @@ test.describe('咨询支付页面 (/pay)', () => {
     await waitForPageReady(page);
 
     // 页面应显示错误状态（订单不存在或加载失败）
-    const bodyText = await page.textContent('body');
+    const bodyText = (await page.textContent('body')) ?? '';
     const hasError = bodyText.includes('订单不存在') || bodyText.includes('加载失败');
     expect(hasError).toBeTruthy();
   });
@@ -47,7 +47,7 @@ test.describe('咨询支付页面 (/pay)', () => {
     await waitForPageReady(page);
 
     // 检查是否有返回按钮或相关元素
-    const pageContent = await page.textContent('body');
+    const pageContent = (await page.textContent('body')) ?? '';
     expect(pageContent.length).toBeGreaterThan(0);
   });
 
@@ -58,7 +58,7 @@ test.describe('咨询支付页面 (/pay)', () => {
     await waitForPageReady(page);
 
     // 页面不应空白崩溃
-    const bodyText = await page.textContent('body');
+    const bodyText = (await page.textContent('body')) ?? '';
     expect(bodyText?.trim().length).toBeGreaterThan(0);
   });
 
@@ -69,7 +69,7 @@ test.describe('咨询支付页面 (/pay)', () => {
     await waitForPageReady(page);
 
     // 页面不应崩溃
-    const bodyText = await page.textContent('body');
+    const bodyText = (await page.textContent('body')) ?? '';
     expect(bodyText?.trim().length).toBeGreaterThan(0);
   });
 });
@@ -84,7 +84,7 @@ test.describe('律师入驻支付页面 (/lawyer/pay)', () => {
 
     await waitForPageReady(page);
 
-    const bodyText = await page.textContent('body');
+    const bodyText = (await page.textContent('body')) ?? '';
     // 该页面有认证守卫，未登录时显示律师登录界面
     const hasLoginUI =
       bodyText.includes('手机号登录') ||
@@ -100,7 +100,7 @@ test.describe('律师入驻支付页面 (/lawyer/pay)', () => {
     await waitForPageReady(page);
 
     // 未登录状态下应显示登录界面，而非支付内容
-    const bodyText = await page.textContent('body');
+    const bodyText = (await page.textContent('body')) ?? '';
     const hasContent = bodyText.includes('手机号登录') ||
       bodyText.includes('请先登录') ||
       bodyText.includes('臻选律师');
@@ -113,7 +113,7 @@ test.describe('律师入驻支付页面 (/lawyer/pay)', () => {
 
     await waitForPageReady(page);
 
-    const bodyText = await page.textContent('body');
+    const bodyText = (await page.textContent('body')) ?? '';
     // 未登录显示律师登录页
     expect(bodyText).toContain('手机号登录');
   });
@@ -512,7 +512,7 @@ test.describe('带认证的支付流程', () => {
     await page.goto('/pay', { timeout: 15000 });
     await page.waitForLoadState('networkidle').catch(() => {});
 
-    const bodyText = await page.textContent('body');
+    const bodyText = (await page.textContent('body')) ?? '';
     expect(bodyText?.trim().length).toBeGreaterThan(0);
 
     const hasPayContent =

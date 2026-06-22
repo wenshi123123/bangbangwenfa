@@ -1,30 +1,9 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Noto_Sans_SC, Noto_Serif_SC } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/hooks/use-auth';
 import { Header } from '@/components/layout/header';
 import LoginModal from '@/components/auth/login-modal';
 import SearchModal from '@/components/search/search-modal';
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap',
-});
-
-const notoSansSC = Noto_Sans_SC({
-  subsets: ['latin'],
-  variable: '--font-noto-sans',
-  display: 'swap',
-  weight: ['400', '500', '700'],
-});
-
-const notoSerifSC = Noto_Serif_SC({
-  subsets: ['latin'],
-  variable: '--font-noto-serif',
-  display: 'swap',
-  weight: ['400', '500', '700'],
-});
 
 export const metadata: Metadata = {
   title: {
@@ -61,7 +40,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" data-scroll-behavior="smooth" suppressHydrationWarning>
-      <body className={`${inter.variable} ${notoSansSC.variable} ${notoSerifSC.variable} font-sans antialiased`}>
+      <body className="font-sans antialiased">
         <AuthProvider>
           <Header />
           <main className="min-h-screen">{children}</main>

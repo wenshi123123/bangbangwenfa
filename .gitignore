@@ -49,6 +49,7 @@ assets/image_*.png
 
 # pnpm 锁文件（不使用 npm）
 package-lock.json
+.pnpm-store/
 
 # 调试和临时文件
 _check_*.js

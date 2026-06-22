@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync, execSync } = require('child_process');
 const os = require('os');
 
 console.log('==========================================');
@@ -10,6 +10,7 @@ console.log('==========================================');
 // 定义要排除的文件/目录（支持精确名称和通配符）
 const excludePatterns = [
   'node_modules',
+  '.pnpm-store',
   '.next',
   '.git',
   '.env',
@@ -24,6 +25,7 @@ const excludePatterns = [
   '.turbo',
   '.vercel',
   '.coze-logs',
+  'tsconfig.tsbuildinfo',
   'public/download',
   'deploy-package.zip',
   'temp-pack.ps1',
@@ -132,19 +134,25 @@ try {
   countFiles(stagingDir);
   console.log(`📊 已复制 ${fileCount} 个文件`);
   
-  // 2. 用 PowerShell Compress-Archive 打包（不含 Exclude，兼容所有版本）
+  // 2. 打包 ZIP。Windows 使用 PowerShell，macOS/Linux 使用系统 zip。
   console.log('🗜️ 打包 ZIP...');
-  const psScript = `
+  if (process.platform === 'win32') {
+    const psScript = `
 $source = "${stagingDir.replace(/\\/g, '\\\\')}"
 $dest   = "${zipPath.replace(/\\/g, '\\\\')}"
 Compress-Archive -Path "$source\\*" -DestinationPath $dest -Force
 Write-Host "ZIP written: $dest"
   `.trim();
-  
-  const psFile = path.join(os.tmpdir(), 'coze-pack.ps1');
-  fs.writeFileSync(psFile, psScript);
-  execSync('powershell -ExecutionPolicy Bypass -File ' + psFile, { stdio: 'inherit' });
-  fs.unlinkSync(psFile);
+    const psFile = path.join(os.tmpdir(), 'coze-pack.ps1');
+    fs.writeFileSync(psFile, psScript);
+    execSync('powershell -ExecutionPolicy Bypass -File ' + psFile, { stdio: 'inherit' });
+    fs.unlinkSync(psFile);
+  } else {
+    execFileSync('zip', ['-qr', zipPath, '.'], {
+      cwd: stagingDir,
+      stdio: 'inherit',
+    });
+  }
   
   // 3. 清理临时目录
   fs.rmSync(stagingDir, { recursive: true, force: true });
