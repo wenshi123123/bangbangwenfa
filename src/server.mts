@@ -27,9 +27,7 @@ process.on('unhandledRejection', (reason) => {
  */
 function isHealthCheck(req: IncomingMessage): boolean {
   const url = req.url || '';
-  // CloudBase 健康检查：GET / 或 GET /health
-  // 可通过 User-Agent、X-Forwarded-For 等进一步识别，但简单路径匹配即可
-  return req.method === 'GET' && (url === '/' || url === '/health' || url.startsWith('/health'));
+  return req.method === 'GET' && (url === '/health' || url.startsWith('/health'));
 }
 
 /**
@@ -90,17 +88,19 @@ function probeRequestHandler(req: IncomingMessage, res: ServerResponse) {
   }
 }
 
-// 立即启动健康检查服务器，不等待 Next.js 初始化
-// 确保 CloudBase 健康检查能立即通过（否则 InitialDelaySeconds 太短会导致部署失败）
-const probeServer = createServer(probeRequestHandler);
-probeServer.listen(probePort, hostname, () => {
-  console.log(
-    `> Health probe + proxy listening at http://${hostname}:${probePort} (started before Next.js prepare)`,
-  );
-});
-probeServer.once('error', err => {
-  console.error('Probe server error', err);
-});
+if (probePort !== appPort) {
+  // 立即启动健康检查服务器，不等待 Next.js 初始化
+  // 确保 CloudBase 健康检查能立即通过（否则 InitialDelaySeconds 太短会导致部署失败）
+  const probeServer = createServer(probeRequestHandler);
+  probeServer.listen(probePort, hostname, () => {
+    console.log(
+      `> Health probe + proxy listening at http://${hostname}:${probePort} (started before Next.js prepare)`,
+    );
+  });
+  probeServer.once('error', err => {
+    console.error('Probe server error', err);
+  });
+}
 
 app.prepare().then(() => {
   /**
@@ -109,6 +109,11 @@ app.prepare().then(() => {
    */
   const appServer = createServer(async (req, res) => {
     try {
+      if (probePort === appPort && isHealthCheck(req)) {
+        handleHealthCheck(req, res);
+        return;
+      }
+
       const parsedUrl = parse(req.url!, true);
       await handle(req, res, parsedUrl);
     } catch (err) {
@@ -133,8 +138,6 @@ app.prepare().then(() => {
     );
   });
 
-  // 如果 probePort 与 appPort 相同，则 probe 服务器已在上面的 listen 中启动
-  // 如果不同，则 probe 服务器已在 app.prepare() 之前启动
   if (probePort === appPort) {
     console.log(`> Health probe shares same port as main app (${appPort})`);
   }

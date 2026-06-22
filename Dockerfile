@@ -57,7 +57,7 @@ COPY --from=base /app/scripts ./scripts
 RUN sed -i 's/\r$//' ./scripts/start.sh && chmod +x ./scripts/start.sh
 
 # 端口配置
-ENV APP_PORT=5000
+ENV APP_PORT=3000
 ENV PROBE_PORT=3000
 ENV NODE_ENV=production
 ENV DEPLOY_ENV=PROD
@@ -66,7 +66,6 @@ ENV DEPLOY_ENV=PROD
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD curl -f http://localhost:3000/health || exit 1
 
-EXPOSE 5000
 EXPOSE 3000
 
 # 使用 bash 运行启动脚本
