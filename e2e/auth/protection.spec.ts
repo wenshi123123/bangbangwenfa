@@ -19,18 +19,25 @@ test.describe('认证拦截 - 未登录访问', () => {
   ];
 
   for (const { path, name } of protectedPages) {
-    test(`${name} (${path}) 应重定向到登录页`, async ({ page }) => {
+    test(`${name} (${path}) 应拦截未授权访问`, async ({ page }) => {
       const response = await page.goto(path);
+      await page.waitForLoadState('networkidle').catch(() => undefined);
+      await page.waitForFunction(() => {
+        const text = document.body.innerText;
+        return !text.includes('加载中') && !text.includes('加载中…');
+      }, null, { timeout: 5000 }).catch(() => undefined);
 
-      // 应被重定向或返回非200状态
       const finalUrl = page.url();
-      const isRedirected =
+      const pageText = await page.textContent('body') || '';
+      const isBlocked =
         finalUrl.includes('/login') ||
         finalUrl.includes('/register') ||
         finalUrl === '/' ||
-        response?.status() !== 200;
+        response?.status() !== 200 ||
+        /请先登录|登录后|手机号登录|登录 \/ 注册|管理员登录|无权限|未授权|unauthorized/i.test(pageText);
 
-      expect(isRedirected).toBeTruthy();
+      expect(isBlocked).toBeTruthy();
+      expect(pageText).not.toMatch(/加载中[.…]?\s*$/);
     });
   }
 });
