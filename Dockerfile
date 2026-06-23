@@ -32,7 +32,7 @@ RUN pnpm exec tsup src/server.mts --format cjs --platform node --target node20 -
 RUN pnpm prune --prod
 
 # 重新安装 typescript 为 prod 依赖（next.config.ts 运行时需要）
-RUN pnpm add -wP typescript
+RUN pnpm add -P typescript
 
 # 清理 pnpm store 和 npm 缓存，减少镜像层大小
 RUN rm -rf /root/.local/share/pnpm/store /root/.npm /tmp/*
