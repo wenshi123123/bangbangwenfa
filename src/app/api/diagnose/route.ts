@@ -9,7 +9,14 @@ import { NextResponse } from 'next/server';
  * 或在扣子平台日志中查看诊断信息
  */
 
-export async function GET() {
+export async function GET(request: Request) {
+  const token = process.env.DIAGNOSTIC_API_TOKEN;
+  const requestToken = request.headers.get('x-diagnostic-token');
+
+  if (!token || requestToken !== token) {
+    return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+  }
+
   const diagnosis: any = {
     status: 'diagnostic',
     timestamp: new Date().toISOString(),

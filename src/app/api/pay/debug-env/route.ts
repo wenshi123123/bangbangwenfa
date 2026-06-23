@@ -8,7 +8,14 @@ import crypto from 'crypto';
  * 
  * 仅用于排查问题，上线后请删除此文件！
  */
-export async function GET() {
+export async function GET(request: Request) {
+  const token = process.env.PAY_DEBUG_TOKEN;
+  const requestToken = request.headers.get('x-debug-token');
+
+  if (!token || requestToken !== token) {
+    return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+  }
+
   try {
     const envCheck: Record<string, any> = {};
 

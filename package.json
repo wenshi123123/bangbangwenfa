@@ -12,6 +12,9 @@
     "start": "bash ./scripts/start.sh",
     "ts-check": "tsc -p tsconfig.json",
     "test:e2e": "npx playwright test",
+    "test:prod": "playwright test --config=playwright.prod.config.ts",
+    "test:prod:public": "playwright test e2e/pages/public.spec.ts --config=playwright.prod.config.ts",
+    "test:prod:smoke": "playwright test e2e/pages/public.spec.ts e2e/sitemap.spec.ts e2e/security/headers.spec.ts e2e/security/debug-endpoints.spec.ts e2e/auth/protection.spec.ts --config=playwright.prod.config.ts",
     "test:e2e:ui": "npx playwright test --ui",
     "test:e2e:report": "npx playwright show-report",
     "test:e2e:install": "npx playwright install chromium --with-deps"
