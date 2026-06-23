@@ -45,6 +45,7 @@ CHANGELOG.md
 
 # 本地开发调试文件
 *.yaml
+!pnpm-lock.yaml
 !cloudbaserc.yaml
 *.png
 *.jpg
