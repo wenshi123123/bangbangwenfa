@@ -69,7 +69,7 @@ function PayPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderNo = searchParams.get('orderNo');
-  const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn, isLoading } = useAuth();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -118,8 +118,18 @@ function PayPageInner() {
       return;
     }
 
+    if (isLoading) {
+      return;
+    }
+
+    if (!isLoggedIn) {
+      setError('未登录或登录已过期');
+      setLoading(false);
+      return;
+    }
+
     loadOrder();
-  }, [orderNo]);
+  }, [orderNo, isLoggedIn, isLoading]);
 
   const loadOrder = async () => {
     try {
