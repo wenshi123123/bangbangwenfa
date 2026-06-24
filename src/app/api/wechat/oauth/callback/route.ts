@@ -11,9 +11,10 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   const redirect = searchParams.get('redirect') || '/pay';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.bangbangwenfa.com';
 
   if (!code) {
     return NextResponse.json(
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const targetUrl = new URL(redirect, origin);
+  const targetUrl = new URL(redirect, siteUrl);
   targetUrl.searchParams.set('oa_openid', tokenData.openid);
   targetUrl.searchParams.set('oa_oauth', '1');
 

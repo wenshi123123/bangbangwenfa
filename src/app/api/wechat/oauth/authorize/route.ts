@@ -9,8 +9,9 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
   const redirect = searchParams.get('redirect') || '/pay';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.bangbangwenfa.com';
 
   if (!redirect.startsWith('/')) {
     return NextResponse.json(
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const callbackUrl = `${origin}/api/wechat/oauth/callback?redirect=${encodeURIComponent(redirect)}`;
+  const callbackUrl = `${siteUrl}/api/wechat/oauth/callback?redirect=${encodeURIComponent(redirect)}`;
   const oauthUrl =
     'https://open.weixin.qq.com/connect/oauth2/authorize' +
     `?appid=${encodeURIComponent(oaAppId)}` +
