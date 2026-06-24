@@ -26,6 +26,10 @@ export function middleware(request: NextRequest) {
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   // 权限策略
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  // 页面和 API 响应不要长期缓存，避免 CloudBase/CDN 命中旧 HTML 后引用失效的静态资源
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  response.headers.set('Pragma', 'no-cache');
+  response.headers.set('Expires', '0');
 
   // 生产环境添加 HSTS 和 CSP
   if (isProd) {
