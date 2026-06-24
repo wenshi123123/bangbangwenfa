@@ -35,7 +35,7 @@ echo "COZE_ mapping complete."
 # - 当不同时，server.mts 会自动启动健康检查服务器
 # ============================================
 APP_PORT="${PORT:-${APP_PORT:-3000}}"
-PROBE_PORT="${PROBE_PORT:-${APP_PORT}}"
+PROBE_PORT="${PROBE_PORT:-3000}"
 HOSTNAME=0.0.0.0
 
 echo "Starting HTTP service on port ${APP_PORT} for deploy..."

@@ -6,8 +6,8 @@ const dev = process.env.DEPLOY_ENV !== 'PROD';
 const hostname = process.env.HOSTNAME || '0.0.0.0';
 // 主应用端口（与 deploy 命令 --port 参数一致）
 const appPort = parseInt(process.env.APP_PORT || process.env.PORT || '5000', 10);
-// 健康检查端口（CloudBase 默认探测端口 3000，也可与 appPort 相同）
-const probePort = parseInt(process.env.PROBE_PORT || process.env.PORT || '5000', 10);
+// 健康检查端口（CloudBase 可能仍默认探测 3000）
+const probePort = parseInt(process.env.PROBE_PORT || '3000', 10);
 
 // Create Next.js app
 const app = next({ dev, hostname, port: appPort });
