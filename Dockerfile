@@ -57,16 +57,16 @@ COPY --from=base /app/scripts ./scripts
 RUN sed -i 's/\r$//' ./scripts/start.sh && chmod +x ./scripts/start.sh
 
 # 端口配置
-ENV APP_PORT=3000
-ENV PROBE_PORT=3000
+ENV APP_PORT=5000
+ENV PROBE_PORT=5000
 ENV NODE_ENV=production
 ENV DEPLOY_ENV=PROD
 
 # 健康检查 - 延迟 30 秒给容器充足的启动时间
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD curl -f http://localhost:3000/health || exit 1
+  CMD curl -f http://localhost:5000/health || exit 1
 
-EXPOSE 3000
+EXPOSE 5000
 
 # 使用 bash 运行启动脚本
 CMD ["bash", "./scripts/start.sh"]
