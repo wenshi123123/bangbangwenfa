@@ -24,14 +24,24 @@ interface PayResult {
   codeUrl?: string;
   h5Url?: string;
   prepayId?: string;
+  jsapiPayParams?: {
+    appId: string;
+    timeStamp: string;
+    nonceStr: string;
+    package: string;
+    signType: 'RSA';
+    paySign: string;
+  };
 }
 
 // 通用 API 请求
 async function apiRequest(path: string, options?: { method?: string; body?: any; skipAuth?: boolean }) {
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'x-client-device': 'web',
-    'x-user-agent': typeof navigator !== 'undefined' ? navigator.userAgent : '',
+    'x-client-device': isMobile ? 'mobile' : 'web',
+    'x-user-agent': ua.toLowerCase(),
   };
 
   // 添加 token
@@ -74,13 +84,31 @@ function PayPageInner() {
   const pollRef = useRef<NodeJS.Timeout | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [isWechat, setIsWechat] = useState(false);
+  const [deviceReady, setDeviceReady] = useState(false);
+  const [oaOpenid, setOaOpenid] = useState<string | null>(null);
+  const [autoJsapiStarted, setAutoJsapiStarted] = useState(false);
 
   // 检测设备类型
   useEffect(() => {
     const ua = navigator.userAgent || '';
     setIsMobile(/Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua));
     setIsWechat(/MicroMessenger/i.test(ua));
+    setDeviceReady(true);
   }, []);
+
+  useEffect(() => {
+    const urlOpenid = searchParams.get('oa_openid');
+    if (urlOpenid) {
+      setOaOpenid(urlOpenid);
+      localStorage.setItem('oa_openid', urlOpenid);
+      return;
+    }
+
+    const savedOpenid = localStorage.getItem('oa_openid');
+    if (savedOpenid) {
+      setOaOpenid(savedOpenid);
+    }
+  }, [searchParams]);
 
   // 加载订单信息
   useEffect(() => {
@@ -143,6 +171,7 @@ function PayPageInner() {
           orderId: order.orderNo,  // 使用订单编号作为支付订单ID
           amount: Math.round(order.servicePrice * 100), // 元转分
           description: order.caseTitle || order.serviceName || '法律咨询服务',
+          openid: oaOpenid || undefined,
         },
         skipAuth: !isLoggedIn,
       });
@@ -150,6 +179,19 @@ function PayPageInner() {
       if (data.success) {
         const result = data.data;
         setPayResult(result);
+
+        // 微信内：JSAPI 支付
+        if (isWechat && result.jsapiPayParams) {
+          try {
+            await invokeWechatPay(result.jsapiPayParams);
+            router.push(`/success?orderId=${orderNo}`);
+            return;
+          } catch (jsapiErr) {
+            console.error('JSAPI 调起失败:', jsapiErr);
+            setError(jsapiErr instanceof Error ? jsapiErr.message : '微信支付拉起失败');
+            return;
+          }
+        }
 
         // 手机浏览器：H5 支付跳转
         if (isMobile && result.h5Url) {
@@ -185,6 +227,48 @@ function PayPageInner() {
     } finally {
       setPayLoading(false);
     }
+  };
+
+  const invokeWechatPay = async (params: NonNullable<PayResult['jsapiPayParams']>) => {
+    return new Promise<void>((resolve, reject) => {
+      const doPay = () => {
+        if (typeof window.WeixinJSBridge !== 'undefined') {
+          window.WeixinJSBridge.invoke(
+            'getBrandWCPayRequest',
+            {
+              appId: params.appId,
+              timeStamp: params.timeStamp,
+              nonceStr: params.nonceStr,
+              package: params.package,
+              signType: params.signType,
+              paySign: params.paySign,
+            },
+            (res) => {
+              if (res.err_msg === 'get_brand_wcpay_request:ok') {
+                resolve();
+                return;
+              }
+
+              if (res.err_msg === 'get_brand_wcpay_request:cancel') {
+                reject(new Error('支付已取消'));
+                return;
+              }
+
+              reject(new Error(res.err_msg || '支付失败'));
+            }
+          );
+          return;
+        }
+
+        reject(new Error('WeixinJSBridge 不可用，请在微信内打开'));
+      };
+
+      if (typeof window.WeixinJSBridge === 'undefined') {
+        document.addEventListener('WeixinJSBridgeReady', doPay, false);
+      } else {
+        doPay();
+      }
+    });
   };
 
   // 轮询支付状态
@@ -229,6 +313,28 @@ function PayPageInner() {
       }
     };
   }, [showQrCode, payResult, pollCount, orderNo, router, isMobile]);
+
+  useEffect(() => {
+    if (!deviceReady || !order || !isWechat || autoJsapiStarted) return;
+
+    const pendingOrder = localStorage.getItem('pending_jsapi_pay_order');
+    if (pendingOrder && pendingOrder !== orderNo) return;
+
+    localStorage.setItem('pending_jsapi_pay_order', orderNo || '');
+
+    if (oaOpenid) {
+      setAutoJsapiStarted(true);
+      handlePay();
+    }
+  }, [deviceReady, order, isWechat, oaOpenid, autoJsapiStarted, orderNo]);
+
+  useEffect(() => {
+    if (!deviceReady || !order || !isWechat || oaOpenid || error) return;
+
+    const redirect = `${window.location.pathname}${window.location.search}`;
+    localStorage.setItem('pending_jsapi_pay_order', orderNo || '');
+    window.location.replace(`/api/wechat/oauth/authorize?redirect=${encodeURIComponent(redirect)}`);
+  }, [deviceReady, order, isWechat, oaOpenid, error, orderNo]);
 
   // 加载中
   if (loading) {
@@ -377,12 +483,23 @@ function PayPageInner() {
                 <p className="text-sm text-muted-foreground mb-1">应付金额</p>
                 <p className="text-3xl sm:text-4xl font-bold text-gradient">¥{order ? formatPrice(order.servicePrice) : '0.00'}</p>
               </div>
-              <Button onClick={handlePay} disabled={payLoading} className="w-full h-14 text-lg font-medium bg-[#C47353] hover:bg-[#A85D40] text-white rounded-xl">
+              <Button
+                onClick={() => {
+                  if (isWechat && !oaOpenid) {
+                    const redirect = `${window.location.pathname}${window.location.search}`;
+                    window.location.href = `/api/wechat/oauth/authorize?redirect=${encodeURIComponent(redirect)}`;
+                    return;
+                  }
+                  handlePay();
+                }}
+                disabled={payLoading}
+                className="w-full h-14 text-lg font-medium bg-[#C47353] hover:bg-[#A85D40] text-white rounded-xl"
+              >
                 {payLoading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : null}
-                {payLoading ? '正在创建支付...' : isMobile ? '微信支付' : '确认支付'}
+                {payLoading ? '正在创建支付...' : isWechat ? '微信支付' : isMobile ? '微信支付' : '确认支付'}
               </Button>
               <p className="text-xs text-center text-muted-foreground">
-                {isMobile ? '点击后将跳转到微信完成支付' : '点击后将显示微信支付二维码'}
+                {isWechat ? '点击后将直接拉起微信支付' : isMobile ? '点击后将跳转到微信完成支付' : '点击后将显示微信支付二维码'}
               </p>
             </CardContent>
           </Card>

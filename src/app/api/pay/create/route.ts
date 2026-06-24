@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    let { orderId } = body;
+    let { orderId, openid } = body;
 
     if (!orderId) {
       return NextResponse.json(
@@ -104,25 +104,50 @@ export async function POST(request: NextRequest) {
       '127.0.0.1';
 
     // 判断是否移动端请求（前端通过 header 传递）
-    const isMobile = request.headers.get('x-client-device') === 'mobile';
-    const isWechat = (request.headers.get('x-user-agent') || '').includes('micromessenger');
+    const userAgent = (request.headers.get('x-user-agent') || request.headers.get('user-agent') || '').toLowerCase();
+    const isMobile =
+      request.headers.get('x-client-device') === 'mobile' ||
+      /android|iphone|ipad|ipod|webos|blackberry|iemobile|opera mini/.test(userAgent);
+    const isWechat = userAgent.includes('micromessenger');
 
     // 微信内用 JSAPI，手机浏览器用 H5，PC 用 Native（二维码）
-    let payData: { orderId: number; payTradeNo: string; prepayId?: string; codeUrl?: string; h5Url?: string };
+    let payData: {
+      orderId: number;
+      payTradeNo: string;
+      prepayId?: string;
+      codeUrl?: string;
+      h5Url?: string;
+      jsapiPayParams?: {
+        appId: string;
+        timeStamp: string;
+        nonceStr: string;
+        package: string;
+        signType: 'RSA';
+        paySign: string;
+      };
+    };
 
     if (isWechat) {
-      // 微信内：使用 H5 支付（方案 A，快速上线）
-      const result = await wechatPay.createH5Order({
+      const payerOpenid = openid || order.openid;
+      if (!payerOpenid) {
+        return NextResponse.json(
+          { success: false, error: '微信内支付需要公众号 openid，请先完成授权' },
+          { status: 400 }
+        );
+      }
+
+      const result = await wechatPay.createJsapiOrder({
         outTradeNo: payTradeNo,
         description: `法律咨询服务 - ${order.case_title || '咨询订单'}`,
         amount: order.service_price,
         notifyUrl: callbackUrl,
-        clientIp: '127.0.0.1',
+        payerOpenid,
       });
       payData = {
         orderId,
         payTradeNo,
-        h5Url: result.h5Url,
+        prepayId: result.prepayId,
+        jsapiPayParams: result.payParams,
       };
     } else if (isMobile) {
       // 手机浏览器：H5 下单

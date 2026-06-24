@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { getWechatPayClient } from '@/lib/payment/wechat-pay';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
-import crypto from 'crypto';
 
 // 生成订单号
 function generateOrderNo(): string {
@@ -21,7 +20,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // 认证逻辑：支持 JWT 认证或 applicationId 参数（入驻流程场景）
-    const { applicationId } = body;
+    const { applicationId, openid } = body;
     const effectiveAppId = applicationId || queryAppId;
     const isAuthenticated = auth?.success && auth?.user;
 
@@ -98,21 +97,50 @@ export async function POST(request: NextRequest) {
     // 获取客户端 IP 和设备类型
     const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
                      request.headers.get('x-real-ip') || '127.0.0.1';
-    const userAgent = request.headers.get('x-user-agent') || '';
-    const isWechat = /MicroMessenger/i.test(userAgent);
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(userAgent);
+    const userAgent = (request.headers.get('x-user-agent') || request.headers.get('user-agent') || '').toLowerCase();
+    const isWechat = userAgent.includes('micromessenger');
+    const isMobile = /android|iphone|ipad|ipod|webos|blackberry|iemobile|opera mini/.test(userAgent);
 
     // 根据场景调用不同支付 API
-    let payData: any = { orderId: orderNo };
+    let payData: {
+      orderId: string;
+      h5Url?: string;
+      codeUrl?: string;
+      jsapiPayParams?: {
+        appId: string;
+        timeStamp: string;
+        nonceStr: string;
+        package: string;
+        signType: 'RSA';
+        paySign: string;
+      };
+    } = { orderId: orderNo };
 
-    if (isWechat || isMobile) {
-      // 微信内或手机浏览器：H5 支付
+    if (isWechat) {
+      const payerOpenid = openid || request.headers.get('x-openid') || '';
+      if (!payerOpenid) {
+        return NextResponse.json(
+          { success: false, error: '微信内支付需要公众号 openid，请先完成授权' },
+          { status: 400 }
+        );
+      }
+
+      const result = await wechatPay.createJsapiOrder({
+        outTradeNo: orderNo,
+        description: `律师入驻会员费 - ${packageName}`,
+        amount: application.package_price,
+        notifyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.bangbangwenfa.com'}/api/lawyer/pay/callback`,
+        payerOpenid,
+      });
+      payData.jsapiPayParams = result.payParams;
+    } else if (isMobile) {
+      // 手机浏览器：H5 支付
       const result = await wechatPay.createH5Order({
         outTradeNo: orderNo,
         description: `律师入驻会员费 - ${packageName}`,
         amount: application.package_price,
         notifyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.bangbangwenfa.com'}/api/lawyer/pay/callback`,
-        clientIp: isWechat ? '127.0.0.1' : clientIp,
+        clientIp,
       });
       payData.h5Url = result.h5Url;
     } else {

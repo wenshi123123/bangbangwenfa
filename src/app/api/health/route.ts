@@ -33,12 +33,17 @@ export async function GET() {
     ? { status: 'ok' }
     : { status: 'warning', detail: '短信服务未配置' };
 
-  // 5. Sentry 监控检查
+  // 5. 微信公众号 OAuth 配置检查
+  checks.wechat_oa = process.env.WEIXIN_OA_APPID && process.env.WEIXIN_OA_APPSECRET
+    ? { status: 'ok' }
+    : { status: 'warning', detail: '微信公众号 OAuth 未配置，微信内 JSAPI 可能无法获取 openid' };
+
+  // 6. Sentry 监控检查
   checks.sentry = process.env.NEXT_PUBLIC_SENTRY_DSN
     ? { status: 'ok' }
     : { status: 'info', detail: 'Sentry 未启用（缺少 DSN）' };
 
-  // 6. 加密模块检查
+  // 7. 加密模块检查
   try {
     const { encrypt, decrypt } = await import('@/lib/crypto/encryption');
     const testVal = 'health-check-test';

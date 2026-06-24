@@ -49,6 +49,27 @@ interface CreateH5OrderResult {
   prepayId?: string;
 }
 
+interface CreateJsapiOrderParams {
+  outTradeNo: string;
+  description: string;
+  amount: number; // 单位：分
+  notifyUrl: string;
+  payerOpenid: string;
+  goodsDescription?: string;
+}
+
+interface CreateJsapiOrderResult {
+  prepayId: string;
+  payParams: {
+    appId: string;
+    timeStamp: string;
+    nonceStr: string;
+    package: string;
+    signType: 'RSA';
+    paySign: string;
+  };
+}
+
 interface QueryOrderResult {
   tradeState: string;
   tradeStateDesc: string;
@@ -97,6 +118,30 @@ function generateAuthorizationHeader(
   signature: string
 ): string {
   return `WECHATPAY2-SHA256-RSA2048 mchid="${mchId}",nonce_str="${nonce}",timestamp="${timestamp}",serial_no="${serialNo}",signature="${signature}"`;
+}
+
+function generateJsapiPayParams(
+  appId: string,
+  prepayId: string,
+  privateKey: string
+): CreateJsapiOrderResult['payParams'] {
+  const timeStamp = Math.floor(Date.now() / 1000).toString();
+  const nonceStr = crypto.randomBytes(16).toString('hex');
+  const packageValue = `prepay_id=${prepayId}`;
+  const signStr = `${appId}\n${timeStamp}\n${nonceStr}\n${packageValue}\n`;
+
+  const sign = crypto.createSign('RSA-SHA256');
+  sign.update(signStr);
+  sign.end();
+
+  return {
+    appId,
+    timeStamp,
+    nonceStr,
+    package: packageValue,
+    signType: 'RSA',
+    paySign: sign.sign(privateKey, 'base64'),
+  };
 }
 
 /**
@@ -556,6 +601,97 @@ export class WechatPayClient {
   }
 
   /**
+   * 创建 JSAPI 支付订单（微信内网页拉起支付）
+   * 文档: https://pay.weixin.qq.com/doc/v3/apis/chapter3_4_2.shtml
+   */
+  async createJsapiOrder(params: CreateJsapiOrderParams): Promise<CreateJsapiOrderResult> {
+    const { outTradeNo, description, amount, notifyUrl, payerOpenid } = params;
+    const privateKey = this.getPrivateKey();
+
+    const payload = {
+      appid: this.config.appId,
+      mchid: this.config.mchId,
+      description,
+      out_trade_no: outTradeNo,
+      notify_url: notifyUrl,
+      amount: {
+        total: amount,
+        currency: 'CNY',
+      },
+      payer: {
+        openid: payerOpenid,
+      },
+    };
+
+    const bodyStr = JSON.stringify(payload);
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const nonce = crypto.randomBytes(16).toString('hex');
+    const urlPath = '/v3/pay/transactions/jsapi';
+
+    console.log('[WechatPay] JSAPI下单参数:', {
+      appid: this.config.appId,
+      mchid: this.config.mchId,
+      outTradeNo,
+      amount,
+      notifyUrl,
+      hasOpenid: !!payerOpenid,
+    });
+
+    const signature = generateRequestSignature(
+      'POST',
+      urlPath,
+      timestamp,
+      nonce,
+      bodyStr,
+      privateKey
+    );
+
+    const authorization = generateAuthorizationHeader(
+      this.config.mchId,
+      this.config.serialNo,
+      timestamp,
+      nonce,
+      signature
+    );
+
+    try {
+      const response = await axios({
+        method: 'POST',
+        url: `${this.baseUrl}${urlPath}`,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': authorization,
+          'Wechatpay-Serial': this.config.serialNo,
+        },
+        data: bodyStr,
+        timeout: 30000,
+      });
+
+      const prepayId = response.data?.prepay_id;
+      if (!prepayId) {
+        throw new Error('微信支付 JSAPI 下单成功但缺少 prepay_id');
+      }
+
+      return {
+        prepayId,
+        payParams: generateJsapiPayParams(this.config.appId, prepayId, privateKey),
+      };
+    } catch (error: any) {
+      if (error.response) {
+        console.error('[WechatPay] JSAPI下单失败 - 响应状态:', error.response.status);
+        console.error('[WechatPay] JSAPI下单失败 - 响应体:', JSON.stringify(error.response.data, null, 2));
+        const errData = error.response.data;
+        throw new Error(
+          `微信支付 JSAPI 下单失败 [${errData?.code || 'UNKNOWN'}]: ${errData?.message || error.message}`
+        );
+      }
+      console.error('[WechatPay] JSAPI下单失败 - 网络错误:', error.message);
+      throw error;
+    }
+  }
+
+  /**
    * 查询订单状态
    * 文档: https://pay.weixin.qq.com/doc/v3/apis/chapter3_4_2.shtml
    */
@@ -642,6 +778,8 @@ export type {
   CreateNativeOrderResult,
   CreateH5OrderParams,
   CreateH5OrderResult,
+  CreateJsapiOrderParams,
+  CreateJsapiOrderResult,
   QueryOrderResult,
   CloseOrderResult,
 };

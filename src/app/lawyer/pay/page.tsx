@@ -47,24 +47,40 @@ function LawyerPayContent() {
   const [error, setError] = useState<string | null>(null);
   const [paid, setPaid] = useState(false);
   const [isWechat, setIsWechat] = useState(false);
+  const [deviceReady, setDeviceReady] = useState(false);
+  const [oaOpenid, setOaOpenid] = useState<string | null>(null);
 
   // 检测微信环境
   useEffect(() => {
     const ua = navigator.userAgent || '';
     setIsWechat(/micromessenger/i.test(ua));
+    setDeviceReady(true);
   }, []);
 
   // 从 URL 参数中获取 openid 并写入 localStorage（小程序 webview 传参场景）
   useEffect(() => {
-    const urlOpenid = searchParams.get('openid');
+    const urlOpenid = searchParams.get('oa_openid') || searchParams.get('openid');
     if (urlOpenid && urlOpenid.length > 10) {
-      localStorage.setItem('wx_openid', urlOpenid);
+      localStorage.setItem('oa_openid', urlOpenid);
+      setOaOpenid(urlOpenid);
+    } else {
+      const savedOpenid = localStorage.getItem('oa_openid');
+      if (savedOpenid) setOaOpenid(savedOpenid);
     }
   }, [searchParams]);
 
   useEffect(() => {
     if (!applicationId) {
       setError('缺少申请ID');
+      setLoading(false);
+      return;
+    }
+
+    if (!deviceReady) {
+      return;
+    }
+
+    if (isWechat && !oaOpenid) {
       setLoading(false);
       return;
     }
@@ -77,14 +93,22 @@ function LawyerPayContent() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             applicationId,
+            openid: oaOpenid || undefined,
           }),
         });
 
         const result = await response.json();
 
         if (result.success) {
-          const { h5Url, codeUrl, orderId: orderIdFromServer } = result.data;
+          const { h5Url, codeUrl, jsapiPayParams, orderId: orderIdFromServer } = result.data;
           
+          if (isWechat && jsapiPayParams) {
+            setOrderId(orderIdFromServer);
+            setPayParams(jsapiPayParams);
+            invokeWechatPay(jsapiPayParams);
+            return;
+          }
+
           if (h5Url) {
             // H5 支付：直接跳转
             window.location.href = h5Url;
@@ -107,7 +131,14 @@ function LawyerPayContent() {
     };
 
     createPayment();
-  }, [applicationId]);
+  }, [applicationId, oaOpenid, isWechat, deviceReady]);
+
+  useEffect(() => {
+    if (!deviceReady || !isWechat || oaOpenid || !applicationId || error) return;
+
+    const redirect = `${window.location.pathname}${window.location.search}`;
+    window.location.replace(`/api/wechat/oauth/authorize?redirect=${encodeURIComponent(redirect)}`);
+  }, [deviceReady, isWechat, oaOpenid, applicationId, error]);
 
   // 微信内调起 JSAPI 支付
   const invokeWechatPay = (params: JsapiPayParams) => {
