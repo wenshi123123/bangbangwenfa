@@ -128,12 +128,15 @@ function PayPageInner() {
       return;
     }
 
+    // 订单号有效后，清掉可能残留的旧错误态，再重新加载订单
+    setError(null);
     loadOrder();
   }, [orderNo, isLoggedIn, isLoading]);
 
   const loadOrder = async () => {
     try {
       // 修复：API 期望的参数是 orderId（不是 orderNo）
+      setError(null);
       const data = await apiRequest(`/api/consult/order?orderId=${orderNo}`, { skipAuth: !isLoggedIn });
       if (data.success && data.order) {  // 修复：API 返回的是 data.order（不是 data.data）
         setOrder(data.order);
