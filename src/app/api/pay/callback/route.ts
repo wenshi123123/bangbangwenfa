@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
           // 查询订单
           const { data: orders, error: queryError } = await supabase
             .from('consult_orders')
-            .select('id, payment_status, pay_trade_no, amount')
+            .select('id, payment_status, pay_trade_no, service_price')
             .eq('pay_trade_no', out_trade_no)
             .limit(1);
 
@@ -144,8 +144,8 @@ export async function POST(request: NextRequest) {
             const order = orders[0];
 
             // 验证金额（防止篡改）
-            if (amount && amount.total !== order.amount) {
-              console.error('金额不匹配:', { callback: amount.total, order: order.amount });
+            if (amount && amount.total !== order.service_price) {
+              console.error('金额不匹配:', { callback: amount.total, order: order.service_price });
               return NextResponse.json(
                 { code: 'FAIL', message: '金额不匹配' },
                 { status: 400 }
@@ -204,7 +204,7 @@ async function createGuardianCommission(orderId: number, transactionId: string) 
     // 查询订单的邀请关系
     const { data: order } = await supabase
       .from('consult_orders')
-      .select('id, user_id, amount')
+      .select('id, user_id, service_price')
       .eq('id', orderId)
       .single();
 
@@ -232,7 +232,7 @@ async function createGuardianCommission(orderId: number, transactionId: string) 
 
     // 分成比例 1%（与 /api/guardian/calculate 保持一致）
     const COMMISSION_RATE = 0.01;
-    const commissionAmount = Math.floor(order.amount * COMMISSION_RATE);
+    const commissionAmount = Math.floor((order.service_price || 0) * COMMISSION_RATE);
 
     // 创建分成记录（status: pending，需管理员审核后发放到余额）
     await supabase
