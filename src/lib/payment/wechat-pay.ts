@@ -520,6 +520,7 @@ export class WechatPayClient {
   async createH5Order(params: CreateH5OrderParams): Promise<CreateH5OrderResult> {
     const { outTradeNo, description, amount, notifyUrl, clientIp } = params;
     const privateKey = this.getPrivateKey();
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com';
 
     // 构建请求体（H5 支付必须包含 scene_info 和 payer_client_ip）
     const payload = {
@@ -536,6 +537,9 @@ export class WechatPayClient {
         payer_client_ip: clientIp,
         h5_info: {
           type: 'Wap',
+          // 补充来源信息，提升 H5 场景兼容性
+          app_name: '帮帮问法',
+          app_url: siteUrl,
         },
       },
     };
