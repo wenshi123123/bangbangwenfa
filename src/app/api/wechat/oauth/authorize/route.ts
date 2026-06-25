@@ -30,5 +30,11 @@ export async function GET(request: NextRequest) {
     `&state=${encodeURIComponent(redirect)}` +
     '#wechat_redirect';
 
+  console.log('[WeChat OAuth Authorize]', {
+    redirect,
+    callbackUrl,
+    ua: request.headers.get('user-agent') || '',
+  });
+
   return NextResponse.redirect(oauthUrl, 302);
 }

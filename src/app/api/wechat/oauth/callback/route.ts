@@ -16,6 +16,12 @@ export async function GET(request: NextRequest) {
   const redirect = searchParams.get('redirect') || '/pay';
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.bangbangwenfa.com';
 
+  console.log('[WeChat OAuth Callback] incoming', {
+    hasCode: !!code,
+    redirect,
+    ua: request.headers.get('user-agent') || '',
+  });
+
   if (!code) {
     return NextResponse.json(
       { success: false, error: '缺少 code 参数' },
@@ -41,11 +47,23 @@ export async function GET(request: NextRequest) {
   const tokenData = await tokenRes.json();
 
   if (!tokenRes.ok || tokenData.errcode) {
+    console.error('[WeChat OAuth Callback] token exchange failed', {
+      redirect,
+      errcode: tokenData.errcode,
+      errmsg: tokenData.errmsg,
+    });
     return NextResponse.json(
       { success: false, error: tokenData.errmsg || '获取 openid 失败' },
       { status: 500 }
     );
   }
+
+  console.log('[WeChat OAuth Callback] token exchange success', {
+    redirect,
+    scope: tokenData.scope,
+    openidLength: tokenData.openid ? String(tokenData.openid).length : 0,
+    hasUnionid: !!tokenData.unionid,
+  });
 
   const targetUrl = new URL(redirect, siteUrl);
   targetUrl.searchParams.set('oa_openid', tokenData.openid);
