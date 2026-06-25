@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
       description: `律师会员续费 - ${months}个月`,
       outTradeNo: orderNo,
       amount: price,
-      notifyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.bangbangwenfa.com'}/api/lawyer/renew/callback`,
+      notifyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com'}/api/lawyer/renew/callback`,
     });
 
     console.log('律师续费支付创建成功:', {

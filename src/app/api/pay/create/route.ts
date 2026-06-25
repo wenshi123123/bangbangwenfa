@@ -95,7 +95,8 @@ export async function POST(request: NextRequest) {
 
     // 正式模式：使用真实微信支付
     const wechatPay = getWechatPayClient();
-    const callbackUrl = process.env.WEIXIN_CALLBACK_URL || 'https://www.bangbangwenfa.com/api/pay/callback';
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com';
+    const callbackUrl = process.env.WEIXIN_CALLBACK_URL || `${siteUrl}/api/pay/callback`;
 
     // 获取客户端 IP（H5 支付必须）
     const clientIp =

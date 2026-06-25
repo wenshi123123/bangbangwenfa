@@ -251,11 +251,19 @@ export async function updateOrderStatusAfterPayment(body: string): Promise<Payme
     const supabase = getSupabaseAdmin();
 
     // 查询当前订单状态，避免重复处理
-    const { data: existingOrder } = await supabase
+    // 兼容新旧两种订单号字段：
+    // - 新链路使用 pay_trade_no
+    // - 老链路可能写入 order_no
+    const { data: existingOrder, error: queryError } = await supabase
       .from('consult_orders')
-      .select('payment_status, openid')
-      .eq('order_no', out_trade_no)
-      .single();
+      .select('id, payment_status, openid, pay_trade_no, order_no')
+      .or(`pay_trade_no.eq.${out_trade_no},order_no.eq.${out_trade_no}`)
+      .maybeSingle();
+
+    if (queryError) {
+      console.error('查询支付订单失败:', queryError);
+      return { success: false, error: '查询订单失败' };
+    }
 
     if (!existingOrder) {
       return { success: false, error: '订单不存在' };
@@ -271,6 +279,8 @@ export async function updateOrderStatusAfterPayment(body: string): Promise<Payme
     }
 
     // 更新订单状态
+    const orderId = existingOrder.id;
+    const orderNoField = existingOrder.pay_trade_no || existingOrder.order_no || out_trade_no;
     const { error } = await supabase
       .from('consult_orders')
       .update({
@@ -279,20 +289,20 @@ export async function updateOrderStatusAfterPayment(body: string): Promise<Payme
         wechat_transaction_id: transaction_id,
         updated_at: new Date().toISOString(),
       })
-      .eq('order_no', out_trade_no);
+      .eq('id', orderId);
 
     if (error) {
       console.error('更新订单失败:', error);
       return { success: false, error: '更新订单失败' };
     }
 
-    console.log('支付成功，订单已更新:', out_trade_no);
+    console.log('支付成功，订单已更新:', { out_trade_no, orderId, orderNoField });
 
     // 返回订单信息用于后续推送
     return { 
       success: true, 
       order: { 
-        order_no: out_trade_no, 
+        order_no: orderNoField, 
         user_wechat_openid: existingOrder.openid
       }
     };

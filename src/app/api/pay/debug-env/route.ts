@@ -149,7 +149,7 @@ export async function GET(request: Request) {
       } catch (e: any) { fullPathTest.test1_simpleOrder = { success: false, error: e?.message || String(e) }; }
 
       try {
-        const callbackUrl = process.env.WEIXIN_CALLBACK_URL || 'https://www.bangbangwenfa.com/api/pay/callback';
+        const callbackUrl = process.env.WEIXIN_CALLBACK_URL || 'https://bangbangwenfa.com/api/pay/callback';
         const r2 = await client.createNativeOrder({
           outTradeNo: `WX${Date.now().toString().slice(-8)}${crypto.randomBytes(5).toString('hex').toUpperCase()}`,
           description: '法律咨询服务 - 诊断测试订单', amount: 100,
@@ -159,7 +159,7 @@ export async function GET(request: Request) {
       } catch (e: any) { fullPathTest.test2_consultPay = { success: false, error: e?.message || String(e) }; }
 
       try {
-        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.bangbangwenfa.com';
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com';
         const r3 = await client.createNativeOrder({
           outTradeNo: `LAW${Date.now()}DIAG`, description: '律师入驻会员费 - 诊断测试',
           amount: 100, notifyUrl: `${siteUrl}/api/lawyer/pay/callback`,
@@ -168,7 +168,7 @@ export async function GET(request: Request) {
       } catch (e: any) { fullPathTest.test3_lawyerPay = { success: false, error: e?.message || String(e) }; }
 
       try {
-        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.bangbangwenfa.com';
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com';
         const r4 = await client.createNativeOrder({
           outTradeNo: `RENEW${Date.now()}DIAG`, description: '律师会员续费 - 诊断测试',
           amount: 100, notifyUrl: `${siteUrl}/api/lawyer/renew/callback`,
