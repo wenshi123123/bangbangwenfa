@@ -155,20 +155,36 @@ export async function POST(request: NextRequest) {
       };
     } else if (isMobile) {
       // 手机浏览器：H5 下单
-      const result = await wechatPay.createH5Order({
-        outTradeNo: payTradeNo,
-        description: `法律咨询服务 - ${order.case_title || '咨询订单'}`,
-        amount: order.service_price,
-        notifyUrl: callbackUrl,
-        clientIp,
-      });
-      payData = {
-        orderId,
-        payTradeNo,
-        prepayId: result.prepayId,
-        h5Url: result.h5Url,
-      };
-      console.log('[Pay/Create] H5订单创建成功:', { h5Url: result.h5Url.substring(0, 60) + '...' });
+      try {
+        const result = await wechatPay.createH5Order({
+          outTradeNo: payTradeNo,
+          description: `法律咨询服务 - ${order.case_title || '咨询订单'}`,
+          amount: order.service_price,
+          notifyUrl: callbackUrl,
+          clientIp,
+        });
+        payData = {
+          orderId,
+          payTradeNo,
+          prepayId: result.prepayId,
+          h5Url: result.h5Url,
+        };
+        console.log('[Pay/Create] H5订单创建成功:', { h5Url: result.h5Url.substring(0, 60) + '...' });
+      } catch (h5Error) {
+        console.warn('[Pay/Create] H5下单失败，降级为 Native 扫码:', h5Error instanceof Error ? h5Error.message : h5Error);
+        const fallback = await wechatPay.createNativeOrder({
+          outTradeNo: payTradeNo,
+          description: `法律咨询服务 - ${order.case_title || '咨询订单'}`,
+          amount: order.service_price,
+          notifyUrl: callbackUrl,
+        });
+        payData = {
+          orderId,
+          payTradeNo,
+          prepayId: fallback.prepayId,
+          codeUrl: fallback.codeUrl,
+        };
+      }
     } else {
       // PC：Native 扫码支付（原有逻辑）
       const result = await wechatPay.createNativeOrder({
