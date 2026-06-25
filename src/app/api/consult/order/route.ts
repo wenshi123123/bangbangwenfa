@@ -4,14 +4,9 @@ import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware
 
 export async function GET(request: NextRequest) {
   try {
-    // 必须登录才能查询订单
-    const auth = authenticateRequest(request);
-    if (!auth.success) {
-      return unauthorizedResponse(auth.error);
-    }
-
     const searchParams = request.nextUrl.searchParams;
     const orderId = searchParams.get('orderId');
+    const requestOpenid = searchParams.get('oa_openid') || searchParams.get('openid');
 
     if (!orderId) {
       return NextResponse.json(
@@ -43,11 +38,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 使用 Token 中的用户ID验证订单归属，不再信任请求参数中的 userId
-    const userId = auth.userId || auth.guardianId || auth.lawyerId;
-    const isOwner = userId && data.user_id !== null && data.user_id === userId;
+    // 先尝试站内 token 验证，再回退到公众号 openid 验证
+    const auth = authenticateRequest(request);
+    const userId = auth.success ? (auth.userId || auth.guardianId || auth.lawyerId) : null;
+    const isOwnerByUserId = !!userId && data.user_id !== null && data.user_id === userId;
+    const isOwnerByOpenid = !!requestOpenid && !!data.openid && String(data.openid) === String(requestOpenid);
+    const isOwner = isOwnerByUserId || isOwnerByOpenid;
 
-    // 非订单所有者只能看到基本信息
+    // 非订单所有者只能看到基本信息；微信内 openid 命中时视为订单所有者
+    if (data.user_id !== null && !isOwner && !auth.success && !requestOpenid) {
+      return unauthorizedResponse('未登录或登录已过期');
+    }
+
     if (data.user_id !== null && !isOwner) {
       return NextResponse.json(
         { success: false, error: '无权查看此订单' },

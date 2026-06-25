@@ -12,12 +12,6 @@ import crypto from 'crypto';
  */
 export async function POST(request: NextRequest) {
   try {
-    // 必须登录才能创建支付
-    const auth = authenticateRequest(request);
-    if (!auth.success) {
-      return unauthorizedResponse(auth.error);
-    }
-
     const body = await request.json();
     let { orderId, openid } = body;
 
@@ -35,6 +29,21 @@ export async function POST(request: NextRequest) {
       .select('*')
       .eq('id', orderId)
       .single();
+
+    const userAgent = (request.headers.get('x-user-agent') || request.headers.get('user-agent') || '').toLowerCase();
+    const isMobile = request.headers.get('x-client-device') === 'mobile' || /android|iphone|ipad|ipod|webos|blackberry|iemobile|opera mini/.test(userAgent);
+    const isWechat = userAgent.includes('micromessenger');
+    const auth = authenticateRequest(request);
+
+    if (!auth.success) {
+      const requestOpenid = typeof openid === 'string' && openid ? openid : null;
+      const orderOpenid = order?.openid ? String(order.openid) : null;
+      const openidMatched = !!requestOpenid && !!orderOpenid && requestOpenid === orderOpenid;
+
+      if (!(isWechat && requestOpenid && openidMatched)) {
+        return unauthorizedResponse(auth.error);
+      }
+    }
 
     // 测试模式：如果订单不存在，自动创建一个测试订单
     if (orderError || !order) {
@@ -105,12 +114,6 @@ export async function POST(request: NextRequest) {
       '127.0.0.1';
 
     // 判断是否移动端请求（前端通过 header 传递）
-    const userAgent = (request.headers.get('x-user-agent') || request.headers.get('user-agent') || '').toLowerCase();
-    const isMobile =
-      request.headers.get('x-client-device') === 'mobile' ||
-      /android|iphone|ipad|ipod|webos|blackberry|iemobile|opera mini/.test(userAgent);
-    const isWechat = userAgent.includes('micromessenger');
-
     // 微信内用 JSAPI，手机浏览器用 H5，PC 用 Native（二维码）
     let payData: {
       orderId: number;

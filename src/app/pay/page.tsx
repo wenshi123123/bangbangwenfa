@@ -140,7 +140,12 @@ function PayPageInner() {
       return;
     }
 
-    if (!isLoggedIn) {
+    // 微信内优先走公众号 OAuth，不要被站内 token 直接卡死
+    if (isWechat && !oaOpenid) {
+      return;
+    }
+
+    if (!isLoggedIn && !isWechat) {
       setError('未登录或登录已过期');
       setLoading(false);
       return;
@@ -149,13 +154,16 @@ function PayPageInner() {
     // 订单号有效后，清掉可能残留的旧错误态，再重新加载订单
     setError(null);
     loadOrder();
-  }, [orderIdParam, isLoggedIn, isLoading]);
+  }, [orderIdParam, isLoggedIn, isLoading, isWechat, oaOpenid]);
 
   const loadOrder = async () => {
     try {
       // 修复：API 期望的参数是 orderId（不是 orderNo）
       setError(null);
-      const data = await apiRequest(`/api/consult/order?orderId=${orderIdParam}`, { skipAuth: !isLoggedIn });
+      const orderUrl = oaOpenid
+        ? `/api/consult/order?orderId=${orderIdParam}&oa_openid=${encodeURIComponent(oaOpenid)}`
+        : `/api/consult/order?orderId=${orderIdParam}`;
+      const data = await apiRequest(orderUrl, { skipAuth: !isLoggedIn && !!oaOpenid });
       if (data.success && data.order) {  // 修复：API 返回的是 data.order（不是 data.data）
         setOrder(data.order);
       } else {
@@ -204,7 +212,7 @@ function PayPageInner() {
           description: order.caseTitle || order.serviceName || '法律咨询服务',
           openid: oaOpenid || undefined,
         },
-        skipAuth: !isLoggedIn,
+        skipAuth: !isLoggedIn && !!oaOpenid,
       });
 
       if (data.success) {
@@ -362,12 +370,12 @@ function PayPageInner() {
   }, [deviceReady, order, isWechat, oaOpenid, autoJsapiStarted, orderIdParam]);
 
   useEffect(() => {
-    if (!deviceReady || !order || !isWechat || oaOpenid || error) return;
+    if (!deviceReady || !isWechat || oaOpenid || error || !orderIdParam) return;
 
     const redirect = `${window.location.pathname}${window.location.search}`;
-    localStorage.setItem('pending_jsapi_pay_order', String(order.id));
+    localStorage.setItem('pending_jsapi_pay_order', String(orderIdParam));
     window.location.replace(`/api/wechat/oauth/authorize?redirect=${encodeURIComponent(redirect)}`);
-  }, [deviceReady, order, isWechat, oaOpenid, error, orderIdParam]);
+  }, [deviceReady, isWechat, oaOpenid, error, orderIdParam]);
 
   // 加载中
   if (loading) {

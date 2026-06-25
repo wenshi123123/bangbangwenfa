@@ -91,6 +91,7 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
           serviceType: formData.services,
           servicePrice: currentPlan?.price ? currentPlan.price * 100 : 0, // 转换为分
           paymentStatus: 'pending',
+          openid: localStorage.getItem('oa_openid') || undefined,
         }),
       });
 

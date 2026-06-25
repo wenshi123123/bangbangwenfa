@@ -125,6 +125,7 @@ export function PriceStep({ formData, inviteCode, onBack }: PriceStepProps) {
           servicePrice: priceInCents,
           paymentStatus: 'pending',
           inviteCode: inviteCode || null, // 传递邀请码用于守护者分佣
+          openid: localStorage.getItem('oa_openid') || undefined,
         }),
       });
 
