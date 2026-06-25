@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 // 支付页面 - 咨询下单后跳转此页面完成支付
 
 interface Order {
+  id: number;
   orderNo: string;
   serviceName: string;
   servicePrice: number;
@@ -68,7 +69,7 @@ function PayPageInner() {
   const formatPrice = (price: number) => price.toFixed(2);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const orderNo = searchParams.get('orderNo');
+  const orderIdParam = searchParams.get('orderId') || searchParams.get('orderNo');
   const { user, isLoggedIn, isLoading } = useAuth();
 
   const [order, setOrder] = useState<Order | null>(null);
@@ -112,7 +113,7 @@ function PayPageInner() {
 
   // 加载订单信息
   useEffect(() => {
-    if (!orderNo) {
+    if (!orderIdParam) {
       setError('缺少订单号');
       setLoading(false);
       return;
@@ -131,13 +132,13 @@ function PayPageInner() {
     // 订单号有效后，清掉可能残留的旧错误态，再重新加载订单
     setError(null);
     loadOrder();
-  }, [orderNo, isLoggedIn, isLoading]);
+  }, [orderIdParam, isLoggedIn, isLoading]);
 
   const loadOrder = async () => {
     try {
       // 修复：API 期望的参数是 orderId（不是 orderNo）
       setError(null);
-      const data = await apiRequest(`/api/consult/order?orderId=${orderNo}`, { skipAuth: !isLoggedIn });
+      const data = await apiRequest(`/api/consult/order?orderId=${orderIdParam}`, { skipAuth: !isLoggedIn });
       if (data.success && data.order) {  // 修复：API 返回的是 data.order（不是 data.data）
         setOrder(data.order);
       } else {
@@ -181,7 +182,7 @@ function PayPageInner() {
       const data = await apiRequest('/api/pay/create', {
         method: 'POST',
         body: {
-          orderId: order.orderNo,  // 使用订单编号作为支付订单ID
+          orderId: order.id,  // 使用数据库主键作为支付订单ID
           amount: Math.round(order.servicePrice * 100), // 元转分
           description: order.caseTitle || order.serviceName || '法律咨询服务',
           openid: oaOpenid || undefined,
@@ -197,7 +198,7 @@ function PayPageInner() {
         if (isWechat && result.jsapiPayParams) {
           try {
             await invokeWechatPay(result.jsapiPayParams);
-            router.push(`/success?orderId=${orderNo}`);
+            router.push(`/success?orderId=${order.id}`);
             return;
           } catch (jsapiErr) {
             console.error('JSAPI 调起失败:', jsapiErr);
@@ -302,7 +303,7 @@ function PayPageInner() {
 
         if (data.success && data.data?.tradeState === 'SUCCESS') {
           // 支付成功，跳转成功页
-          router.push(`/success?orderNo=${orderNo}`);
+          router.push(`/success?orderId=${order?.id ?? orderIdParam}`);
         } else {
           setPollCount(prev => prev + 1);
         }
@@ -325,29 +326,30 @@ function PayPageInner() {
         pollRef.current = null;
       }
     };
-  }, [showQrCode, payResult, pollCount, orderNo, router, isMobile]);
+  }, [showQrCode, payResult, pollCount, orderIdParam, router, isMobile]);
 
   useEffect(() => {
     if (!deviceReady || !order || !isWechat || autoJsapiStarted) return;
 
     const pendingOrder = localStorage.getItem('pending_jsapi_pay_order');
-    if (pendingOrder && pendingOrder !== orderNo) return;
+    const currentOrderId = String(order.id);
+    if (pendingOrder && pendingOrder !== currentOrderId) return;
 
-    localStorage.setItem('pending_jsapi_pay_order', orderNo || '');
+    localStorage.setItem('pending_jsapi_pay_order', currentOrderId);
 
     if (oaOpenid) {
       setAutoJsapiStarted(true);
       handlePay();
     }
-  }, [deviceReady, order, isWechat, oaOpenid, autoJsapiStarted, orderNo]);
+  }, [deviceReady, order, isWechat, oaOpenid, autoJsapiStarted, orderIdParam]);
 
   useEffect(() => {
     if (!deviceReady || !order || !isWechat || oaOpenid || error) return;
 
     const redirect = `${window.location.pathname}${window.location.search}`;
-    localStorage.setItem('pending_jsapi_pay_order', orderNo || '');
+    localStorage.setItem('pending_jsapi_pay_order', String(order.id));
     window.location.replace(`/api/wechat/oauth/authorize?redirect=${encodeURIComponent(redirect)}`);
-  }, [deviceReady, order, isWechat, oaOpenid, error, orderNo]);
+  }, [deviceReady, order, isWechat, oaOpenid, error, orderIdParam]);
 
   // 加载中
   if (loading) {
@@ -471,7 +473,7 @@ function PayPageInner() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between py-2 border-b border-gray-100">
                   <span className="text-muted-foreground">订单编号</span>
-                  <span className="font-mono">{orderNo}</span>
+                  <span className="font-mono">{order?.id ?? orderIdParam}</span>
                 </div>
                 {order?.caseTitle && (
                   <div className="flex justify-between py-2 border-b border-gray-100">

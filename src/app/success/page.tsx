@@ -28,7 +28,7 @@ const serviceTypeLabels: Record<string, string> = {
 function SuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const orderId = searchParams.get('orderId');
+  const orderId = searchParams.get('orderId') || searchParams.get('orderNo');
   const orderType = searchParams.get('type'); // 'lawyer' 或其他
   
   const [order, setOrder] = useState<OrderData | null>(null);
