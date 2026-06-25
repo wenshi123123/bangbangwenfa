@@ -4,6 +4,10 @@
 # ==========================================
 
 set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=./pnpm-cmd.sh
+. "${SCRIPT_DIR}/pnpm-cmd.sh"
 
 # 颜色定义
 RED='\033[0;31m'
@@ -27,10 +31,9 @@ echo -e "${GREEN}✓ Node.js 版本: $(node -v)${NC}"
 # 安装依赖
 echo -e "${YELLOW}[2/5] 安装依赖...${NC}"
 if command -v pnpm &> /dev/null; then
-    pnpm install --frozen-lockfile
+    pnpm_cmd install --frozen-lockfile
 else
-    npm install -g pnpm
-    pnpm install --frozen-lockfile
+    pnpm_cmd install --frozen-lockfile
 fi
 echo -e "${GREEN}✓ 依赖安装完成${NC}"
 
@@ -47,7 +50,7 @@ echo -e "${GREEN}✓ 环境变量配置完成${NC}"
 
 # 构建应用
 echo -e "${YELLOW}[4/5] 构建应用...${NC}"
-pnpm run build
+pnpm_cmd run build
 echo -e "${GREEN}✓ 构建完成${NC}"
 
 # 启动服务

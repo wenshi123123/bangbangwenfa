@@ -4,6 +4,10 @@
 # ==========================================
 
 set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=./pnpm-cmd.sh
+. "${SCRIPT_DIR}/pnpm-cmd.sh"
 
 # 颜色定义
 RED='\033[0;31m'
@@ -37,12 +41,18 @@ echo -e "${GREEN}   Node.js 版本: $(node -v)${NC}"
 
 # 3. 安装 PNPM
 echo -e "${GREEN}[3/6] 安装 PNPM...${NC}"
-npm install -g pnpm
-echo -e "${GREEN}   PNPM 版本: $(pnpm -v)${NC}"
+if command -v pnpm >/dev/null 2>&1; then
+    echo -e "${GREEN}   PNPM 版本: $(pnpm -v)${NC}"
+elif command -v corepack >/dev/null 2>&1; then
+    corepack enable
+    echo -e "${GREEN}   PNPM 已通过 corepack 就绪${NC}"
+else
+    echo -e "${YELLOW}   PNPM 将通过脚本回退机制使用${NC}"
+fi
 
 # 4. 安装项目依赖
 echo -e "${GREEN}[4/6] 安装项目依赖...${NC}"
-pnpm install
+pnpm_cmd install
 
 # 5. 配置环境变量
 echo -e "${GREEN}[5/6] 配置环境变量...${NC}"
@@ -53,7 +63,7 @@ fi
 
 # 6. 构建并启动
 echo -e "${GREEN}[6/6] 构建并启动服务...${NC}"
-pnpm run build
+pnpm_cmd run build
 
 # 安装 PM2
 npm install -g pm2

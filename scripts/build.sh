@@ -2,6 +2,10 @@
 set -e
 
 COZE_WORKSPACE_PATH="${COZE_WORKSPACE_PATH:-$(pwd)}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=./pnpm-cmd.sh
+. "${SCRIPT_DIR}/pnpm-cmd.sh"
 
 cd "${COZE_WORKSPACE_PATH}"
 
@@ -24,7 +28,7 @@ done
 echo "COZE_ mapping complete."
 
 echo "Installing dependencies..."
-pnpm install --prefer-frozen-lockfile --prefer-offline --loglevel debug --reporter=append-only
+pnpm_cmd install --prefer-frozen-lockfile --prefer-offline --loglevel debug --reporter=append-only
 
 # 构建完成后再移除 drizzle-kit，避免影响依赖锁定文件
 # 注意：此步骤在 build 之后执行
@@ -84,14 +88,16 @@ if [ "${DEPLOY_ENV:-}" = "PROD" ] || [ "${NODE_ENV:-}" = "production" ]; then
 fi
 
 echo "Building the Next.js project..."
-pnpm exec next build
+pnpm_cmd exec next build --webpack
 
 echo "Bundling server with tsup..."
-pnpm exec tsup src/server.mts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
+pnpm_cmd exec tsup src/server.mts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
 
 # 构建完成后移除 drizzle-kit，防止扣子平台自动执行 schema 同步
 # 放在 build 之后不影响构建产物完整性
 echo "Removing drizzle-kit to prevent automatic schema sync..."
-pnpm remove drizzle-kit 2>/dev/null || true
+if grep -q '"drizzle-kit"' package.json; then
+  pnpm_cmd remove drizzle-kit 2>/dev/null || true
+fi
 
 echo "Build completed successfully!"
