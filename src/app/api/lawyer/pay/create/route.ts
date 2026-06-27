@@ -117,22 +117,49 @@ export async function POST(request: NextRequest) {
     } = { orderId: orderNo };
 
     if (isWechat) {
-      const payerOpenid = openid || request.headers.get('x-openid') || '';
-      if (!payerOpenid) {
-        return NextResponse.json(
-          { success: false, error: '微信内支付需要公众号 openid，请先完成授权' },
-          { status: 400 }
-        );
-      }
+      try {
+        const result = await wechatPay.createH5Order({
+          outTradeNo: orderNo,
+          description: `律师入驻会员费 - ${packageName}`,
+          amount: application.package_price,
+          notifyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com'}/api/lawyer/pay/callback`,
+          clientIp,
+        });
+        payData.h5Url = result.h5Url;
+      } catch (h5Error) {
+        console.warn('[Lawyer/Pay/Create] 微信内 H5 下单失败，检查是否可降级为 JSAPI 或 Native:', h5Error instanceof Error ? h5Error.message : h5Error);
+        const payerOpenid = openid || request.headers.get('x-openid') || '';
 
-      const result = await wechatPay.createJsapiOrder({
-        outTradeNo: orderNo,
-        description: `律师入驻会员费 - ${packageName}`,
-        amount: application.package_price,
-        notifyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com'}/api/lawyer/pay/callback`,
-        payerOpenid,
-      });
-      payData.jsapiPayParams = result.payParams;
+        if (payerOpenid) {
+          try {
+            const result = await wechatPay.createJsapiOrder({
+              outTradeNo: orderNo,
+              description: `律师入驻会员费 - ${packageName}`,
+              amount: application.package_price,
+              notifyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com'}/api/lawyer/pay/callback`,
+              payerOpenid,
+            });
+            payData.jsapiPayParams = result.payParams;
+          } catch (jsapiError) {
+            console.warn('[Lawyer/Pay/Create] 微信内 JSAPI 下单失败，降级为 Native 扫码:', jsapiError instanceof Error ? jsapiError.message : jsapiError);
+            const result = await wechatPay.createNativeOrder({
+              description: `律师入驻会员费 - ${packageName}`,
+              outTradeNo: orderNo,
+              amount: application.package_price,
+              notifyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com'}/api/lawyer/pay/callback`,
+            });
+            payData.codeUrl = result.codeUrl;
+          }
+        } else {
+          const result = await wechatPay.createNativeOrder({
+            description: `律师入驻会员费 - ${packageName}`,
+            outTradeNo: orderNo,
+            amount: application.package_price,
+            notifyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com'}/api/lawyer/pay/callback`,
+          });
+          payData.codeUrl = result.codeUrl;
+        }
+      }
     } else if (isMobile) {
       // 手机浏览器：H5 支付
       const result = await wechatPay.createH5Order({

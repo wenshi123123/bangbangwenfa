@@ -98,11 +98,6 @@ function LawyerPayContent() {
       return;
     }
 
-    if (isWechat && !oaOpenid) {
-      setLoading(false);
-      return;
-    }
-
     // 创建支付订单
     const createPayment = async () => {
       try {
@@ -120,16 +115,13 @@ function LawyerPayContent() {
         if (result.success) {
           const { h5Url, codeUrl, jsapiPayParams, orderId: orderIdFromServer } = result.data;
           
-          if (isWechat && jsapiPayParams) {
-            setOrderId(orderIdFromServer);
-            setPayParams(jsapiPayParams);
-            invokeWechatPay(jsapiPayParams);
-            return;
-          }
-
           if (h5Url) {
             // H5 支付：直接跳转
             window.location.href = appendWechatRedirectUrl(h5Url, buildH5ReturnUrl(orderIdFromServer));
+          } else if (isWechat && jsapiPayParams) {
+            setOrderId(orderIdFromServer);
+            setPayParams(jsapiPayParams);
+            invokeWechatPay(jsapiPayParams);
           } else if (codeUrl) {
             // Native 支付：显示二维码
             setOrderId(orderIdFromServer);
@@ -150,13 +142,6 @@ function LawyerPayContent() {
 
     createPayment();
   }, [applicationId, oaOpenid, isWechat, deviceReady]);
-
-  useEffect(() => {
-    if (!deviceReady || !isWechat || oaOpenid || !applicationId || error) return;
-
-    const redirect = `${window.location.pathname}${window.location.search}`;
-    window.location.replace(`/api/wechat/oauth/authorize?redirect=${encodeURIComponent(redirect)}`);
-  }, [deviceReady, isWechat, oaOpenid, applicationId, error]);
 
   // 微信内调起 JSAPI 支付
   const invokeWechatPay = (params: JsapiPayParams) => {
@@ -323,7 +308,7 @@ function LawyerPayContent() {
             )}
 
             <p className="text-xs text-muted-foreground">
-              支付完成后页面将自动跳转
+              微信内优先走 H5，必要时再拉起微信支付
             </p>
           </div>
         </div>

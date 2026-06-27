@@ -140,11 +140,6 @@ function PayPageInner() {
       return;
     }
 
-    // 微信内优先走公众号 OAuth，不要被站内 token 直接卡死
-    if (isWechat && !oaOpenid) {
-      return;
-    }
-
     if (!isLoggedIn && !isWechat) {
       setError('未登录或登录已过期');
       setLoading(false);
@@ -369,14 +364,6 @@ function PayPageInner() {
     }
   }, [deviceReady, order, isWechat, oaOpenid, autoJsapiStarted, orderIdParam]);
 
-  useEffect(() => {
-    if (!deviceReady || !isWechat || oaOpenid || error || !orderIdParam) return;
-
-    const redirect = `${window.location.pathname}${window.location.search}`;
-    localStorage.setItem('pending_jsapi_pay_order', String(orderIdParam));
-    window.location.replace(`/api/wechat/oauth/authorize?redirect=${encodeURIComponent(redirect)}`);
-  }, [deviceReady, isWechat, oaOpenid, error, orderIdParam]);
-
   // 加载中
   if (loading) {
     return (
@@ -535,11 +522,6 @@ function PayPageInner() {
               </div>
               <Button
                 onClick={() => {
-                  if (isWechat && !oaOpenid) {
-                    const redirect = `${window.location.pathname}${window.location.search}`;
-                    window.location.href = `/api/wechat/oauth/authorize?redirect=${encodeURIComponent(redirect)}`;
-                    return;
-                  }
                   handlePay();
                 }}
                 disabled={payLoading}
@@ -549,7 +531,7 @@ function PayPageInner() {
                 {payLoading ? '正在创建支付...' : isWechat ? '微信支付' : isMobile ? '微信支付' : '确认支付'}
               </Button>
               <p className="text-xs text-center text-muted-foreground">
-                {isWechat ? '点击后将直接拉起微信支付' : isMobile ? '点击后将跳转到微信完成支付' : '点击后将显示微信支付二维码'}
+                {isWechat ? '微信内优先走 H5，必要时再拉起微信支付' : isMobile ? '点击后将跳转到微信完成支付' : '点击后将显示微信支付二维码'}
               </p>
             </CardContent>
           </Card>
