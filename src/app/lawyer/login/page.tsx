@@ -20,6 +20,8 @@ import { useAuth } from '@/hooks/use-auth';
 export default function LawyerLoginPage() {
   const router = useRouter();
   const { user, isLoggedIn, isLoading } = useAuth();
+  const [authFallbackChecked, setAuthFallbackChecked] = useState(false);
+  const [fallbackUser, setFallbackUser] = useState<any>(null);
   const [status, setStatus] = useState<
     | 'loading'
     | 'checking'
@@ -34,6 +36,8 @@ export default function LawyerLoginPage() {
   const [error, setError] = useState('');
   const mountedRef = useRef(true);
   const timeoutRef = useRef<NodeJS.Timeout>(undefined!);
+  const effectiveUser = user || fallbackUser;
+  const effectiveLoggedIn = isLoggedIn || !!fallbackUser;
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
@@ -56,21 +60,40 @@ export default function LawyerLoginPage() {
       }
     }, 10000);
 
+    const fallbackTimer = setTimeout(() => {
+      if (authFallbackChecked) return;
+      try {
+        const userInfo = localStorage.getItem('user_info');
+        const guardianUser = localStorage.getItem('guardian_user');
+        const parsed = userInfo
+          ? JSON.parse(userInfo)
+          : guardianUser
+            ? JSON.parse(guardianUser)
+            : null;
+        setFallbackUser(parsed);
+      } catch {
+        setFallbackUser(null);
+      } finally {
+        setAuthFallbackChecked(true);
+      }
+    }, 1200);
+
     return () => {
       mountedRef.current = false;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      clearTimeout(fallbackTimer);
     };
-  }, [status]);
+  }, [status, authFallbackChecked]);
 
   const checkLawyerStatus = useCallback(async () => {
-    if (!user?.id) return;
+    if (!effectiveUser?.id) return;
     setStatus('checking');
     setError('');
 
     try {
       const [lawyerRes, appRes] = await Promise.all([
-        fetch(`/api/lawyer/check?userId=${user.id}`),
-        fetch(`/api/lawyer/application?userId=${user.id}`),
+        fetch(`/api/lawyer/check?userId=${effectiveUser.id}`),
+        fetch(`/api/lawyer/application?userId=${effectiveUser.id}`),
       ]);
 
       const lawyerData = await lawyerRes.json();
@@ -154,19 +177,19 @@ export default function LawyerLoginPage() {
         setStatus('not_logged_in');
       }
     }
-  }, [user?.id, router]);
+  }, [effectiveUser?.id, router]);
 
   useEffect(() => {
-    if (isLoading) {
+    if (isLoading && !authFallbackChecked) {
       setStatus('loading');
       return;
     }
-    if (!isLoggedIn || !user?.id) {
+    if (!effectiveLoggedIn || !effectiveUser?.id) {
       setStatus('not_logged_in');
       return;
     }
     checkLawyerStatus();
-  }, [isLoggedIn, isLoading, user?.id, checkLawyerStatus]);
+  }, [effectiveLoggedIn, isLoading, effectiveUser?.id, checkLawyerStatus, authFallbackChecked]);
 
   const handleRefresh = () => {
     setStatus('loading');

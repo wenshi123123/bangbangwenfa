@@ -27,6 +27,8 @@ interface Order {
 export default function UserCenterPage() {
   const { user, isLoggedIn, isLoading, logout, updateUser } = useAuth();
   const router = useRouter();
+  const [authFallbackChecked, setAuthFallbackChecked] = useState(false);
+  const [fallbackUser, setFallbackUser] = useState<any>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [editNickname, setEditNickname] = useState('');
   const [saving, setSaving] = useState(false);
@@ -37,14 +39,39 @@ export default function UserCenterPage() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [showOrderDetail, setShowOrderDetail] = useState<Order | null>(null);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (authFallbackChecked) return;
+      try {
+        const userInfo = localStorage.getItem('user_info');
+        const guardianUser = localStorage.getItem('guardian_user');
+        const parsed = userInfo
+          ? JSON.parse(userInfo)
+          : guardianUser
+            ? JSON.parse(guardianUser)
+            : null;
+        setFallbackUser(parsed);
+      } catch {
+        setFallbackUser(null);
+      } finally {
+        setAuthFallbackChecked(true);
+      }
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [authFallbackChecked]);
+
+  const effectiveUser = user || fallbackUser;
+  const effectiveLoggedIn = isLoggedIn || !!fallbackUser;
+
   // 加载用户订单（apiRequest 自动携带 Authorization token 进行鉴权）
   const loadOrders = useCallback(async () => {
-    if (!user?.id) return;
+    if (!effectiveUser?.id) return;
     
     setOrdersLoading(true);
     try {
       // 🔧 userId 由服务端从 token 提取，无需传参；传 userId 已被服务端忽略仅作记录
-      const response = await apiRequest(`/api/user/orders?userId=${user.id}`);
+      const response = await apiRequest(`/api/user/orders?userId=${effectiveUser.id}`);
       const result = await response.json();
       if (result.success) {
         setOrders(result.data || []);
@@ -57,7 +84,7 @@ export default function UserCenterPage() {
     } finally {
       setOrdersLoading(false);
     }
-  }, [user?.id]);
+  }, [effectiveUser?.id]);
 
   // 加载未读通知数
   const loadUnreadCount = useCallback(async () => {
@@ -73,19 +100,19 @@ export default function UserCenterPage() {
   }, []);
 
   useEffect(() => {
-    if (user?.id && isLoggedIn) {
+    if (effectiveUser?.id && effectiveLoggedIn) {
       loadOrders();
       loadUnreadCount();
     }
-  }, [user?.id, isLoggedIn, loadOrders, loadUnreadCount]);
+  }, [effectiveUser?.id, effectiveLoggedIn, loadOrders, loadUnreadCount]);
 
   useEffect(() => {
-    if (!isLoading && !isLoggedIn) {
+    if ((authFallbackChecked || !isLoading) && !effectiveLoggedIn) {
       window.dispatchEvent(new CustomEvent('open-login-modal'));
     }
-  }, [isLoading, isLoggedIn]);
+  }, [authFallbackChecked, isLoading, effectiveLoggedIn]);
 
-  if (isLoading) {
+  if (isLoading && !authFallbackChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -96,7 +123,7 @@ export default function UserCenterPage() {
     );
   }
 
-  if (!isLoggedIn) {
+  if (!effectiveLoggedIn) {
     return (
       <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center p-4">
         <Card className="max-w-sm shadow-[0_4px_16px_rgba(61,50,45,0.08)] rounded-xl">
@@ -126,9 +153,9 @@ export default function UserCenterPage() {
               )}
             </div>
             <div>
-              <h2 className="text-xl font-bold">{user?.nickname || '用户'}</h2>
+              <h2 className="text-xl font-bold">{effectiveUser?.nickname || '用户'}</h2>
               <div className="flex items-center gap-2 mt-0.5">
-                {user?.isLawyer ? (
+                {effectiveUser?.isLawyer ? (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#C47353]/20 text-white/80 rounded text-xs">
                     认证律师
                   </span>
@@ -137,7 +164,7 @@ export default function UserCenterPage() {
                     注册用户
                   </span>
                 )}
-                {user?.isGuardian && (
+                {effectiveUser?.isGuardian && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-500/20 text-purple-200 rounded text-xs">
                     守护者
                   </span>
@@ -170,7 +197,7 @@ export default function UserCenterPage() {
           </Link>
 
           {/* 律师后台入口 - 仅律师可见 */}
-          {user?.isLawyer && (
+          {effectiveUser?.isLawyer && (
             <Link href="/lawyer/dashboard">
               <Card className="hover:shadow-[0_8px_24px_rgba(61,50,45,0.06)] transition-shadow cursor-pointer border border-[rgba(196,115,83,0.2)]">
                 <CardContent className="py-4">
