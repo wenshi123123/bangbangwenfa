@@ -36,6 +36,7 @@ export default function LawyerLoginPage() {
   const [error, setError] = useState('');
   const mountedRef = useRef(true);
   const timeoutRef = useRef<NodeJS.Timeout>(undefined!);
+  const [loadingFallbackReached, setLoadingFallbackReached] = useState(false);
   const effectiveUser = user || fallbackUser;
   const effectiveLoggedIn = isLoggedIn || !!fallbackUser;
 
@@ -78,10 +79,20 @@ export default function LawyerLoginPage() {
       }
     }, 1200);
 
+    const loadingTimer = setTimeout(() => {
+      if (mountedRef.current && status === 'loading') {
+        setLoadingFallbackReached(true);
+        if (!effectiveLoggedIn || !effectiveUser?.id) {
+          setStatus('not_logged_in');
+        }
+      }
+    }, 1800);
+
     return () => {
       mountedRef.current = false;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       clearTimeout(fallbackTimer);
+      clearTimeout(loadingTimer);
     };
   }, [status, authFallbackChecked]);
 
@@ -180,7 +191,7 @@ export default function LawyerLoginPage() {
   }, [effectiveUser?.id, router]);
 
   useEffect(() => {
-    if (isLoading && !authFallbackChecked) {
+    if (isLoading && !authFallbackChecked && !loadingFallbackReached) {
       setStatus('loading');
       return;
     }
@@ -189,7 +200,7 @@ export default function LawyerLoginPage() {
       return;
     }
     checkLawyerStatus();
-  }, [effectiveLoggedIn, isLoading, effectiveUser?.id, checkLawyerStatus, authFallbackChecked]);
+  }, [effectiveLoggedIn, isLoading, effectiveUser?.id, checkLawyerStatus, authFallbackChecked, loadingFallbackReached]);
 
   const handleRefresh = () => {
     setStatus('loading');
@@ -251,7 +262,7 @@ export default function LawyerLoginPage() {
   );
 
   // ====== 加载中 ======
-  if (status === 'loading') {
+  if (status === 'loading' && !loadingFallbackReached) {
     return (
       <div className="min-h-screen bg-[#FAF7F2] flex flex-col">
         <div className="p-4">
