@@ -20,20 +20,25 @@ test.describe('认证拦截 - 未登录访问', () => {
 
   for (const { path, name } of protectedPages) {
     test(`${name} (${path}) 应拦截未授权访问`, async ({ page }) => {
-      const response = await page.goto(path);
-      await page.waitForLoadState('networkidle').catch(() => undefined);
-      await page.waitForFunction(() => {
-        const text = document.body.innerText;
-        return !text.includes('加载中') && !text.includes('加载中…');
-      }, null, { timeout: 5000 }).catch(() => undefined);
+      await page.goto(path, { waitUntil: 'domcontentloaded', timeout: 15000 });
+      await page
+        .waitForURL(
+          (url) =>
+            url.pathname === '/' ||
+            url.pathname.includes('/login') ||
+            url.pathname.includes('/register'),
+          { timeout: 15000 }
+        )
+        .catch(() => undefined);
 
       const finalUrl = page.url();
-      const pageText = await page.textContent('body') || '';
+      const pageText = finalUrl.includes(path)
+        ? ((await page.locator('body').innerText({ timeout: 5000 }).catch(() => '')) || '')
+        : '';
       const isBlocked =
         finalUrl.includes('/login') ||
         finalUrl.includes('/register') ||
         finalUrl === '/' ||
-        response?.status() !== 200 ||
         /请先登录|登录后|手机号登录|登录 \/ 注册|管理员登录|无权限|未授权|unauthorized/i.test(pageText);
 
       expect(isBlocked).toBeTruthy();

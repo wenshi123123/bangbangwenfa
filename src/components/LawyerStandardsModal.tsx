@@ -242,7 +242,7 @@ export function LawyerStandardsModal({ isOpen, onClose }: LawyerStandardsModalPr
             <div className="flex flex-col sm:flex-row items-center gap-4">
               <div className="w-28 h-28 sm:w-32 sm:h-32 bg-white rounded-2xl p-2 shadow-lg flex-shrink-0">
                 <Image 
-                  src="/wechat-qr.png" 
+                  src="/wechat-qr.jpg" 
                   alt="公众号二维码"
                   width={120}
                   height={120}

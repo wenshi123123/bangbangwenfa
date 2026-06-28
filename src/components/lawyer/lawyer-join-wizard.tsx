@@ -55,6 +55,7 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
   const [formData, setFormData] = useState<LawyerFormData>(initialFormData);
   const [showPromo, setShowPromo] = useState(true);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [authGraceExpired, setAuthGraceExpired] = useState(false);
   const { user, isLoggedIn, isLoading } = useAuth();
 
   // 登录检查
@@ -63,6 +64,32 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
       setShowLoginPrompt(true);
     }
   }, [isLoading, isLoggedIn]);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      setShowLoginPrompt(false);
+    }
+  }, [isLoggedIn]);
+
+  // 如果认证状态迟迟没有结束，给页面一个兜底，避免永远停在加载中
+  useEffect(() => {
+    if (!isLoading) {
+      setAuthGraceExpired(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setAuthGraceExpired(true);
+    }, 1800);
+
+    return () => clearTimeout(timer);
+  }, [isLoading]);
+
+  useEffect(() => {
+    if (authGraceExpired && !isLoggedIn) {
+      setShowLoginPrompt(true);
+    }
+  }, [authGraceExpired, isLoggedIn]);
 
   // 从宣传页进入表单时，滚动到顶部
   useEffect(() => {
@@ -143,13 +170,13 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
     }
   };
 
-  // 加载中
-  if (isLoading) {
+  // 加载中：只在短暂等待期内显示，避免页面长时间卡死
+  if (isLoading && !authGraceExpired) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)' }}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
-          <p className="text-muted-foreground">加载中...</p>
+          <p className="text-muted-foreground">正在检查登录状态...</p>
         </div>
       </div>
     );

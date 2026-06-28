@@ -260,7 +260,7 @@ export default function AboutPage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6 md:gap-8">
               <div className="w-40 h-40 md:w-48 md:h-48 bg-white rounded-xl p-3 shadow-[0_4px_16px_rgba(61,50,45,0.08)] border border-[rgba(196,115,83,0.2)]">
                 <Image 
-                  src="/wechat-qr.png" 
+                  src="/wechat-qr.jpg" 
                   alt="公众号二维码"
                   width={180}
                   height={180}

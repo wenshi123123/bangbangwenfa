@@ -71,16 +71,36 @@ export async function POST(request: NextRequest) {
     const userId = auth.user?.id;
     const supabase = getSupabaseAdmin();
 
-    // 查询当前律师信息（含类型）
-    const { data: lawyer, error: lawyerError } = await supabase
+    // 查询当前律师信息（优先用 user_id；若存量数据未回填，再回退到 lawyerId）
+    const { data: lawyerByUserId, error: lawyerError } = await supabase
       .from('lawyers')
       .select('id, user_id, name, member_expires_at, specialization')
       .eq('user_id', userId)
       .single();
 
-    if (lawyerError || !lawyer) {
+    let lawyer = lawyerByUserId;
+
+    if ((lawyerError || !lawyer) && auth.lawyerId) {
+      const { data: lawyerById } = await supabase
+        .from('lawyers')
+        .select('id, user_id, name, member_expires_at, specialization')
+        .eq('id', auth.lawyerId)
+        .single();
+
+      if (lawyerById) {
+        lawyer = lawyerById;
+        if (lawyerById.user_id !== userId) {
+          await supabase
+            .from('lawyers')
+            .update({ user_id: userId })
+            .eq('id', lawyerById.id);
+        }
+      }
+    }
+
+    if (!lawyer) {
       return NextResponse.json(
-        { success: false, error: '未找到律师信息' },
+        { success: false, error: '未找到律师信息，请先完成律师入驻或重新登录' },
         { status: 404 }
       );
     }

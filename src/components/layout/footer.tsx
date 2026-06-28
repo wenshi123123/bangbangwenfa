@@ -33,7 +33,7 @@ export function Footer() {
             <div className="flex flex-col items-center sm:items-start">
               <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-xl overflow-hidden border border-[rgba(196,115,83,0.2)] shadow-[0_4px_16px_rgba(61,50,45,0.08)]">
                 <Image
-                  src="/wechat-qr.png"
+                  src="/wechat-qr.jpg"
                   alt="扫码关注帮帮问法"
                   width={144}
                   height={144}

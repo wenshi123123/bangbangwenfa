@@ -7,6 +7,7 @@
     "deploy:package": "node scripts/create-deploy-package.js",
     "dev": "next dev --port 3000",
     "dev:bash": "bash ./scripts/dev.sh",
+    "harness:check": "node scripts/check-harness-task.mjs",
     "preinstall": "npx only-allow pnpm",
     "lint": "eslint",
     "start": "bash ./scripts/start.sh",

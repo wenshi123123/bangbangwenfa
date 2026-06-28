@@ -34,6 +34,10 @@ export default function LawyerLayout({
     setChecked(true);
   }, [isLoggedIn, isLoading, isPublicPath, pathname, router]);
 
+  if (isPublicPath) {
+    return <>{children}</>;
+  }
+
   // 加载中显示占位
   if (isLoading || (!isPublicPath && !checked)) {
     return (

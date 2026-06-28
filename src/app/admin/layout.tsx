@@ -134,8 +134,9 @@ export default function AdminLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const isPublicPath = pathname?.startsWith('/admin/login') ?? false;
   const [admin, setAdmin] = useState<AdminUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isPublicPath);
   const [stats, setStats] = useState<Stats>({
     pendingLawyerApplications: 0,
     pendingProfileRevisions: 0,
@@ -156,8 +157,8 @@ export default function AdminLayout({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    // 如果是登录页，不需要检查认证
-    if (pathname === '/admin/login') {
+    // 如果是登录页，不需要检查认证，也不要挂载后台壳子
+    if (isPublicPath) {
       setLoading(false);
       return;
     }
@@ -224,7 +225,7 @@ export default function AdminLayout({
       window.removeEventListener('admin-logged-in', handleLoginChange);
       window.removeEventListener('admin-logged-out', handleLogout);
     };
-  }, [router, pathname]);
+  }, [router, pathname, isPublicPath]);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -267,6 +268,10 @@ export default function AdminLayout({
     if (admin?.permissions?.includes('all')) return true;
     return admin?.permissions?.includes(item.permission);
   });
+
+  if (isPublicPath) {
+    return <>{children}</>;
+  }
 
   if (loading) {
     return (

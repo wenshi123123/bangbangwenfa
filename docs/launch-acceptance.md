@@ -1,5 +1,7 @@
 # 帮帮问法上线验收记录
 
+> 新任务请优先参考 [`docs/harness-engineering.md`](./harness-engineering.md) 和 [`docs/harness-task-template.md`](./harness-task-template.md)。
+
 ## 当前生产版本
 
 | 项目 | 记录 |

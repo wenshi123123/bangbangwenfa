@@ -994,7 +994,7 @@ export default function LawyerPage() {
                 <img src="/qrcode_for_gh_3203ee4ded0e_430.jpg"
                      alt="公众号二维码"
                      class="w-48 h-48 rounded-xl border border-[#E8D5C0]"
-                     onerror="this.onerror=null;this.src='/wechat-qr.png'" />
+                     onerror="this.onerror=null;this.src='/wechat-qr.jpg'" />
               </div>
               <button class="w-full py-2.5 bg-[#F5F0E8] text-[#78716C] rounded-xl hover:bg-[#EBE3D8] text-sm font-medium transition-colors">关闭</button>
             `;

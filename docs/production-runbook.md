@@ -1,5 +1,7 @@
 # 生产发布与排查 Runbook
 
+> 新任务和新验证流程请优先参考 [`docs/harness-engineering.md`](./harness-engineering.md) 与 [`docs/harness-task-template.md`](./harness-task-template.md)。
+
 ## 常用命令
 
 ```bash

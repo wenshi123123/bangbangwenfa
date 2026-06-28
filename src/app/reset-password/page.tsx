@@ -38,7 +38,7 @@ export default function ResetPasswordPage() {
       const res = await fetch('/api/sms/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone })
+        body: JSON.stringify({ phone, type: 'reset-password' })
       });
       
       const data = await res.json();
