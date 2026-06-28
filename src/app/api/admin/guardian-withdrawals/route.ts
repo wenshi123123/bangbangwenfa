@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabaseAdmin();
     let query = supabase
       .from('guardian_withdrawals')
-      .select('*, guardian:guardian_users(id, nickname, wechat_account, user_id)', { count: 'exact' })
+      .select('*, guardian_id, amount, status, wechat_qrcode, admin_note, created_at, processed_at', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
     if (status) query = query.eq('status', status);
@@ -28,7 +28,28 @@ export async function GET(request: NextRequest) {
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
-    return NextResponse.json({ success: true, data: data || [], total: count || 0, page, limit });
+
+    const withdrawals = data || [];
+    const guardianIds = [...new Set(withdrawals.map((item) => item.guardian_id).filter(Boolean))];
+
+    let guardianMap = new Map<string, { id: string; nickname: string; wechat_account: string | null; user_id: number | null }>();
+    if (guardianIds.length > 0) {
+      const { data: guardians } = await supabase
+        .from('guardian_users')
+        .select('id, nickname, wechat_account, user_id')
+        .in('id', guardianIds);
+
+      guardianMap = new Map(
+        (guardians || []).map((guardian) => [String(guardian.id), guardian])
+      );
+    }
+
+    const result = withdrawals.map((item) => ({
+      ...item,
+      guardian: guardianMap.get(String(item.guardian_id)) || null,
+    }));
+
+    return NextResponse.json({ success: true, data: result, total: count || 0, page, limit });
   } catch (error) {
     return NextResponse.json({ success: false, error: '服务器错误' }, { status: 500 });
   }
@@ -82,15 +103,23 @@ export async function PUT(request: NextRequest) {
     // 先查询提现记录
     const { data: withdrawal, error: fetchError } = await supabase
       .from('guardian_withdrawals')
-      .select('*, guardian_users(id, nickname, available_commission, user_id)')
+      .select('id, guardian_id, amount, status, wechat_qrcode, admin_note, created_at, processed_at')
       .eq('id', id)
       .single();
     
     if (fetchError || !withdrawal) {
       return NextResponse.json({ success: false, error: '提现记录不存在' }, { status: 404 });
     }
-    
-    const guardian = withdrawal.guardian_users;
+
+    const { data: guardian, error: guardianError } = await supabase
+      .from('guardian_users')
+      .select('id, nickname, available_commission, withdrawn_commission, user_id')
+      .eq('id', withdrawal.guardian_id)
+      .single();
+
+    if (guardianError || !guardian) {
+      return NextResponse.json({ success: false, error: '守护者信息不存在' }, { status: 404 });
+    }
     
     // 审核通过时扣除余额
     if (status === 'completed' && withdrawal.status !== 'completed') {

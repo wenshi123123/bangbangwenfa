@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabaseAdmin();
     let query = supabase
       .from('guardian_commissions')
-      .select('*, guardian:guardian_users(id, nickname, invite_code, user_id), order:consult_orders(id, case_title, contact_name, service_price)', { count: 'exact' })
+      .select('id, guardian_id, order_id, commission_amount, status, admin_note, created_at, processed_at', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
     if (status) query = query.eq('status', status);
@@ -28,7 +28,30 @@ export async function GET(request: NextRequest) {
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
-    return NextResponse.json({ success: true, data: data || [], total: count || 0, page, limit });
+
+    const commissions = data || [];
+    const guardianIds = [...new Set(commissions.map((item) => item.guardian_id).filter(Boolean))];
+    const orderIds = [...new Set(commissions.map((item) => item.order_id).filter(Boolean))];
+
+    const [guardianResult, orderResult] = await Promise.all([
+      guardianIds.length > 0
+        ? supabase.from('guardian_users').select('id, nickname, invite_code, user_id').in('id', guardianIds)
+        : Promise.resolve({ data: [] as Array<{ id: string; nickname: string; invite_code: string | null; user_id: number | null }> }),
+      orderIds.length > 0
+        ? supabase.from('consult_orders').select('id, case_title, contact_name, service_price').in('id', orderIds)
+        : Promise.resolve({ data: [] as Array<{ id: string; case_title: string | null; contact_name: string | null; service_price: number | null }> }),
+    ]);
+
+    const guardianMap = new Map((guardianResult.data || []).map((guardian) => [String(guardian.id), guardian]));
+    const orderMap = new Map((orderResult.data || []).map((order) => [String(order.id), order]));
+
+    const result = commissions.map((item) => ({
+      ...item,
+      guardian: guardianMap.get(String(item.guardian_id)) || null,
+      order: orderMap.get(String(item.order_id)) || null,
+    }));
+
+    return NextResponse.json({ success: true, data: result, total: count || 0, page, limit });
   } catch (error) {
     return NextResponse.json({ success: false, error: '服务器错误' }, { status: 500 });
   }
@@ -86,7 +109,7 @@ export async function PUT(request: NextRequest) {
     // 先查询分成记录
     const { data: commission, error: queryError } = await supabase
       .from('guardian_commissions')
-      .select('guardian_id, commission_amount, order_id, guardian_users(user_id)')
+      .select('guardian_id, commission_amount, order_id')
       .eq('id', id)
       .single();
 
@@ -129,7 +152,12 @@ export async function PUT(request: NextRequest) {
       }
     } else if (status === 'rejected') {
       // 发送通知：分成被拒绝
-      const guardian = commission.guardian_users as { user_id?: number } | null;
+      const { data: guardian } = await supabase
+        .from('guardian_users')
+        .select('user_id')
+        .eq('id', commission.guardian_id)
+        .single();
+
       if (guardian?.user_id) {
         await sendNotification(supabase, String(guardian.user_id), 'commission_rejected', {
           reason: adminNote || '不符合分润条件',
