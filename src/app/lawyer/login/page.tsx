@@ -23,7 +23,6 @@ export default function LawyerLoginPage() {
   const [authFallbackChecked, setAuthFallbackChecked] = useState(false);
   const [fallbackUser, setFallbackUser] = useState<any>(null);
   const [status, setStatus] = useState<
-    | 'loading'
     | 'checking'
     | 'not_logged_in'
     | 'no_application'
@@ -31,12 +30,11 @@ export default function LawyerLoginPage() {
     | 'paid_not_reviewed'
     | 'approved'
     | 'rejected'
-  >('loading');
+  >('not_logged_in');
   const [applicationData, setApplicationData] = useState<any>(null);
   const [error, setError] = useState('');
   const mountedRef = useRef(true);
   const timeoutRef = useRef<NodeJS.Timeout>(undefined!);
-  const [loadingFallbackReached, setLoadingFallbackReached] = useState(false);
   const effectiveUser = user || fallbackUser;
   const effectiveLoggedIn = isLoggedIn || !!fallbackUser;
 
@@ -56,7 +54,7 @@ export default function LawyerLoginPage() {
     mountedRef.current = true;
     timeoutRef.current = setTimeout(() => {
       if (mountedRef.current && status === 'checking') {
-        setStatus('loading');
+        setStatus('not_logged_in');
         setError('检查超时，请刷新页面重试');
       }
     }, 10000);
@@ -79,20 +77,10 @@ export default function LawyerLoginPage() {
       }
     }, 1200);
 
-    const loadingTimer = setTimeout(() => {
-      if (mountedRef.current && status === 'loading') {
-        setLoadingFallbackReached(true);
-        if (!effectiveLoggedIn || !effectiveUser?.id) {
-          setStatus('not_logged_in');
-        }
-      }
-    }, 1800);
-
     return () => {
       mountedRef.current = false;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       clearTimeout(fallbackTimer);
-      clearTimeout(loadingTimer);
     };
   }, [status, authFallbackChecked]);
 
@@ -191,19 +179,15 @@ export default function LawyerLoginPage() {
   }, [effectiveUser?.id, router]);
 
   useEffect(() => {
-    if (isLoading && !authFallbackChecked && !loadingFallbackReached) {
-      setStatus('loading');
-      return;
-    }
     if (!effectiveLoggedIn || !effectiveUser?.id) {
       setStatus('not_logged_in');
       return;
     }
     checkLawyerStatus();
-  }, [effectiveLoggedIn, isLoading, effectiveUser?.id, checkLawyerStatus, authFallbackChecked, loadingFallbackReached]);
+  }, [effectiveLoggedIn, isLoading, effectiveUser?.id, checkLawyerStatus, authFallbackChecked]);
 
   const handleRefresh = () => {
-    setStatus('loading');
+    setStatus('checking');
     setTimeout(() => checkLawyerStatus(), 100);
   };
 
@@ -260,31 +244,6 @@ export default function LawyerLoginPage() {
       </div>
     </div>
   );
-
-  // ====== 加载中 ======
-  if (status === 'loading' && !loadingFallbackReached) {
-    return (
-      <div className="min-h-screen bg-[#FAF7F2] flex flex-col">
-        <div className="p-4">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-sm text-[#8C7B6E]"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            返回首页
-          </Link>
-        </div>
-        <div className="flex-1 flex flex-col items-center justify-center gap-4">
-          <div className="relative">
-            <div className="w-16 h-16 rounded-full border-2 border-[#C47353]/20" />
-            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-[#C47353] animate-spin" />
-          </div>
-          <p className="text-sm text-[#8C7B6E]">正在验证身份…</p>
-          {error && <p className="text-xs text-[#C26565]">{error}</p>}
-        </div>
-      </div>
-    );
-  }
 
   // ====== 已审核通过 ======
   if (status === 'approved') {
