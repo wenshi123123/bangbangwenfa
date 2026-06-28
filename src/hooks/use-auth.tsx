@@ -85,7 +85,7 @@ function GlobalScrollReset() {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserInfo | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   // 从存储数据构建用户信息
   const buildUserInfo = useCallback((userData: any): UserInfo => {
@@ -119,7 +119,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // 检查登录状态
   const checkAuth = useCallback(async () => {
-    setIsLoading(true);
     try {
       // 读取 user_info（统一登录方式）
       const userInfoStr = localStorage.getItem('user_info');
@@ -190,8 +189,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('检查登录状态失败:', error);
       setUser(null);
-    } finally {
-      setIsLoading(false);
     }
   }, [buildUserInfo]);
 
