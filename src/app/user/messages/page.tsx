@@ -87,13 +87,29 @@ export default function MessagesPage() {
       const result = await response.json();
       
       if (result.success) {
+        const list = Array.isArray(result.data?.list)
+          ? result.data.list
+          : Array.isArray(result.data)
+            ? result.data
+            : [];
+        const total = Number(result.data?.total ?? list.length ?? 0);
+        const pageSize = Number(result.data?.pageSize ?? 20);
         if (pageNum === 1) {
-          setNotifications(result.data || []);
+          setNotifications(list);
         } else {
-          setNotifications(prev => [...prev, ...(result.data || [])]);
+          setNotifications(prev => [...prev, ...list]);
         }
-        setPagination(result.pagination);
-        setUnreadCount(result.unread_count || 0);
+        setPagination({
+          page: Number(result.data?.page ?? pageNum),
+          page_size: pageSize,
+          total,
+          total_pages: Math.max(1, Math.ceil(total / pageSize)),
+        });
+        const unreadRes = await apiRequest('/api/user/notifications?unreadOnly=true&limit=1');
+        const unreadResult = await unreadRes.json();
+        if (unreadResult.success) {
+          setUnreadCount(Number(unreadResult.unreadCount || 0));
+        }
       }
     } catch (error) {
       console.error('获取通知失败:', error);
@@ -120,10 +136,10 @@ export default function MessagesPage() {
   const refreshUnreadCount = async () => {
     if (!userId) return;
     try {
-      const response = await apiRequest('/api/notifications/list?page=1');
+      const response = await apiRequest('/api/user/notifications?unreadOnly=true&limit=1');
       const result = await response.json();
       if (result.success) {
-        setUnreadCount(result.unread_count || 0);
+        setUnreadCount(result.unreadCount || 0);
       }
     } catch (error) {
       console.error('刷新未读数量失败:', error);
