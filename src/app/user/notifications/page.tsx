@@ -38,6 +38,8 @@ const typeConfig: Record<string, { label: string; color: string; icon: any }> = 
   system_notice: { label: '系统通知', color: 'bg-slate-100 text-slate-700', icon: Bell },
 };
 
+const USER_CENTER_HREF = '/user?v=20260629a';
+
 export default function UserNotificationsPage() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -156,7 +158,7 @@ export default function UserNotificationsPage() {
       <div className="min-h-screen bg-[#FAF7F2]">
         <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-[rgba(196,115,83,0.15)]">
           <div className="container mx-auto px-4 py-3 flex items-center gap-3">
-            <Link href="/user" className="p-2 -ml-2 rounded-full hover:bg-[#FAF7F2] transition-colors">
+            <Link href={USER_CENTER_HREF} className="p-2 -ml-2 rounded-full hover:bg-[#FAF7F2] transition-colors">
               <ArrowLeft className="w-5 h-5 text-[#3D322D]" />
             </Link>
             <h1 className="font-serif text-[#3D322D] font-normal text-lg">通知中心</h1>
@@ -184,7 +186,7 @@ export default function UserNotificationsPage() {
       <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-[rgba(196,115,83,0.15)]">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/user" className="p-2 -ml-2 rounded-full hover:bg-[#FAF7F2] transition-colors">
+            <Link href={USER_CENTER_HREF} className="p-2 -ml-2 rounded-full hover:bg-[#FAF7F2] transition-colors">
               <ArrowLeft className="w-5 h-5 text-[#3D322D]" />
             </Link>
             <div className="flex items-center gap-2">

@@ -22,6 +22,8 @@ import {
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+const ADMIN_LOGIN_HREF = '/admin/login?v=20260629a';
+
 interface AdminUser {
   id: number;
   username: string;
@@ -178,7 +180,7 @@ export default function AdminLayout({
       if (!adminInfo) {
         setUnauthorized(true);
         setAuthResolved(true);
-        router.replace(`/admin/login?redirect=${encodeURIComponent(pathname || '/admin/dashboard')}`);
+        router.replace(`${ADMIN_LOGIN_HREF}&redirect=${encodeURIComponent(pathname || '/admin/dashboard')}`);
         return false;
       }
       try {
@@ -187,7 +189,7 @@ export default function AdminLayout({
         console.error('解析管理员信息失败', e);
         setUnauthorized(true);
         setAuthResolved(true);
-        router.replace(`/admin/login?redirect=${encodeURIComponent(pathname || '/admin/dashboard')}`);
+        router.replace(`${ADMIN_LOGIN_HREF}&redirect=${encodeURIComponent(pathname || '/admin/dashboard')}`);
         return false;
       }
 
@@ -198,7 +200,7 @@ export default function AdminLayout({
           localStorage.removeItem('admin_info');
           setUnauthorized(true);
           setAuthResolved(true);
-          router.replace(`/admin/login?redirect=${encodeURIComponent(pathname || '/admin/dashboard')}`);
+          router.replace(`${ADMIN_LOGIN_HREF}&redirect=${encodeURIComponent(pathname || '/admin/dashboard')}`);
           return false;
         }
         const res = await fetch('/api/admin/auth', {
@@ -211,7 +213,7 @@ export default function AdminLayout({
           localStorage.removeItem('admin_token');
           setUnauthorized(true);
           setAuthResolved(true);
-          router.replace(`/admin/login?redirect=${encodeURIComponent(pathname || '/admin/dashboard')}`);
+          router.replace(`${ADMIN_LOGIN_HREF}&redirect=${encodeURIComponent(pathname || '/admin/dashboard')}`);
           return false;
         }
       } catch (err) {
@@ -233,7 +235,7 @@ export default function AdminLayout({
     };
     const handleLogout = () => {
       setUnauthorized(true);
-      router.replace('/admin/login');
+      router.replace(ADMIN_LOGIN_HREF);
     };
 
     window.addEventListener('admin-logged-in', handleLoginChange);
@@ -276,7 +278,7 @@ export default function AdminLayout({
     localStorage.removeItem('admin_info');
     localStorage.removeItem('admin_token');
     window.dispatchEvent(new Event('admin-logged-out'));
-    router.push('/admin/login');
+    router.push(ADMIN_LOGIN_HREF);
   };
 
   // 过滤有权限的菜单项
@@ -304,7 +306,7 @@ export default function AdminLayout({
           </p>
           <div className="mt-6">
             <button
-              onClick={() => router.replace('/admin/login')}
+              onClick={() => router.replace(ADMIN_LOGIN_HREF)}
               className="inline-flex items-center justify-center rounded-full bg-green-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-700"
             >
               前往登录

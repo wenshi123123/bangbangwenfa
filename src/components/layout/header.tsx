@@ -26,6 +26,8 @@ import {
     NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
 
+const USER_CENTER_HREF = "/user?v=20260629a";
+
 export function Header() {
     const pathname = usePathname();
 
@@ -312,7 +314,7 @@ export function Header() {
                                     </Link>
                                 )}
                                 <Link
-                                    href="/user"
+                                    href={USER_CENTER_HREF}
                                     className="flex items-center gap-1.5 px-2 py-1 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors font-serif"
                                 >
                                     <div className="relative">

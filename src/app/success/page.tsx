@@ -9,6 +9,8 @@ import { CheckCircle, Loader2, Search, ArrowRight, Home } from 'lucide-react';
 import Link from 'next/link';
 import { apiRequest } from '@/lib/api/request';
 
+const USER_CENTER_HREF = '/user?v=20260629a';
+
 interface OrderData {
   id: number;
   contact_name: string;
@@ -164,7 +166,7 @@ function SuccessContent() {
 
           {/* 操作按钮 */}
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            <Link href="/user" className="flex-1">
+            <Link href={USER_CENTER_HREF} className="flex-1">
               <Button variant="outline" className="w-full rounded-xl py-3 sm:py-6 text-sm sm:text-base">
                 查看我的订单
               </Button>

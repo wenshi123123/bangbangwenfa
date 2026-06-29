@@ -27,6 +27,8 @@ import {
 } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/use-auth";
 
+const USER_CENTER_HREF = "/user?v=20260629a";
+
 export function MobileNav() {
     const pathname = usePathname();
     const [open, setOpen] = useState(false);
@@ -92,7 +94,7 @@ export function MobileNav() {
                     ) : isLoggedIn ? (
                         <div className="flex items-center justify-between">
                             <Link
-                                href="/user"
+                                href={USER_CENTER_HREF}
                                 onClick={() => setOpen(false)}
                                 className="flex items-center gap-2 text-sm font-medium text-gray-700"
                             >

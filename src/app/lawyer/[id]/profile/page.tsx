@@ -37,6 +37,8 @@ interface PublicLawyerProfile {
   created_at: string;
 }
 
+const USER_CENTER_HREF = '/user?v=20260629a';
+
 const specialtyMap: Record<string, { label: string; color: string }> = {
   criminal: { label: '刑事案件', color: 'bg-[#C26565]/10 text-[#C26565]' },
   fraud: { label: '诈骗案件', color: 'bg-[#C8963E]/10 text-[#C8963E]' },
@@ -279,7 +281,7 @@ export default function LawyerPublicProfilePage() {
         {/* ===== 操作按钮 ===== */}
         <div className="pt-2">
           <Button
-            onClick={() => router.push('/user')}
+            onClick={() => router.push(USER_CENTER_HREF)}
             variant="outline"
             className="w-full border-[#C47353] text-[#C47353] hover:bg-[#FAF7F2] rounded-full"
           >

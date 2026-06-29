@@ -20,6 +20,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { adminApiRequest } from '@/lib/api/request';
 
+const ADMIN_LOGIN_HREF = '/admin/login?v=20260629a';
+
 interface TargetOption {
   value: string;
   label: string;
@@ -51,7 +53,7 @@ export default function AdminNotificationsPage() {
   useEffect(() => {
     const storedAdmin = localStorage.getItem('admin_info');
     if (!storedAdmin) {
-      router.push('/admin/login');
+      router.push(ADMIN_LOGIN_HREF);
       return;
     }
     const admin = JSON.parse(storedAdmin);
@@ -62,7 +64,7 @@ export default function AdminNotificationsPage() {
     // 直接从 localStorage 读取，避免异步状态问题
     const storedAdmin = localStorage.getItem('admin_info');
     if (!storedAdmin) {
-      router.push('/admin/login');
+      router.push(ADMIN_LOGIN_HREF);
       return;
     }
     const adminData = JSON.parse(storedAdmin);
@@ -70,7 +72,7 @@ export default function AdminNotificationsPage() {
     const admin = adminData.admin || adminData;
     
     if (!admin || !admin.id) {
-      router.push('/admin/login');
+      router.push(ADMIN_LOGIN_HREF);
       return;
     }
 

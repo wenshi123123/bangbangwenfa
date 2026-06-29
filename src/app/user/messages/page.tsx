@@ -65,6 +65,8 @@ const filterOptions = [
   { value: 'system', label: '系统' },
 ];
 
+const USER_CENTER_HREF = '/user?v=20260629a';
+
 export default function MessagesPage() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -295,7 +297,7 @@ export default function MessagesPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link 
-                href="/user"
+                href={USER_CENTER_HREF}
                 className="p-2 hover:bg-rose-100 rounded-lg transition-colors"
               >
                 <ArrowLeft className="w-5 h-5 text-rose-600" />

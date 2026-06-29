@@ -11,6 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Users, Search, RefreshCw, Eye, Wallet } from 'lucide-react';
 import { adminApiRequest } from '@/lib/api/request';
 
+const ADMIN_LOGIN_HREF = '/admin/login?v=20260629a';
+
 interface Guardian {
   id: number;
   openid: string;
@@ -70,7 +72,7 @@ export default function GuardiansPage() {
   useEffect(() => {
     const adminInfo = localStorage.getItem('admin_info');
     if (!adminInfo) {
-      router.push('/admin/login');
+      router.push(ADMIN_LOGIN_HREF);
       return;
     }
     fetchData();
