@@ -108,7 +108,10 @@ export default function AdminDashboard() {
   });
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [needsLogin, setNeedsLogin] = useState(false);
+  const [needsLogin, setNeedsLogin] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !localStorage.getItem('admin_info');
+  });
   const [period, setPeriod] = useState(30);
   const pathname = usePathname();
 

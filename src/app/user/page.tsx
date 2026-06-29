@@ -27,8 +27,16 @@ interface Order {
 export default function UserCenterPage() {
   const { user, isLoggedIn, isLoading, logout, updateUser } = useAuth();
   const router = useRouter();
-  const [authFallbackChecked, setAuthFallbackChecked] = useState(false);
-  const [fallbackUser, setFallbackUser] = useState<any>(null);
+  const [fallbackUser] = useState<any>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const userInfo = localStorage.getItem('user_info');
+      const guardianUser = localStorage.getItem('guardian_user');
+      return userInfo ? JSON.parse(userInfo) : guardianUser ? JSON.parse(guardianUser) : null;
+    } catch {
+      return null;
+    }
+  });
   const [showSettings, setShowSettings] = useState(false);
   const [editNickname, setEditNickname] = useState('');
   const [saving, setSaving] = useState(false);
@@ -38,28 +46,6 @@ export default function UserCenterPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [showOrderDetail, setShowOrderDetail] = useState<Order | null>(null);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (authFallbackChecked) return;
-      try {
-        const userInfo = localStorage.getItem('user_info');
-        const guardianUser = localStorage.getItem('guardian_user');
-        const parsed = userInfo
-          ? JSON.parse(userInfo)
-          : guardianUser
-            ? JSON.parse(guardianUser)
-            : null;
-        setFallbackUser(parsed);
-      } catch {
-        setFallbackUser(null);
-      } finally {
-        setAuthFallbackChecked(true);
-      }
-    }, 1200);
-
-    return () => clearTimeout(timer);
-  }, [authFallbackChecked]);
 
   const effectiveUser = user || fallbackUser;
   const effectiveLoggedIn = isLoggedIn || !!fallbackUser;
@@ -107,10 +93,10 @@ export default function UserCenterPage() {
   }, [effectiveUser?.id, effectiveLoggedIn, loadOrders, loadUnreadCount]);
 
   useEffect(() => {
-    if ((authFallbackChecked || !isLoading) && !effectiveLoggedIn) {
+    if (!effectiveLoggedIn) {
       window.dispatchEvent(new CustomEvent('open-login-modal'));
     }
-  }, [authFallbackChecked, isLoading, effectiveLoggedIn]);
+  }, [effectiveLoggedIn]);
 
   if (!effectiveLoggedIn) {
     return (

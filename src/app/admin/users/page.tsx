@@ -35,7 +35,10 @@ interface User {
 export default function UserManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [needsLogin, setNeedsLogin] = useState(false);
+  const [needsLogin, setNeedsLogin] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !localStorage.getItem('admin_info');
+  });
   const [searchKeyword, setSearchKeyword] = useState('');
   const [trend, setTrend] = useState<TrendData | null>(null);
 

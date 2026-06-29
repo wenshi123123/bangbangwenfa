@@ -136,8 +136,14 @@ export default function AdminLayout({
   const pathname = usePathname();
   const isPublicPath = pathname?.startsWith('/admin/login') ?? false;
   const [admin, setAdmin] = useState<AdminUser | null>(null);
-  const [authResolved, setAuthResolved] = useState(isPublicPath);
-  const [unauthorized, setUnauthorized] = useState(false);
+  const [authResolved, setAuthResolved] = useState(() => {
+    if (isPublicPath || typeof window === 'undefined') return isPublicPath;
+    return !!localStorage.getItem('admin_info');
+  });
+  const [unauthorized, setUnauthorized] = useState(() => {
+    if (isPublicPath || typeof window === 'undefined') return false;
+    return !localStorage.getItem('admin_info');
+  });
   const [stats, setStats] = useState<Stats>({
     pendingLawyerApplications: 0,
     pendingProfileRevisions: 0,

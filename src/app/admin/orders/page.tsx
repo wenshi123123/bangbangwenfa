@@ -59,7 +59,10 @@ const serviceTypeMap = {
 export default function OrderListPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [needsLogin, setNeedsLogin] = useState(false);
+  const [needsLogin, setNeedsLogin] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !localStorage.getItem('admin_info');
+  });
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
