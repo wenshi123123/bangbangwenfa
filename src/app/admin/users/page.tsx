@@ -35,12 +35,19 @@ interface User {
 export default function UserManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [needsLogin, setNeedsLogin] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [trend, setTrend] = useState<TrendData | null>(null);
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
+        const adminInfo = localStorage.getItem('admin_info');
+        if (!adminInfo) {
+          setNeedsLogin(true);
+          setLoading(false);
+          return;
+        }
         const response = await adminApiRequest('/api/admin/user/list');
         const result = await response.json();
         if (result.success) {
@@ -81,6 +88,28 @@ export default function UserManagementPage() {
     (user.nickname?.toLowerCase() || '').includes(searchKeyword.toLowerCase()) ||
     (user.phone || '').includes(searchKeyword)
   );
+
+  if (needsLogin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+        <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-[0_12px_40px_rgba(15,23,42,0.08)] text-center">
+          <div className="mx-auto mb-4 w-14 h-14 rounded-full bg-green-50 flex items-center justify-center">
+            <Scale className="w-7 h-7 text-green-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-800">管理员登录</h1>
+          <p className="mt-2 text-sm text-slate-500">请先登录管理员账号后再访问用户管理</p>
+          <div className="mt-6">
+            <Link
+              href="/admin/login"
+              className="inline-flex items-center justify-center rounded-full bg-green-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-700"
+            >
+              前往登录
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
