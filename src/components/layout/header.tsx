@@ -26,7 +26,7 @@ import {
     NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
 
-const USER_CENTER_HREF = "/user?v=20260629a";
+const USER_CENTER_HREF = "/me";
 
 export function Header() {
     const pathname = usePathname();

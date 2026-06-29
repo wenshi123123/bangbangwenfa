@@ -22,7 +22,15 @@ import {
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const ADMIN_LOGIN_HREF = '/admin/login?v=20260629a';
+const ADMIN_LOGIN_HREF = '/admin-login';
+
+function buildAdminLoginHref(redirectPath?: string | null) {
+  if (!redirectPath) {
+    return ADMIN_LOGIN_HREF;
+  }
+
+  return `${ADMIN_LOGIN_HREF}?redirect=${encodeURIComponent(redirectPath)}`;
+}
 
 interface AdminUser {
   id: number;
@@ -180,7 +188,7 @@ export default function AdminLayout({
       if (!adminInfo) {
         setUnauthorized(true);
         setAuthResolved(true);
-        router.replace(`${ADMIN_LOGIN_HREF}&redirect=${encodeURIComponent(pathname || '/admin/dashboard')}`);
+        router.replace(buildAdminLoginHref(pathname || '/admin/dashboard'));
         return false;
       }
       try {
@@ -189,7 +197,7 @@ export default function AdminLayout({
         console.error('解析管理员信息失败', e);
         setUnauthorized(true);
         setAuthResolved(true);
-        router.replace(`${ADMIN_LOGIN_HREF}&redirect=${encodeURIComponent(pathname || '/admin/dashboard')}`);
+        router.replace(buildAdminLoginHref(pathname || '/admin/dashboard'));
         return false;
       }
 
@@ -200,7 +208,7 @@ export default function AdminLayout({
           localStorage.removeItem('admin_info');
           setUnauthorized(true);
           setAuthResolved(true);
-          router.replace(`${ADMIN_LOGIN_HREF}&redirect=${encodeURIComponent(pathname || '/admin/dashboard')}`);
+          router.replace(buildAdminLoginHref(pathname || '/admin/dashboard'));
           return false;
         }
         const res = await fetch('/api/admin/auth', {
@@ -213,7 +221,7 @@ export default function AdminLayout({
           localStorage.removeItem('admin_token');
           setUnauthorized(true);
           setAuthResolved(true);
-          router.replace(`${ADMIN_LOGIN_HREF}&redirect=${encodeURIComponent(pathname || '/admin/dashboard')}`);
+          router.replace(buildAdminLoginHref(pathname || '/admin/dashboard'));
           return false;
         }
       } catch (err) {

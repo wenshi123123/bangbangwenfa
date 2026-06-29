@@ -9,7 +9,7 @@ import { CheckCircle, Loader2, Search, ArrowRight, Home } from 'lucide-react';
 import Link from 'next/link';
 import { apiRequest } from '@/lib/api/request';
 
-const USER_CENTER_HREF = '/user?v=20260629a';
+const USER_CENTER_HREF = '/me';
 
 interface OrderData {
   id: number;

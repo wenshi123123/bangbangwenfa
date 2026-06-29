@@ -4,7 +4,7 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 
-const ADMIN_LOGIN_HREF = "/admin/login?v=20260629a";
+const ADMIN_LOGIN_HREF = "/admin-login";
 
 const footerLinks = {
   服务: [

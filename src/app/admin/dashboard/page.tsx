@@ -38,7 +38,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
-const ADMIN_LOGIN_HREF = '/admin/login?v=20260629a';
+const ADMIN_LOGIN_HREF = '/admin-login';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;

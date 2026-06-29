@@ -37,7 +37,7 @@ interface PublicLawyerProfile {
   created_at: string;
 }
 
-const USER_CENTER_HREF = '/user?v=20260629a';
+const USER_CENTER_HREF = '/me';
 
 const specialtyMap: Record<string, { label: string; color: string }> = {
   criminal: { label: '刑事案件', color: 'bg-[#C26565]/10 text-[#C26565]' },

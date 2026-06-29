@@ -65,7 +65,7 @@ const filterOptions = [
   { value: 'system', label: '系统' },
 ];
 
-const USER_CENTER_HREF = '/user?v=20260629a';
+const USER_CENTER_HREF = '/me';
 
 export default function MessagesPage() {
   const router = useRouter();

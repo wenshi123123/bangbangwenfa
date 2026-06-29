@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { adminApiRequest } from '@/lib/api/request';
 
-const ADMIN_LOGIN_HREF = '/admin/login?v=20260629a';
+const ADMIN_LOGIN_HREF = '/admin-login';
 
 interface TargetOption {
   value: string;

@@ -1,16 +1,21 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, Shield, Lock, User } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const redirectTarget = useMemo(() => {
+    const redirect = searchParams.get('redirect');
+    return redirect && redirect.startsWith('/admin') ? redirect : '/admin/dashboard';
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +35,7 @@ export default function AdminLoginPage() {
         localStorage.setItem('admin_info', JSON.stringify(result.data.admin));
         localStorage.setItem('admin_token', result.data.token);
         window.dispatchEvent(new Event('admin-logged-in'));
-        router.push('/admin/dashboard');
+        router.push(redirectTarget);
       } else {
         setError(result.error || '登录失败');
       }

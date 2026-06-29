@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Users, Search, RefreshCw, Eye, Wallet } from 'lucide-react';
 import { adminApiRequest } from '@/lib/api/request';
 
-const ADMIN_LOGIN_HREF = '/admin/login?v=20260629a';
+const ADMIN_LOGIN_HREF = '/admin-login';
 
 interface Guardian {
   id: number;

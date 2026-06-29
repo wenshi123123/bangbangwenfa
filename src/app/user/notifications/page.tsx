@@ -38,7 +38,7 @@ const typeConfig: Record<string, { label: string; color: string; icon: any }> = 
   system_notice: { label: '系统通知', color: 'bg-slate-100 text-slate-700', icon: Bell },
 };
 
-const USER_CENTER_HREF = '/user?v=20260629a';
+const USER_CENTER_HREF = '/me';
 
 export default function UserNotificationsPage() {
   const router = useRouter();

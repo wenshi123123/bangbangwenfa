@@ -35,7 +35,7 @@ interface User {
   updated_at: string;
 }
 
-const ADMIN_LOGIN_HREF = '/admin/login?v=20260629a';
+const ADMIN_LOGIN_HREF = '/admin-login';
 
 export default function UserManagementPage() {
   const [users, setUsers] = useState<User[]>([]);

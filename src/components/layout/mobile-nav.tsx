@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/use-auth";
 
-const USER_CENTER_HREF = "/user?v=20260629a";
+const USER_CENTER_HREF = "/me";
 
 export function MobileNav() {
     const pathname = usePathname();
