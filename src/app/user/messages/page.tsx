@@ -69,6 +69,7 @@ export default function MessagesPage() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [needsAuth, setNeedsAuth] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [markingRead, setMarkingRead] = useState<number | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -124,13 +125,23 @@ export default function MessagesPage() {
     const user = userInfo ? JSON.parse(userInfo) : (guardianUser ? JSON.parse(guardianUser) : null);
     
     if (!user?.id) {
-      router.push('/');
+      setNeedsAuth(true);
+      setLoading(false);
+      router.replace('/register?next=/user/messages');
       return;
     }
 
     setUserId(user.id);
     fetchNotifications(user.id, 1);
   }, [router, fetchNotifications]);
+
+  useEffect(() => {
+    if (!needsAuth) return;
+    const timer = setTimeout(() => {
+      router.replace('/register?next=/user/messages');
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [needsAuth, router]);
 
   // 刷新未读数量
   const refreshUnreadCount = async () => {
@@ -249,6 +260,28 @@ export default function MessagesPage() {
         <div className="text-center">
           <Loader2 className="w-8 h-8 text-rose-500 animate-spin mx-auto mb-4" />
           <p className="text-muted-foreground">加载中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (needsAuth) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-rose-50 to-white flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-[0_12px_40px_rgba(15,23,42,0.08)]">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-rose-100">
+            <Bell className="h-7 w-7 text-rose-500" />
+          </div>
+          <h1 className="text-2xl font-serif text-[#3D322D] font-normal">请先登录</h1>
+          <p className="mt-2 text-sm text-[#8C7B6E]">登录后才能查看消息通知</p>
+          <div className="mt-6">
+            <button
+              onClick={() => router.replace('/register?next=/user/messages')}
+              className="inline-flex items-center justify-center rounded-full bg-rose-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-rose-600"
+            >
+              前往注册 / 登录
+            </button>
+          </div>
         </div>
       </div>
     );

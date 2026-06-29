@@ -112,17 +112,6 @@ export default function UserCenterPage() {
     }
   }, [authFallbackChecked, isLoading, effectiveLoggedIn]);
 
-  if (isLoading && !authFallbackChecked) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#C47353] mx-auto mb-4"></div>
-          <p className="text-[#8C7B6E]">加载中...</p>
-        </div>
-      </div>
-    );
-  }
-
   if (!effectiveLoggedIn) {
     return (
       <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center p-4">

@@ -136,7 +136,8 @@ export default function AdminLayout({
   const pathname = usePathname();
   const isPublicPath = pathname?.startsWith('/admin/login') ?? false;
   const [admin, setAdmin] = useState<AdminUser | null>(null);
-  const [loading, setLoading] = useState(!isPublicPath);
+  const [authResolved, setAuthResolved] = useState(isPublicPath);
+  const [unauthorized, setUnauthorized] = useState(false);
   const [stats, setStats] = useState<Stats>({
     pendingLawyerApplications: 0,
     pendingProfileRevisions: 0,
@@ -159,21 +160,25 @@ export default function AdminLayout({
   useEffect(() => {
     // 如果是登录页，不需要检查认证，也不要挂载后台壳子
     if (isPublicPath) {
-      setLoading(false);
+      setAuthResolved(true);
       return;
     }
 
     const checkAuth = async () => {
       const adminInfo = localStorage.getItem('admin_info');
       if (!adminInfo) {
-        router.push('/admin/login');
+        setUnauthorized(true);
+        setAuthResolved(true);
+        router.replace(`/admin/login?redirect=${encodeURIComponent(pathname || '/admin/dashboard')}`);
         return false;
       }
       try {
         setAdmin(JSON.parse(adminInfo));
       } catch (e) {
         console.error('解析管理员信息失败', e);
-        router.push('/admin/login');
+        setUnauthorized(true);
+        setAuthResolved(true);
+        router.replace(`/admin/login?redirect=${encodeURIComponent(pathname || '/admin/dashboard')}`);
         return false;
       }
 
@@ -182,7 +187,9 @@ export default function AdminLayout({
         const token = localStorage.getItem('admin_token');
         if (!token) {
           localStorage.removeItem('admin_info');
-          router.push('/admin/login');
+          setUnauthorized(true);
+          setAuthResolved(true);
+          router.replace(`/admin/login?redirect=${encodeURIComponent(pathname || '/admin/dashboard')}`);
           return false;
         }
         const res = await fetch('/api/admin/auth', {
@@ -193,7 +200,9 @@ export default function AdminLayout({
           // Token 无效或过期，清理并重定向
           localStorage.removeItem('admin_info');
           localStorage.removeItem('admin_token');
-          router.push('/admin/login');
+          setUnauthorized(true);
+          setAuthResolved(true);
+          router.replace(`/admin/login?redirect=${encodeURIComponent(pathname || '/admin/dashboard')}`);
           return false;
         }
       } catch (err) {
@@ -204,10 +213,9 @@ export default function AdminLayout({
       return true;
     };
 
-    setLoading(true);
     checkAuth().then((valid) => {
       if (!valid) return;
-      setLoading(false);
+      setAuthResolved(true);
     });
 
     // 监听登录/登出事件
@@ -215,7 +223,8 @@ export default function AdminLayout({
       window.location.reload();
     };
     const handleLogout = () => {
-      router.push('/admin/login');
+      setUnauthorized(true);
+      router.replace('/admin/login');
     };
 
     window.addEventListener('admin-logged-in', handleLoginChange);
@@ -273,12 +282,25 @@ export default function AdminLayout({
     return <>{children}</>;
   }
 
-  if (loading) {
+  if (unauthorized || !authResolved) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">加载中...</p>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+        <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-[0_12px_40px_rgba(15,23,42,0.08)] text-center">
+          <div className="mx-auto mb-4 w-14 h-14 rounded-full bg-green-50 flex items-center justify-center">
+            <Scale className="w-7 h-7 text-green-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-800">管理员登录</h1>
+          <p className="mt-2 text-sm text-slate-500">
+            {unauthorized ? '请先登录管理员账号后再访问后台' : '正在校验管理员身份...'}
+          </p>
+          <div className="mt-6">
+            <button
+              onClick={() => router.replace('/admin/login')}
+              className="inline-flex items-center justify-center rounded-full bg-green-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-700"
+            >
+              前往登录
+            </button>
+          </div>
         </div>
       </div>
     );
