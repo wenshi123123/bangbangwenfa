@@ -10,6 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useAuth } from '@/hooks/use-auth';
 import { apiRequest } from '@/lib/api/request';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface Order {
   id: number;
   orderNo: string;

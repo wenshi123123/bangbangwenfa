@@ -11,6 +11,9 @@ import {
 } from 'lucide-react';
 import { adminApiRequest } from '@/lib/api/request';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface TrendData {
   newUsersToday: number;
   yesterdayNewUsers: number;

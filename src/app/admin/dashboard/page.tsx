@@ -38,6 +38,9 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface DashboardStats {
   totalLawyers: number;
   pendingLawyers: number;

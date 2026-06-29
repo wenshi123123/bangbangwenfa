@@ -19,6 +19,9 @@ import {
   Award,
 } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface AdminUser {
   id: number;
   username: string;

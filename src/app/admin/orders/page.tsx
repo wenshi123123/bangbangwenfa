@@ -56,6 +56,9 @@ const serviceTypeMap = {
   default: { label: '其他服务' },
 };
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default function OrderListPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
