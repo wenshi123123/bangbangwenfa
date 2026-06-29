@@ -1,3 +1,8 @@
-'use client';
+import UserCenterPage from '../user/page';
 
-export { default, dynamic, revalidate } from '../user/page';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+export default function MePage() {
+  return <UserCenterPage />;
+}
