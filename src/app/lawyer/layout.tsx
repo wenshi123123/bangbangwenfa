@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { LawyerBottomNav } from '@/components/lawyer/lawyer-bottom-nav';
 
@@ -14,13 +14,15 @@ export default function LawyerLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
   const { isLoggedIn, isLoading } = useAuth();
   const [checked, setChecked] = useState(false);
+  const pathname =
+    typeof window !== 'undefined' ? window.location.pathname : '';
 
-  const isPublicPath = PUBLIC_LAWYER_PATHS.some(
-    p => pathname === p || pathname.startsWith(p + '/')
-  );
+  // 公共页优先放行，避免登录页在路由初始阶段误进入受保护 loading 壳
+  const isPublicPath =
+    pathname === '' ||
+    PUBLIC_LAWYER_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'));
 
   useEffect(() => {
     if (isLoading) return;
