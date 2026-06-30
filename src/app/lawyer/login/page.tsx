@@ -17,6 +17,9 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default function LawyerLoginPage() {
   const router = useRouter();
   const { user, isLoggedIn, isLoading } = useAuth();
