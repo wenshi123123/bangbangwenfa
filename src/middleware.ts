@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getSiteUrl, shouldRedirectToCanonicalHost } from '@/lib/site';
 
 /**
  * 全局中间件
@@ -9,6 +10,16 @@ import type { NextRequest } from 'next/server';
  */
 export function middleware(request: NextRequest) {
   const isProd = process.env.DEPLOY_ENV === 'PROD' || process.env.NODE_ENV === 'production';
+  const hostname = request.nextUrl.hostname?.toLowerCase();
+
+  if (isProd && shouldRedirectToCanonicalHost(hostname)) {
+    const redirectUrl = request.nextUrl.clone();
+    const canonicalUrl = new URL(getSiteUrl());
+    redirectUrl.protocol = canonicalUrl.protocol;
+    redirectUrl.hostname = canonicalUrl.hostname;
+    redirectUrl.port = canonicalUrl.port;
+    return NextResponse.redirect(redirectUrl, 308);
+  }
 
   // 添加安全响应头
   const response = NextResponse.next();

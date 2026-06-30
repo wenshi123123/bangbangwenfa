@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSiteUrl } from '@/lib/site';
 
 export async function GET(request: NextRequest) {
   const oaAppId = process.env.WEIXIN_OA_APPID;
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const redirect = searchParams.get('redirect') || '/pay';
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com';
+  const siteUrl = getSiteUrl();
 
   if (!redirect.startsWith('/')) {
     return NextResponse.json(

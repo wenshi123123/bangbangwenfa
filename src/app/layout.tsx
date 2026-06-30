@@ -4,11 +4,13 @@ import { AuthProvider } from '@/hooks/use-auth';
 import { Header } from '@/components/layout/header';
 import LoginModal from '@/components/auth/login-modal';
 import SearchModal from '@/components/search/search-modal';
+import { getSiteUrl } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getSiteUrl()),
   title: {
     default: '帮帮问法',
     template: '%s | 帮帮问法',
@@ -25,6 +27,9 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
+  },
+  alternates: {
+    canonical: '/',
   },
 };
 

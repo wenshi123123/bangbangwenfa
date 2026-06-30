@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getWechatPayClient } from '@/lib/payment/wechat-pay';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
+import { getSiteUrl, normalizeCanonicalUrl } from '@/lib/site';
 import crypto from 'crypto';
 
 /**
@@ -104,8 +105,10 @@ export async function POST(request: NextRequest) {
 
     // 正式模式：使用真实微信支付
     const wechatPay = getWechatPayClient();
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com';
-    const callbackUrl = process.env.WEIXIN_CALLBACK_URL || `${siteUrl}/api/pay/callback`;
+    const siteUrl = getSiteUrl();
+    const callbackUrl =
+      normalizeCanonicalUrl(process.env.WEIXIN_CALLBACK_URL || '')?.toString().replace(/\/$/, '') ||
+      `${siteUrl}/api/pay/callback`;
 
     // 获取客户端 IP（H5 支付必须）
     const clientIp =

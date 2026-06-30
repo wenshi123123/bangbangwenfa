@@ -3,6 +3,9 @@ import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { getWechatPayClient } from '@/lib/payment/wechat-pay';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
 import { notifyOrder } from '@/lib/notify/webhook';
+import { getSiteUrl } from '@/lib/site';
+
+const SITE_URL = getSiteUrl();
 
 // 生成订单号
 function generateOrderNo(): string {
@@ -187,7 +190,7 @@ export async function POST(request: NextRequest) {
       description: `律师会员续费 - ${months}个月`,
       outTradeNo: orderNo,
       amount: price,
-      notifyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com'}/api/lawyer/renew/callback`,
+      notifyUrl: `${SITE_URL}/api/lawyer/renew/callback`,
     });
 
     console.log('律师续费支付创建成功:', {

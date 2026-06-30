@@ -8,6 +8,7 @@ import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
+import { getSiteUrl } from '@/lib/site';
 
 // ===== 微信支付配置类型 =====
 
@@ -520,7 +521,7 @@ export class WechatPayClient {
   async createH5Order(params: CreateH5OrderParams): Promise<CreateH5OrderResult> {
     const { outTradeNo, description, amount, notifyUrl, clientIp } = params;
     const privateKey = this.getPrivateKey();
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com';
+    const siteUrl = getSiteUrl();
 
     // 构建请求体（H5 支付必须包含 scene_info 和 payer_client_ip）
     const payload = {

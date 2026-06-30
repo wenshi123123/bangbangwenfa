@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { getWechatPayClient } from '@/lib/payment/wechat-pay';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
+import { getSiteUrl } from '@/lib/site';
+
+const SITE_URL = getSiteUrl();
 
 // 生成订单号
 function generateOrderNo(): string {
@@ -122,7 +125,7 @@ export async function POST(request: NextRequest) {
           outTradeNo: orderNo,
           description: `律师入驻会员费 - ${packageName}`,
           amount: application.package_price,
-          notifyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com'}/api/lawyer/pay/callback`,
+          notifyUrl: `${SITE_URL}/api/lawyer/pay/callback`,
           clientIp,
         });
         payData.h5Url = result.h5Url;
@@ -136,7 +139,7 @@ export async function POST(request: NextRequest) {
               outTradeNo: orderNo,
               description: `律师入驻会员费 - ${packageName}`,
               amount: application.package_price,
-              notifyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com'}/api/lawyer/pay/callback`,
+              notifyUrl: `${SITE_URL}/api/lawyer/pay/callback`,
               payerOpenid,
             });
             payData.jsapiPayParams = result.payParams;
@@ -146,7 +149,7 @@ export async function POST(request: NextRequest) {
               description: `律师入驻会员费 - ${packageName}`,
               outTradeNo: orderNo,
               amount: application.package_price,
-              notifyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com'}/api/lawyer/pay/callback`,
+              notifyUrl: `${SITE_URL}/api/lawyer/pay/callback`,
             });
             payData.codeUrl = result.codeUrl;
           }
@@ -155,7 +158,7 @@ export async function POST(request: NextRequest) {
             description: `律师入驻会员费 - ${packageName}`,
             outTradeNo: orderNo,
             amount: application.package_price,
-            notifyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com'}/api/lawyer/pay/callback`,
+            notifyUrl: `${SITE_URL}/api/lawyer/pay/callback`,
           });
           payData.codeUrl = result.codeUrl;
         }
@@ -166,7 +169,7 @@ export async function POST(request: NextRequest) {
         outTradeNo: orderNo,
         description: `律师入驻会员费 - ${packageName}`,
         amount: application.package_price,
-        notifyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com'}/api/lawyer/pay/callback`,
+        notifyUrl: `${SITE_URL}/api/lawyer/pay/callback`,
         clientIp,
       });
       payData.h5Url = result.h5Url;
@@ -176,7 +179,7 @@ export async function POST(request: NextRequest) {
         description: `律师入驻会员费 - ${packageName}`,
         outTradeNo: orderNo,
         amount: application.package_price,
-        notifyUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com'}/api/lawyer/pay/callback`,
+        notifyUrl: `${SITE_URL}/api/lawyer/pay/callback`,
       });
       payData.codeUrl = result.codeUrl;
     }

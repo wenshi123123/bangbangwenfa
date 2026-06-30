@@ -7,6 +7,7 @@ const nextConfig = {
     unoptimized: true,
     remotePatterns: [
       { protocol: 'https', hostname: 'www.bangbangwenfa.com' },
+      { protocol: 'https', hostname: 'bangbangwenfa.com' },
       { protocol: 'https', hostname: 'jfwzkj.com' },
       { protocol: 'https', hostname: 'www.jfwzkj.com' },
       { protocol: 'https', hostname: '*.supabase.co' },

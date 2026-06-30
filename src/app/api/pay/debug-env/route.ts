@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getEnvValue, normalizePem } from '@/lib/payment/wechat-pay';
+import { getSiteUrl, normalizeCanonicalUrl } from '@/lib/site';
 import crypto from 'crypto';
+
+const SITE_URL = getSiteUrl();
 
 /**
  * 调试端点：检查支付环境变量配置状态 + 签名诊断 + 全路径对比测试
@@ -75,7 +78,7 @@ export async function GET(request: Request) {
         appid: appId, mchid: mchId,
         description: '诊断测试-不会实际扣款',
         out_trade_no: `DIAG${Date.now().toString().slice(-8)}${crypto.randomBytes(5).toString('hex').toUpperCase()}`,
-        notify_url: 'https://bangbangwenfa.com/api/pay/callback',
+        notify_url: `${SITE_URL}/api/pay/callback`,
         amount: { total: 1, currency: 'CNY' },
       };
       const testBodyStr = JSON.stringify(testBody);
@@ -143,13 +146,15 @@ export async function GET(request: Request) {
         const r1 = await client.createNativeOrder({
           outTradeNo: `DEBUG${Date.now().toString().slice(-8)}${crypto.randomBytes(5).toString('hex').toUpperCase()}`,
           description: '环境变量测试订单', amount: 1,
-          notifyUrl: 'https://bangbangwenfa.com/api/pay/callback',
+          notifyUrl: `${SITE_URL}/api/pay/callback`,
         });
         fullPathTest.test1_simpleOrder = { success: true, codeUrl: r1.codeUrl, prepayId: r1.prepayId };
       } catch (e: any) { fullPathTest.test1_simpleOrder = { success: false, error: e?.message || String(e) }; }
 
       try {
-        const callbackUrl = process.env.WEIXIN_CALLBACK_URL || 'https://bangbangwenfa.com/api/pay/callback';
+        const callbackUrl =
+          normalizeCanonicalUrl(process.env.WEIXIN_CALLBACK_URL || '')?.toString().replace(/\/$/, '') ||
+          `${SITE_URL}/api/pay/callback`;
         const r2 = await client.createNativeOrder({
           outTradeNo: `WX${Date.now().toString().slice(-8)}${crypto.randomBytes(5).toString('hex').toUpperCase()}`,
           description: '法律咨询服务 - 诊断测试订单', amount: 100,
@@ -159,7 +164,7 @@ export async function GET(request: Request) {
       } catch (e: any) { fullPathTest.test2_consultPay = { success: false, error: e?.message || String(e) }; }
 
       try {
-        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com';
+        const siteUrl = SITE_URL;
         const r3 = await client.createNativeOrder({
           outTradeNo: `LAW${Date.now()}DIAG`, description: '律师入驻会员费 - 诊断测试',
           amount: 100, notifyUrl: `${siteUrl}/api/lawyer/pay/callback`,
@@ -168,7 +173,7 @@ export async function GET(request: Request) {
       } catch (e: any) { fullPathTest.test3_lawyerPay = { success: false, error: e?.message || String(e) }; }
 
       try {
-        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bangbangwenfa.com';
+        const siteUrl = SITE_URL;
         const r4 = await client.createNativeOrder({
           outTradeNo: `RENEW${Date.now()}DIAG`, description: '律师会员续费 - 诊断测试',
           amount: 100, notifyUrl: `${siteUrl}/api/lawyer/renew/callback`,
