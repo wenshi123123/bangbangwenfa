@@ -110,8 +110,14 @@ export default function AdminDashboard() {
     availableCommission: 0
   });
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [needsLogin, setNeedsLogin] = useState(false);
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !!localStorage.getItem('admin_info') && !!localStorage.getItem('admin_token');
+  });
+  const [needsLogin, setNeedsLogin] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return !localStorage.getItem('admin_info') || !localStorage.getItem('admin_token');
+  });
   const [period, setPeriod] = useState(30);
   const pathname = usePathname();
 

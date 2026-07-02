@@ -55,8 +55,14 @@ export const dynamic = 'force-dynamic';
 export default function OrderListPage() {
   const searchParams = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [needsLogin, setNeedsLogin] = useState(false);
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !!localStorage.getItem('admin_info') && !!localStorage.getItem('admin_token');
+  });
+  const [needsLogin, setNeedsLogin] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return !localStorage.getItem('admin_info') || !localStorage.getItem('admin_token');
+  });
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
