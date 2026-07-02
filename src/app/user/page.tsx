@@ -247,7 +247,7 @@ function UserCenterPageContent() {
           {ordersLoading ? (
             <div className="p-8 text-center text-[#8C7B6E]">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#C47353] mx-auto mb-2"></div>
-              <p className="text-sm">加载中...</p>
+              <p className="text-sm">请先登录后再加载订单...</p>
             </div>
           ) : orders.length === 0 ? (
             <div className="p-8 text-center">
