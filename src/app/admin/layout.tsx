@@ -148,8 +148,14 @@ export default function AdminLayout({
   const isPublicPath = pathname?.startsWith('/admin/login') ?? false;
   const [hydrated, setHydrated] = useState(false);
   const [admin, setAdmin] = useState<AdminUser | null>(null);
-  const [authResolved, setAuthResolved] = useState(false);
-  const [unauthorized, setUnauthorized] = useState(false);
+  const [authResolved, setAuthResolved] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !!localStorage.getItem('admin_info') && !!localStorage.getItem('admin_token');
+  });
+  const [unauthorized, setUnauthorized] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !localStorage.getItem('admin_info') || !localStorage.getItem('admin_token');
+  });
   const [stats, setStats] = useState<Stats>({
     pendingLawyerApplications: 0,
     pendingProfileRevisions: 0,

@@ -28,17 +28,6 @@ interface Order {
 function UserCenterPageContent() {
   const { user, isLoggedIn, isLoading, logout, updateUser } = useAuth();
   const router = useRouter();
-  const hasToken = typeof window !== 'undefined' ? !!localStorage.getItem('token') : false;
-  const [fallbackUser] = useState<any>(() => {
-    if (typeof window === 'undefined') return null;
-    try {
-      const userInfo = localStorage.getItem('user_info');
-      const guardianUser = localStorage.getItem('guardian_user');
-      return userInfo ? JSON.parse(userInfo) : guardianUser ? JSON.parse(guardianUser) : null;
-    } catch {
-      return null;
-    }
-  });
   const [showSettings, setShowSettings] = useState(false);
   const [editNickname, setEditNickname] = useState('');
   const [saving, setSaving] = useState(false);
@@ -51,8 +40,8 @@ function UserCenterPageContent() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [showOrderDetail, setShowOrderDetail] = useState<Order | null>(null);
 
-  const effectiveUser = user || fallbackUser;
-  const effectiveLoggedIn = hasToken && (isLoggedIn || !!fallbackUser);
+  const effectiveUser = user;
+  const effectiveLoggedIn = isLoggedIn;
 
   const lawyerPackageLabels: Record<string, string> = {
     civil_premium: '民事律师（臻选）',

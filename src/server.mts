@@ -114,6 +114,32 @@ app.prepare().then(() => {
         return;
       }
 
+      const originalSetHeader = res.setHeader.bind(res);
+      res.setHeader = ((name: string, value: string | number | readonly string[]) => {
+        if (String(name).toLowerCase() === 'x-powered-by') {
+          return res;
+        }
+        return originalSetHeader(name, value);
+      }) as typeof res.setHeader;
+
+      const originalWriteHead = res.writeHead.bind(res);
+      res.writeHead = ((statusCode: number, reasonPhraseOrHeaders?: any, headers?: any) => {
+        const headerBag =
+          typeof reasonPhraseOrHeaders === 'string'
+            ? headers || {}
+            : reasonPhraseOrHeaders || {};
+        if (headerBag && typeof headerBag === 'object') {
+          delete headerBag['X-Powered-By'];
+          delete headerBag['x-powered-by'];
+        }
+
+        if (typeof reasonPhraseOrHeaders === 'string') {
+          return originalWriteHead(statusCode, reasonPhraseOrHeaders, headerBag);
+        }
+
+        return originalWriteHead(statusCode, headerBag);
+      }) as typeof res.writeHead;
+
       const parsedUrl = parse(req.url!, true);
       await handle(req, res, parsedUrl);
     } catch (err) {
