@@ -6,6 +6,49 @@ const CACHE_BUST_PAGES = new Set(['/', '/register', '/user', '/lawyer', '/lawyer
 const CACHE_BUST_PARAM = '__bbwv';
 const CACHE_BUST_VALUE = '20260702';
 
+function applySecurityHeaders(response: NextResponse, isProd: boolean) {
+  // 隐藏技术栈信息
+  response.headers.delete('X-Powered-By');
+
+  // 防止 MIME 类型嗅探
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  // 防止点击劫持
+  response.headers.set('X-Frame-Options', 'DENY');
+  // XSS 防护
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  // Referrer 策略
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // 权限策略
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  // 页面和 API 响应不要长期缓存，避免 CloudBase/CDN 命中旧 HTML 后引用失效的静态资源
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  response.headers.set('Pragma', 'no-cache');
+  response.headers.set('Expires', '0');
+
+  if (isProd) {
+    response.headers.set(
+      'Strict-Transport-Security',
+      'max-age=31536000; includeSubDomains; preload'
+    );
+    response.headers.set(
+      'Content-Security-Policy',
+      [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: https:",
+        "font-src 'self' data:",
+        "connect-src 'self' https://api.mch.weixin.qq.com https://*.supabase.co",
+        "frame-ancestors 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+      ].join('; ')
+    );
+  }
+
+  return response;
+}
+
 /**
  * 全局中间件
  * 1. 添加安全响应头
@@ -40,56 +83,11 @@ export function middleware(request: NextRequest) {
   ) {
     const rewriteUrl = request.nextUrl.clone();
     rewriteUrl.searchParams.set(CACHE_BUST_PARAM, CACHE_BUST_VALUE);
-    return NextResponse.rewrite(rewriteUrl);
+    return applySecurityHeaders(NextResponse.rewrite(rewriteUrl), isProd);
   }
 
   // 添加安全响应头
-  const response = NextResponse.next();
-
-  // 隐藏技术栈信息
-  response.headers.delete('X-Powered-By');
-
-  // 防止 MIME 类型嗅探
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  // 防止点击劫持
-  response.headers.set('X-Frame-Options', 'DENY');
-  // XSS 防护
-  response.headers.set('X-XSS-Protection', '1; mode=block');
-  // Referrer 策略
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  // 权限策略
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  // 页面和 API 响应不要长期缓存，避免 CloudBase/CDN 命中旧 HTML 后引用失效的静态资源
-  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
-  response.headers.set('Pragma', 'no-cache');
-  response.headers.set('Expires', '0');
-
-  // 生产环境添加 HSTS 和 CSP
-  if (isProd) {
-    // 强制 HTTPS（仅当使用 HTTPS 时）
-    response.headers.set(
-      'Strict-Transport-Security',
-      'max-age=31536000; includeSubDomains; preload'
-    );
-    // 内容安全策略（Next.js 生产环境需要 'unsafe-inline' 以支持水合内联脚本）
-    // 注意：如页面需要内联样式（styled-jsx/NEXT），style-src 保留 'unsafe-inline'
-    response.headers.set(
-      'Content-Security-Policy',
-      [
-        "default-src 'self'",
-        "script-src 'self' 'unsafe-inline'",
-        "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: https:",
-        "font-src 'self' data:",
-        "connect-src 'self' https://api.mch.weixin.qq.com https://*.supabase.co",
-        "frame-ancestors 'none'",
-        "base-uri 'self'",
-        "form-action 'self'",
-      ].join('; ')
-    );
-  }
-
-  return response;
+  return applySecurityHeaders(NextResponse.next(), isProd);
 }
 
 export const config = {

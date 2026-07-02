@@ -1,8 +1,8 @@
 'use client';
 
-import { Suspense, useEffect, useLayoutEffect, useState, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { User, Shield, Briefcase, Settings, ChevronRight, LogOut, QrCode, X, ShoppingCart, Clock, CheckCircle, AlertCircle, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -28,7 +28,6 @@ interface Order {
 function UserCenterPageContent() {
   const { user, isLoggedIn, isLoading, logout, updateUser } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const hasToken = typeof window !== 'undefined' ? !!localStorage.getItem('token') : false;
   const [fallbackUser] = useState<any>(() => {
     if (typeof window === 'undefined') return null;
@@ -45,6 +44,7 @@ function UserCenterPageContent() {
   const [saving, setSaving] = useState(false);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [needsAuthRedirect, setNeedsAuthRedirect] = useState(false);
+  const [targetOrderId, setTargetOrderId] = useState<string | null>(null);
 
   // 订单相关状态
   const [orders, setOrders] = useState<Order[]>([]);
@@ -104,14 +104,20 @@ function UserCenterPageContent() {
   }, [effectiveUser?.id, effectiveLoggedIn, loadOrders, loadUnreadCount]);
 
   useEffect(() => {
-    const orderId = searchParams.get('orderId');
-    if (!orderId || !orders.length) return;
+    if (typeof window === 'undefined') return;
 
-    const targetOrder = orders.find(order => String(order.id) === orderId);
+    const orderId = new URLSearchParams(window.location.search).get('orderId');
+    setTargetOrderId(orderId);
+  }, []);
+
+  useEffect(() => {
+    if (!targetOrderId || !orders.length) return;
+
+    const targetOrder = orders.find(order => String(order.id) === targetOrderId);
     if (targetOrder && showOrderDetail?.id !== targetOrder.id) {
       setShowOrderDetail(targetOrder);
     }
-  }, [orders, searchParams, showOrderDetail?.id]);
+  }, [orders, targetOrderId, showOrderDetail?.id]);
 
   useEffect(() => {
     if (!effectiveLoggedIn) {
@@ -557,13 +563,5 @@ function UserCenterPageContent() {
 }
 
 export default function UserCenterPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center">
-        <div className="text-center text-[#8C7B6E]">加载中...</div>
-      </div>
-    }>
-      <UserCenterPageContent />
-    </Suspense>
-  );
+  return <UserCenterPageContent />;
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { 
   LayoutDashboard, 
@@ -145,18 +145,11 @@ export default function AdminLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const isPublicPath = pathname?.startsWith('/admin/login') ?? false;
   const [hydrated, setHydrated] = useState(false);
   const [admin, setAdmin] = useState<AdminUser | null>(null);
-  const [authResolved, setAuthResolved] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return !!localStorage.getItem('admin_info') && !!localStorage.getItem('admin_token');
-  });
-  const [unauthorized, setUnauthorized] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return !localStorage.getItem('admin_info') || !localStorage.getItem('admin_token');
-  });
+  const [authResolved, setAuthResolved] = useState(false);
+  const [unauthorized, setUnauthorized] = useState(false);
   const [stats, setStats] = useState<Stats>({
     pendingLawyerApplications: 0,
     pendingProfileRevisions: 0,
@@ -186,12 +179,14 @@ export default function AdminLayout({
     }
 
     const checkAuth = async () => {
-      const currentQuery = searchParams.toString();
+      const currentQuery = typeof window !== 'undefined' ? window.location.search.slice(1) : '';
       const currentRedirectPath = currentQuery
         ? `${pathname || '/admin/dashboard'}?${currentQuery}`
         : (pathname || '/admin/dashboard');
       const adminInfo = localStorage.getItem('admin_info');
-      if (!adminInfo) {
+      const adminToken = localStorage.getItem('admin_token');
+
+      if (!adminInfo || !adminToken) {
         setUnauthorized(true);
         setAuthResolved(true);
         router.replace(buildAdminLoginHref(currentRedirectPath));
@@ -209,16 +204,8 @@ export default function AdminLayout({
 
       // 向 API 验证 token 是否过期
       try {
-        const token = localStorage.getItem('admin_token');
-        if (!token) {
-          localStorage.removeItem('admin_info');
-          setUnauthorized(true);
-          setAuthResolved(true);
-          router.replace(buildAdminLoginHref(currentRedirectPath));
-          return false;
-        }
         const res = await fetch('/api/admin/auth', {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 'Authorization': `Bearer ${adminToken}` }
         });
         const result = await res.json();
         if (!result.success) {
