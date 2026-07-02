@@ -11,8 +11,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // ============================================================
 // 配置
 // ============================================================
-const PROJECT_REF = 'hznzreihgnosbmdfyeod';
-const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6bnpyZWloZ25vc2JtZGZ5ZW9kIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjE3MjQ4NywiZXhwIjoyMDkxNzQ4NDg3fQ.pvkWj_JBqZ6UFhSOdTuaBezpPGvbYZDbE_wlm29XkM4';
+const PROJECT_REF = process.env.SUPABASE_PROJECT_REF || process.env.NEXT_PUBLIC_SUPABASE_PROJECT_REF || 'hznzreihgnosbmdfyeod';
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.COZE_SUPABASE_SERVICE_ROLE_KEY;
+
+if (!SERVICE_ROLE_KEY) {
+  throw new Error('缺少 SUPABASE_SERVICE_ROLE_KEY 或 COZE_SUPABASE_SERVICE_ROLE_KEY 环境变量');
+}
 
 const SQL_FILE = resolve(__dirname, 'add-wechat-qrcode-columns.sql');
 const sql = readFileSync(SQL_FILE, 'utf8');

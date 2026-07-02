@@ -5,8 +5,12 @@
  * 使用 Service Role Key 执行 SQL 命令
  */
 
-const SUPABASE_URL = 'https://hznzreihgnosbmdfyeod.supabase.co';
-const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6bnpyZWloZ25vc2JtZGZ5ZW9kIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjE3MjQ4NywiZXhwIjoyMDkxNzQ4NDg3fQ.pvkWj_JBqZ6UFhSOdTuaBezpPGvbYZDbE_wlm29XkM4';
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hznzreihgnosbmdfyeod.supabase.co';
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.COZE_SUPABASE_SERVICE_ROLE_KEY;
+
+if (!SERVICE_ROLE_KEY) {
+  throw new Error('缺少 SUPABASE_SERVICE_ROLE_KEY 或 COZE_SUPABASE_SERVICE_ROLE_KEY 环境变量');
+}
 
 const colors = {
   red: '\x1b[31m',
