@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
   if (!lawyerId) {
     return NextResponse.json({ success: false, error: '非律师账号' }, { status: 403 });
   }
+  const lawyerIdFilter = String(lawyerId);
   
   try {
     const supabase = getSupabaseAdmin();
@@ -68,18 +69,18 @@ export async function GET(request: NextRequest) {
     const { count: totalCount } = await supabase
       .from('consult_orders')
       .select('*', { count: 'exact', head: true })
-      .eq('assigned_lawyer_id', data.id);
+      .eq('assigned_lawyer_id', lawyerIdFilter);
     
     const { count: pendingCount } = await supabase
       .from('consult_orders')
       .select('*', { count: 'exact', head: true })
-      .eq('assigned_lawyer_id', data.id)
+      .eq('assigned_lawyer_id', lawyerIdFilter)
       .eq('assignment_status', 'pending');
     
     const { count: confirmedCount } = await supabase
       .from('consult_orders')
       .select('*', { count: 'exact', head: true })
-      .eq('assigned_lawyer_id', data.id)
+      .eq('assigned_lawyer_id', lawyerIdFilter)
       .in('assignment_status', ['confirmed', 'accepted']);
     
     const total = totalCount || 0;

@@ -36,6 +36,9 @@ export async function GET(request: NextRequest) {
     if (!/^1[3-9]\d{9}$/.test(phone)) {
       return NextResponse.json({
         success: true,
+        available: true,
+        registered: false,
+        reason: '手机号格式不正确',
         data: {
           registered: false,
           reason: '手机号格式不正确'
@@ -55,6 +58,8 @@ export async function GET(request: NextRequest) {
     // 🔒 统一返回格式，避免信息泄露（不做差异性错误信息）
     return NextResponse.json({
       success: true,
+      available: !existingUser,
+      registered: !!existingUser,
       data: {
         registered: !!existingUser
       }

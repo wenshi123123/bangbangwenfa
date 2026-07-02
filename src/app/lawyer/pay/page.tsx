@@ -40,6 +40,13 @@ function LawyerPayContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const applicationId = searchParams.get('applicationId');
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.push('/lawyer');
+  };
 
   const [orderId, setOrderId] = useState<string | null>(null);
   const [payParams, setPayParams] = useState<JsapiPayParams | null>(null);
@@ -49,6 +56,7 @@ function LawyerPayContent() {
   const [isWechat, setIsWechat] = useState(false);
   const [deviceReady, setDeviceReady] = useState(false);
   const [oaOpenid, setOaOpenid] = useState<string | null>(null);
+  const [qrCodeValue, setQrCodeValue] = useState<string | null>(null);
 
   const buildH5ReturnUrl = (targetOrderId: string) => {
     const url = new URL('/success', window.location.origin);
@@ -114,6 +122,12 @@ function LawyerPayContent() {
 
         if (result.success) {
           const { h5Url, codeUrl, jsapiPayParams, orderId: orderIdFromServer } = result.data;
+
+          if (result.data?.status === 'paid') {
+            setOrderId(orderIdFromServer);
+            setPaid(true);
+            return;
+          }
           
           if (h5Url) {
             // H5 支付：直接跳转
@@ -125,8 +139,9 @@ function LawyerPayContent() {
           } else if (codeUrl) {
             // Native 支付：显示二维码
             setOrderId(orderIdFromServer);
-            // 使用 qrcode.react 生成二维码
-            // ...（保持现有二维码显示逻辑）
+            setQrCodeValue(codeUrl);
+          } else {
+            setError('未获取到支付二维码，请稍后重试');
           }
         } else {
           console.error('支付创建失败:', result.error);
@@ -245,7 +260,7 @@ function LawyerPayContent() {
       <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-green-100/50">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <button onClick={() => router.back()} className="flex items-center gap-1.5 text-green-600 hover:text-green-700 transition-colors">
+            <button onClick={handleBack} className="flex items-center gap-1.5 text-green-600 hover:text-green-700 transition-colors">
               <ArrowLeft className="w-5 h-5" />
               <span className="text-sm font-medium">返回</span>
             </button>
@@ -277,15 +292,21 @@ function LawyerPayContent() {
                   请使用微信扫描下方二维码，在微信内完成支付
                 </p>
                 <div className="bg-white p-4 rounded-xl border border-border mx-auto inline-block">
-                  <QRCodeSVG
-                    value={window.location.href}
-                    size={220}
-                    level="M"
-                    includeMargin={true}
-                  />
+                  {qrCodeValue ? (
+                    <QRCodeSVG
+                      value={qrCodeValue}
+                      size={220}
+                      level="M"
+                      includeMargin={true}
+                    />
+                  ) : (
+                    <div className="w-[220px] h-[220px] flex items-center justify-center text-sm text-muted-foreground">
+                      正在生成支付二维码...
+                    </div>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-3">
-                  扫码后在微信内打开此页面自动完成支付
+                  请直接使用微信扫码完成支付
                 </p>
               </div>
             )}

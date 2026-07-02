@@ -9,6 +9,7 @@
  */
 
 import { getSupabaseAdmin } from '../../storage/database/supabase-client';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 // 配置
 const CONFIG = {
@@ -102,6 +103,11 @@ export async function checkPhoneRateLimit(phone: string): Promise<{ allowed: boo
 export async function checkIpRateLimit(ip: string): Promise<{ allowed: boolean; reason?: string }> {
   const now = new Date();
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+  const fallback = checkRateLimit(`sms-ip:${ip}`, CONFIG.IP_HOURLY_LIMIT, 60 * 60 * 1000);
+
+  if (!fallback.allowed) {
+    return { allowed: false, reason: '请求过于频繁，请稍后再试' };
+  }
 
   try {
     // 查询 IP 最近一小时的发送次数
@@ -117,7 +123,7 @@ export async function checkIpRateLimit(ip: string): Promise<{ allowed: boolean; 
       if (error.code === '42P01' || error.message.includes('does not exist')) {
         return { allowed: true };
       }
-      return { allowed: true }; // 查询失败时允许发送
+      return { allowed: true };
     }
 
   if (count && count >= CONFIG.IP_HOURLY_LIMIT) {

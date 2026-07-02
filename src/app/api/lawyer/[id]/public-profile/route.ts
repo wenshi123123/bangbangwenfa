@@ -11,6 +11,7 @@ export async function GET(
 ) {
   try {
     const { id: lawyerId } = await params;
+    const lawyerIdFilter = String(lawyerId);
 
     if (!lawyerId || typeof lawyerId !== 'string') {
       return Response.json({ success: false, error: '无效的律师 ID' }, { status: 400 });
@@ -61,7 +62,7 @@ export async function GET(
     const { count, error: countError } = await supabase
       .from('consult_orders')
       .select('id', { count: 'exact', head: true })
-      .eq('assigned_lawyer_id', lawyerId)
+      .eq('assigned_lawyer_id', lawyerIdFilter)
       .in('assignment_status', ['confirmed', 'completed']);
 
     return Response.json({

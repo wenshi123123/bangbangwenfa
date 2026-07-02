@@ -10,6 +10,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
+    const category = searchParams.get('category');
+    const rawSearch = searchParams.get('search')?.trim() || '';
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
     const from = (page - 1) * pageSize;
@@ -18,6 +20,13 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabaseAdmin();
     let query = supabase.from('consult_orders').select('*', { count: 'exact' }).order('created_at', { ascending: false });
     if (status) query = query.eq('payment_status', status);
+    if (category) query = query.eq('category', category);
+    if (rawSearch) {
+      const search = rawSearch.replace(/[%]/g, '').replace(/,/g, ' ');
+      query = query.or(
+        `contact_name.ilike.%${search}%,contact_phone.ilike.%${search}%,case_title.ilike.%${search}%,order_no.ilike.%${search}%`
+      );
+    }
     
     // 分页
     query = query.range(from, to);

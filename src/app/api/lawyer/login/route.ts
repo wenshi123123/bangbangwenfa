@@ -54,6 +54,23 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // 只有对应申请已审核通过，才允许律师账号登录
+    const { data: approvedApp } = await supabase
+      .from('lawyer_applications')
+      .select('id, review_status')
+      .eq('phone', phone)
+      .eq('review_status', 'approved')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!approvedApp) {
+      return NextResponse.json(
+        { success: false, error: '您的律师申请尚未通过审核，请等待管理员处理' },
+        { status: 400 }
+      );
+    }
+
     // 🔒 解密敏感字段后返回
     const safeLawyer = decryptFields(lawyer, LAWYER_SENSITIVE_FIELDS);
 

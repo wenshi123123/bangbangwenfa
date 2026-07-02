@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useLawyerAuth } from '@/hooks/use-lawyer-auth';
 import { LawyerBottomNav } from '@/components/lawyer/lawyer-bottom-nav';
+import { getLawyerOrderResponseText } from '@/lib/lawyer/order-detail-presenter';
 
 interface Order {
   id: number;
@@ -50,6 +51,7 @@ const serviceTypeMap: Record<string, { label: string; color: string }> = {
   standard: { label: '标准咨询', color: 'bg-[#B8860B]/10 text-[#B8860B]' },
   advanced: { label: '深度咨询', color: 'bg-[#7B4B8B]/10 text-[#7B4B8B]' },
   consult: { label: '咨询服务', color: 'bg-[#C47353]/10 text-[#C47353]' },
+  lawyer_subscription: { label: '律师订阅', color: 'bg-[#8C7B6E]/10 text-[#8C7B6E]' },
   default: { label: '咨询服务', color: 'bg-[#F5F0E8] text-[#8C7B6E]' },
 };
 
@@ -242,6 +244,7 @@ export default function LawyerOrdersPage() {
             {filteredOrders.map((order) => {
               const status = statusConfig[order.assignment_status] || statusConfig.default;
               const serviceType = serviceTypeMap[order.service_type] || serviceTypeMap.default;
+              const lawyerResponseText = getLawyerOrderResponseText(order.lawyer_response);
 
               return (
                 <Link
@@ -298,10 +301,10 @@ export default function LawyerOrdersPage() {
                     </div>
 
                     {/* 律师回复（如有） */}
-                    {(order.assignment_status === 'accepted' || order.assignment_status === 'confirmed' || order.assignment_status === 'completed') && order.lawyer_response && (
+                    {(order.assignment_status === 'accepted' || order.assignment_status === 'confirmed' || order.assignment_status === 'completed') && lawyerResponseText && (
                       <div className="p-3 bg-[#5C7A5A]/5 rounded-xl border border-[#5C7A5A]/10 mb-3">
                         <p className="text-[11px] font-semibold text-[#5C7A5A] mb-1">💬 我的回复</p>
-                        <p className="text-xs text-[#4A5A44] leading-relaxed">{order.lawyer_response}</p>
+                        <p className="text-xs text-[#4A5A44] leading-relaxed">{lawyerResponseText}</p>
                       </div>
                     )}
                   </div>

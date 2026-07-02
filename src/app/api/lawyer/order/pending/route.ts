@@ -9,19 +9,20 @@ export async function GET(request: NextRequest) {
     return unauthorizedResponse(auth.error);
   }
   
-  // 确保是律师类型
-  if (auth.userType !== 'lawyer') {
+  // 兼容存量 token：只要能解析出 lawyerId，就允许访问待处理订单
+  if (!auth.lawyerId) {
     return NextResponse.json({ success: false, error: '非律师账号' }, { status: 403 });
   }
   
   const lawyerId = auth.lawyerId!;
+  const lawyerIdFilter = String(lawyerId);
   
   try {
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from('consult_orders')
-      .select('id, contact_name, contact_phone, contact_wechat, case_type, case_title, case_description, service_type, assigned_at, category, created_at, assignment_status, assigned_lawyer_id, user_id, payment_status')
-      .eq('assigned_lawyer_id', lawyerId)
+      .select('id, contact_name, contact_phone, contact_wechat, case_type, case_title, case_description, service_type, service_price, assigned_at, category, created_at, assignment_status, assigned_lawyer_id, user_id, payment_status')
+      .eq('assigned_lawyer_id', lawyerIdFilter)
       .eq('assignment_status', 'pending')
       .order('created_at', { ascending: false });
     if (error) {

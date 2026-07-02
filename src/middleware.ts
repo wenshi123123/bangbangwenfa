@@ -11,6 +11,14 @@ import { getSiteUrl, shouldRedirectToCanonicalHost } from '@/lib/site';
 export function middleware(request: NextRequest) {
   const isProd = process.env.DEPLOY_ENV === 'PROD' || process.env.NODE_ENV === 'production';
   const hostname = request.nextUrl.hostname?.toLowerCase();
+  const { pathname, search } = request.nextUrl;
+
+  if ((pathname === '/user' || pathname === '/me') && !request.cookies.get('token')?.value) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = '/register';
+    redirectUrl.search = `?next=${encodeURIComponent(`${pathname}${search}`)}`;
+    return NextResponse.redirect(redirectUrl);
+  }
 
   if (isProd && shouldRedirectToCanonicalHost(hostname)) {
     const redirectUrl = request.nextUrl.clone();

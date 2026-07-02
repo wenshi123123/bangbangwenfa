@@ -151,10 +151,21 @@ export default function LoginModal() {
                 }));
 
                 const userType = result.data.user?.userType;
-                const redirectPath = userType === "lawyer" ? "/lawyer" : userType === "guardian" ? "/guardian/center" : null;
+                const authGuardRedirect = sessionStorage.getItem("auth_guard_redirect");
+                const modalRedirect = sessionStorage.getItem("login_redirect");
+                const redirectPath =
+                    authGuardRedirect ||
+                    modalRedirect ||
+                    (userType === "lawyer" ? "/lawyer" : userType === "guardian" ? "/guardian/center" : null);
 
                 setTimeout(() => {
                     onClose();
+                    if (authGuardRedirect) {
+                        sessionStorage.removeItem("auth_guard_redirect");
+                    }
+                    if (modalRedirect) {
+                        sessionStorage.removeItem("login_redirect");
+                    }
 
                     if (redirectPath) {
                         router.push(redirectPath);
@@ -223,10 +234,21 @@ export default function LoginModal() {
                 }));
 
                 const userType = result.data.user?.userType;
-                const redirectPath = userType === "lawyer" ? "/lawyer" : userType === "guardian" ? "/guardian/center" : null;
+                const authGuardRedirect = sessionStorage.getItem("auth_guard_redirect");
+                const modalRedirect = sessionStorage.getItem("login_redirect");
+                const redirectPath =
+                    authGuardRedirect ||
+                    modalRedirect ||
+                    (userType === "lawyer" ? "/lawyer" : userType === "guardian" ? "/guardian/center" : null);
 
                 setTimeout(() => {
                     onClose();
+                    if (authGuardRedirect) {
+                        sessionStorage.removeItem("auth_guard_redirect");
+                    }
+                    if (modalRedirect) {
+                        sessionStorage.removeItem("login_redirect");
+                    }
 
                     if (redirectPath) {
                         router.push(redirectPath);

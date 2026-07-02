@@ -38,6 +38,7 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [prices, setPrices] = useState<PriceConfig[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // 从 API 读取价格配置
   useEffect(() => {
@@ -79,6 +80,7 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    setSubmitError(null);
     
     try {
       const response = await apiRequest('/api/consult/create', {
@@ -100,11 +102,11 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
       if (result.success) {
         router.push(`/pay?orderId=${result.data.orderId}`);
       } else {
-        alert(result.error || '提交失败，请重试');
+        setSubmitError(result.error || '提交失败，请重试');
       }
     } catch (error) {
       console.error('Submit error:', error);
-      alert('提交失败，请重试');
+      setSubmitError('提交失败，请重试');
     } finally {
       setIsSubmitting(false);
     }
@@ -165,6 +167,12 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
           </div>
         </div>
       </div>
+
+      {submitError && (
+        <div className="mb-3 sm:mb-4 md:mb-6 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+          {submitError}
+        </div>
+      )}
 
       {/* Delegate Notice */}
       {hasDelegate && (

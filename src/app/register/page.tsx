@@ -14,6 +14,7 @@ function RegisterForm() {
   const router = useRouter();
   const { refreshAuth } = useAuth();
   const inviteCode = searchParams.get('code') || '';
+  const nextPath = searchParams.get('next') || '/';
   
   const [formData, setFormData] = useState({
     phone: '',
@@ -216,7 +217,7 @@ function RegisterForm() {
         
         setStep('success');
         setTimeout(() => {
-          router.push('/');
+          router.push(nextPath);
         }, 2000);
       } else {
         setErrors({ submit: data.error || '注册失败' });

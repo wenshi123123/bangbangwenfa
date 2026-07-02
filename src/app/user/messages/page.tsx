@@ -29,6 +29,12 @@ interface Notification {
   title: string;
   content: string;
   related_id: number | null;
+  data?: {
+    orderId?: number | string;
+    lawyerId?: number | string;
+    applicationId?: number | string;
+    [key: string]: unknown;
+  } | null;
   is_read: boolean;
   created_at: string;
 }
@@ -43,7 +49,11 @@ interface Pagination {
 const typeConfig: Record<string, { label: string; color: string; icon: any }> = {
   order_created: { label: '订单创建', color: 'bg-blue-100 text-blue-700', icon: Package },
   order_paid: { label: '订单支付', color: 'bg-blue-100 text-blue-700', icon: Package },
+  order_assigned: { label: '已分配律师', color: 'bg-amber-100 text-amber-700', icon: UserCheck },
   lawyer_accepted: { label: '律师接单', color: 'bg-green-100 text-green-700', icon: UserCheck },
+  lawyer_confirmed: { label: '律师确认', color: 'bg-green-100 text-green-700', icon: UserCheck },
+  lawyer_rejected: { label: '律师拒单', color: 'bg-red-100 text-red-700', icon: MessageSquare },
+  lawyer_replied: { label: '律师回复', color: 'bg-green-100 text-green-700', icon: MessageSquare },
   lawyer_response: { label: '律师回复', color: 'bg-green-100 text-green-700', icon: MessageSquare },
   order_completed: { label: '订单完成', color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle },
   commission_approved: { label: '分成到账', color: 'bg-amber-100 text-amber-700', icon: Wallet },
@@ -66,12 +76,24 @@ const filterOptions = [
 ];
 
 const USER_CENTER_HREF = '/me';
+const ORDER_NOTIFICATION_TYPES = new Set([
+  'order_created',
+  'order_paid',
+  'order_assigned',
+  'lawyer_accepted',
+  'lawyer_confirmed',
+  'lawyer_rejected',
+  'lawyer_replied',
+  'lawyer_response',
+  'order_completed',
+]);
 
 export default function MessagesPage() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [needsAuth, setNeedsAuth] = useState(false);
+  const hasToken = typeof window !== 'undefined' ? !!localStorage.getItem('token') : false;
+  const [loading, setLoading] = useState(hasToken);
+  const [needsAuth, setNeedsAuth] = useState(!hasToken);
   const [unreadCount, setUnreadCount] = useState(0);
   const [markingRead, setMarkingRead] = useState<number | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -122,9 +144,21 @@ export default function MessagesPage() {
   }, []);
 
   useEffect(() => {
-    const userInfo = localStorage.getItem('user_info');
-    const guardianUser = localStorage.getItem('guardian_user');
-    const user = userInfo ? JSON.parse(userInfo) : (guardianUser ? JSON.parse(guardianUser) : null);
+    if (!hasToken) {
+      setNeedsAuth(true);
+      setLoading(false);
+      return;
+    }
+
+    let user: any = null;
+    try {
+      const userInfo = localStorage.getItem('user_info');
+      const guardianUser = localStorage.getItem('guardian_user');
+      user = userInfo ? JSON.parse(userInfo) : (guardianUser ? JSON.parse(guardianUser) : null);
+    } catch (error) {
+      console.error('解析本地用户信息失败:', error);
+      user = null;
+    }
     
     if (!user?.id) {
       setNeedsAuth(true);
@@ -135,7 +169,7 @@ export default function MessagesPage() {
 
     setUserId(user.id);
     fetchNotifications(user.id, 1);
-  }, [router, fetchNotifications]);
+  }, [router, fetchNotifications, hasToken]);
 
   useEffect(() => {
     if (!needsAuth) return;
@@ -227,6 +261,37 @@ export default function MessagesPage() {
     }
   };
 
+  const handleNotificationClick = (notification: Notification) => {
+    if (!notification.is_read) {
+      markAsRead(notification.id);
+    }
+
+    if (notification.type === 'commission_approved' || notification.type === 'commission_rejected') {
+      router.push('/guardian/center?tab=commissions');
+      return;
+    }
+
+    if (notification.type === 'withdrawal_processing' || notification.type === 'withdrawal_completed' || notification.type === 'withdrawal_rejected') {
+      router.push('/guardian/center?tab=withdrawals');
+      return;
+    }
+
+    if (notification.type === 'lawyer_review_passed') {
+      router.push('/lawyer');
+      return;
+    }
+
+    if (notification.type === 'lawyer_review_failed') {
+      router.push('/lawyer/join');
+      return;
+    }
+
+    const orderId = notification.related_id || notification.data?.orderId;
+    if (orderId && ORDER_NOTIFICATION_TYPES.has(notification.type)) {
+      router.push(`/me?orderId=${orderId}`);
+    }
+  };
+
   const formatTime = (time: string) => {
     const date = new Date(time);
     const now = new Date();
@@ -244,7 +309,7 @@ export default function MessagesPage() {
     if (filter === 'all') return notifications;
     
     const filters: Record<string, string[]> = {
-      order: ['order_created', 'order_paid', 'lawyer_accepted', 'lawyer_response', 'order_completed'],
+      order: ['order_created', 'order_paid', 'order_assigned', 'lawyer_accepted', 'lawyer_confirmed', 'lawyer_rejected', 'lawyer_replied', 'lawyer_response', 'order_completed'],
       commission: ['commission_approved', 'commission_rejected'],
       withdrawal: ['withdrawal_processing', 'withdrawal_completed', 'withdrawal_rejected'],
       lawyer: ['lawyer_review_passed', 'lawyer_review_failed'],
@@ -358,12 +423,12 @@ export default function MessagesPage() {
               const IconComponent = config.icon;
               
               return (
-                <div 
+                <button 
                   key={notification.id}
-                  className={`bg-white rounded-xl p-4 shadow-[0_2px_8px_rgba(61,50,45,0.04)] transition-all ${
+                  className={`w-full text-left bg-white rounded-xl p-4 shadow-[0_2px_8px_rgba(61,50,45,0.04)] transition-all ${
                     !notification.is_read ? 'border-l-4 border-l-rose-500' : ''
                   }`}
-                  onClick={() => !notification.is_read && markAsRead(notification.id)}
+                  onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="flex items-start gap-4">
                     <div className={`p-3 rounded-xl ${notification.is_read ? 'bg-slate-100' : 'bg-rose-100'}`}>
@@ -396,7 +461,7 @@ export default function MessagesPage() {
                       </div>
                     </div>
                   </div>
-                </div>
+                </button>
               );
             })}
 

@@ -4,8 +4,6 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 
-const ADMIN_LOGIN_HREF = "/admin-login";
-
 const footerLinks = {
   服务: [
     { label: "民事咨询", href: "/civil" },
@@ -92,7 +90,7 @@ export function Footer() {
             <p className="text-xs text-[#B4A99A]">
               © 2024{' '}
               <Link
-                href={ADMIN_LOGIN_HREF}
+                href="/"
                 className="text-[#B4A99A] hover:text-[#C47353] transition-colors duration-200"
               >
                 帮帮问法

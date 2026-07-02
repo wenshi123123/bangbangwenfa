@@ -3,6 +3,12 @@ import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
 import { notifyOrder } from '@/lib/notify/webhook';
 
+function generateOrderNo(): string {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `ORD${timestamp}${random}`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     // 1. 验证用户身份
@@ -86,11 +92,13 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = getSupabaseClient();
+    const orderNo = generateOrderNo();
 
     // 插入订单
     const { data, error } = await supabase
       .from('consult_orders')
       .insert({
+        order_no: orderNo,
         contact_name: finalContactName,
         contact_phone: finalContactPhone || null,
         contact_wechat: finalContactWechat || null,
@@ -116,19 +124,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const createdOrderId = data?.id;
+    if (!createdOrderId) {
+      console.error('创建订单成功但未返回订单ID');
+      return NextResponse.json(
+        { success: false, error: '创建订单失败，请重试' },
+        { status: 500 }
+      );
+    }
+
     // Webhook 通知
     notifyOrder({
       type: 'Consult',
       userName: finalContactName,
       amount: finalServicePrice,
       detail: `${finalCategory === 'criminal' ? '刑事' : '民事'}咨询 - ${finalServiceType}`,
-      orderId: data?.id,
+      orderId: createdOrderId,
       status: 'Pending Payment',
     });
 
     return NextResponse.json({
       success: true,
-      data: { orderId: data.id }
+      data: { orderId: createdOrderId }
     });
 
   } catch (error) {

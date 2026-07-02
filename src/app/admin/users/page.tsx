@@ -12,7 +12,6 @@ import {
 import { adminApiRequest } from '@/lib/api/request';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 interface TrendData {
   newUsersToday: number;
@@ -35,15 +34,12 @@ interface User {
   updated_at: string;
 }
 
-const ADMIN_LOGIN_HREF = '/admin-login';
+const ADMIN_LOGIN_HREF = '/admin/login';
 
 export default function UserManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [needsLogin, setNeedsLogin] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return !localStorage.getItem('admin_info');
-  });
+  const [needsLogin, setNeedsLogin] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [trend, setTrend] = useState<TrendData | null>(null);
 

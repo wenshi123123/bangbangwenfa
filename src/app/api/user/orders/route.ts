@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
 
+const lawyerPackageLabels: Record<string, string> = {
+  civil_premium: '民事律师（臻选）',
+  criminal_premium: '刑事律师（臻选）',
+  civil: '民事律师（臻选）',
+  criminal: '刑事律师（臻选）',
+};
+
 export async function GET(request: NextRequest) {
   try {
     // 1. 验证用户身份
@@ -64,24 +71,36 @@ export async function GET(request: NextRequest) {
     } else if (lawyerApplications) {
       // 格式化律师入驻订单
       for (const app of lawyerApplications) {
-        // 计算律师入驻费用
-        const packagePrices: Record<string, number> = {
-          'basic': 29900,
-          'standard': 59900,
-          'advanced': 99900,
-        };
-        const price = packagePrices[app.package_type] || 0;
+        let selectedPackages: string[] = [];
+        if (app.selected_packages) {
+          try {
+            selectedPackages = typeof app.selected_packages === 'string'
+              ? JSON.parse(app.selected_packages)
+              : app.selected_packages;
+          } catch {
+            selectedPackages = [];
+          }
+        }
+
+        const packageTags = (selectedPackages.length > 0 ? selectedPackages : [app.package_type])
+          .filter(Boolean)
+          .map((pkg: string) => lawyerPackageLabels[pkg] || pkg);
+
+        const caseTitle = packageTags.length > 0
+          ? `臻选律师入驻申请 - ${packageTags.join(' + ')}`
+          : '臻选律师入驻申请';
 
         orders.push({
           id: app.id,
+          applicationId: app.id,
           orderNo: app.order_no || `LAW${app.id}`,
           type: 'lawyer',
           category: 'lawyer',
           caseType: '律师入驻',
-          caseTitle: `臻选律师入驻申请 - ${app.package_type === 'basic' ? '基础版' : app.package_type === 'standard' ? '标准版' : '高级版'}`,
+          caseTitle,
           caseDescription: app.notes || `申请成为臻选律师（${app.specialties || '综合'})`,
           serviceType: app.package_type,
-          servicePrice: price,
+          servicePrice: app.package_price || 0,
           paymentStatus: app.payment_status,
           reviewStatus: app.review_status,
           paidAt: app.paid_at,

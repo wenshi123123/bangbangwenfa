@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   LayoutDashboard, 
@@ -21,7 +21,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-const ADMIN_LOGIN_HREF = '/admin-login';
+const ADMIN_LOGIN_HREF = '/admin/login';
 
 function buildAdminLoginHref(redirectPath?: string | null) {
   if (!redirectPath) {
@@ -145,10 +145,18 @@ export default function AdminLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const isPublicPath = pathname?.startsWith('/admin/login') ?? false;
+  const [hydrated, setHydrated] = useState(false);
   const [admin, setAdmin] = useState<AdminUser | null>(null);
-  const [authResolved, setAuthResolved] = useState(false);
-  const [unauthorized, setUnauthorized] = useState(false);
+  const [authResolved, setAuthResolved] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !!localStorage.getItem('admin_info') && !!localStorage.getItem('admin_token');
+  });
+  const [unauthorized, setUnauthorized] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !localStorage.getItem('admin_info') || !localStorage.getItem('admin_token');
+  });
   const [stats, setStats] = useState<Stats>({
     pendingLawyerApplications: 0,
     pendingProfileRevisions: 0,
@@ -169,6 +177,8 @@ export default function AdminLayout({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
+    setHydrated(true);
+
     // 如果是登录页，不需要检查认证，也不要挂载后台壳子
     if (isPublicPath) {
       setAuthResolved(true);
@@ -176,11 +186,15 @@ export default function AdminLayout({
     }
 
     const checkAuth = async () => {
+      const currentQuery = searchParams.toString();
+      const currentRedirectPath = currentQuery
+        ? `${pathname || '/admin/dashboard'}?${currentQuery}`
+        : (pathname || '/admin/dashboard');
       const adminInfo = localStorage.getItem('admin_info');
       if (!adminInfo) {
         setUnauthorized(true);
         setAuthResolved(true);
-        router.replace(buildAdminLoginHref(pathname || '/admin/dashboard'));
+        router.replace(buildAdminLoginHref(currentRedirectPath));
         return false;
       }
       try {
@@ -189,7 +203,7 @@ export default function AdminLayout({
         console.error('解析管理员信息失败', e);
         setUnauthorized(true);
         setAuthResolved(true);
-        router.replace(buildAdminLoginHref(pathname || '/admin/dashboard'));
+        router.replace(buildAdminLoginHref(currentRedirectPath));
         return false;
       }
 
@@ -200,7 +214,7 @@ export default function AdminLayout({
           localStorage.removeItem('admin_info');
           setUnauthorized(true);
           setAuthResolved(true);
-          router.replace(buildAdminLoginHref(pathname || '/admin/dashboard'));
+          router.replace(buildAdminLoginHref(currentRedirectPath));
           return false;
         }
         const res = await fetch('/api/admin/auth', {
@@ -213,7 +227,7 @@ export default function AdminLayout({
           localStorage.removeItem('admin_token');
           setUnauthorized(true);
           setAuthResolved(true);
-          router.replace(buildAdminLoginHref(pathname || '/admin/dashboard'));
+          router.replace(buildAdminLoginHref(currentRedirectPath));
           return false;
         }
       } catch (err) {
@@ -293,7 +307,7 @@ export default function AdminLayout({
     return <>{children}</>;
   }
 
-  if (unauthorized || !authResolved) {
+  if (!hydrated || unauthorized || !authResolved) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
         <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-[0_12px_40px_rgba(15,23,42,0.08)] text-center">

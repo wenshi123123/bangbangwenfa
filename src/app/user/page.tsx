@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { User, Shield, Briefcase, Settings, ChevronRight, LogOut, QrCode, X, ShoppingCart, Clock, CheckCircle, AlertCircle, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,10 +11,10 @@ import { useAuth } from '@/hooks/use-auth';
 import { apiRequest } from '@/lib/api/request';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 interface Order {
   id: number;
+  applicationId?: number;
   orderNo: string;
   type: 'consult' | 'lawyer';  // 订单类型：咨询订单 或 律师入驻订单
   caseTitle: string;
@@ -30,6 +30,8 @@ interface Order {
 export default function UserCenterPage() {
   const { user, isLoggedIn, isLoading, logout, updateUser } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const hasToken = typeof window !== 'undefined' ? !!localStorage.getItem('token') : false;
   const [fallbackUser] = useState<any>(() => {
     if (typeof window === 'undefined') return null;
     try {
@@ -44,6 +46,7 @@ export default function UserCenterPage() {
   const [editNickname, setEditNickname] = useState('');
   const [saving, setSaving] = useState(false);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [needsAuthRedirect, setNeedsAuthRedirect] = useState(false);
 
   // 订单相关状态
   const [orders, setOrders] = useState<Order[]>([]);
@@ -51,7 +54,14 @@ export default function UserCenterPage() {
   const [showOrderDetail, setShowOrderDetail] = useState<Order | null>(null);
 
   const effectiveUser = user || fallbackUser;
-  const effectiveLoggedIn = isLoggedIn || !!fallbackUser;
+  const effectiveLoggedIn = hasToken && (isLoggedIn || !!fallbackUser);
+
+  const lawyerPackageLabels: Record<string, string> = {
+    civil_premium: '民事律师（臻选）',
+    criminal_premium: '刑事律师（臻选）',
+    civil: '民事律师（臻选）',
+    criminal: '刑事律师（臻选）',
+  };
 
   // 加载用户订单（apiRequest 自动携带 Authorization token 进行鉴权）
   const loadOrders = useCallback(async () => {
@@ -96,10 +106,25 @@ export default function UserCenterPage() {
   }, [effectiveUser?.id, effectiveLoggedIn, loadOrders, loadUnreadCount]);
 
   useEffect(() => {
+    const orderId = searchParams.get('orderId');
+    if (!orderId || !orders.length) return;
+
+    const targetOrder = orders.find(order => String(order.id) === orderId);
+    if (targetOrder && showOrderDetail?.id !== targetOrder.id) {
+      setShowOrderDetail(targetOrder);
+    }
+  }, [orders, searchParams, showOrderDetail?.id]);
+
+  useEffect(() => {
     if (!effectiveLoggedIn) {
-      window.dispatchEvent(new CustomEvent('open-login-modal'));
+      setNeedsAuthRedirect(true);
     }
   }, [effectiveLoggedIn]);
+
+  useLayoutEffect(() => {
+    if (!needsAuthRedirect) return;
+    window.location.replace('/register?next=/user');
+  }, [needsAuthRedirect]);
 
   if (!effectiveLoggedIn) {
     return (
@@ -251,6 +276,7 @@ export default function UserCenterPage() {
                 // 律师入驻订单状态
                 const lawyerStatusMap: Record<string, { label: string; color: string; icon: any }> = {
                   pending: { label: '待支付', color: 'bg-amber-100 text-amber-700', icon: Clock },
+                  pending_review: { label: '审核中', color: 'bg-amber-100 text-amber-700', icon: Clock },
                   paid: { label: '已支付', color: 'bg-green-100 text-green-700', icon: CheckCircle },
                   approved: { label: '已通过', color: 'bg-blue-100 text-blue-700', icon: CheckCircle },
                   rejected: { label: '已拒绝', color: 'bg-red-100 text-red-700', icon: AlertCircle },
@@ -258,7 +284,16 @@ export default function UserCenterPage() {
                 };
                 
                 const statusMap = order.type === 'lawyer' ? lawyerStatusMap : consultStatusMap;
-                const statusKey = order.type === 'lawyer' && order.reviewStatus ? order.reviewStatus : order.paymentStatus;
+                const statusKey = order.type === 'lawyer'
+                  ? (
+                      order.reviewStatus === 'approved' ||
+                      order.reviewStatus === 'rejected'
+                        ? order.reviewStatus
+                        : order.paymentStatus === 'paid'
+                          ? 'pending_review'
+                          : 'pending'
+                    )
+                  : order.paymentStatus;
                 const status = statusMap[statusKey] || statusMap.pending;
                 const StatusIcon = status.icon;
                 
@@ -457,8 +492,7 @@ export default function UserCenterPage() {
                 <span className="text-gray-500">{showOrderDetail.type === 'lawyer' ? '入驻套餐' : '服务类型'}</span>
                 <span className="capitalize">
                   {showOrderDetail.type === 'lawyer' 
-                    ? (showOrderDetail.serviceType === 'basic' ? '基础版' : 
-                       showOrderDetail.serviceType === 'standard' ? '标准版' : '高级版')
+                    ? (lawyerPackageLabels[showOrderDetail.serviceType] || showOrderDetail.serviceType)
                     : showOrderDetail.serviceType}
                 </span>
               </div>
@@ -504,7 +538,11 @@ export default function UserCenterPage() {
                   <Button
                     onClick={() => {
                       setShowOrderDetail(null);
-                      router.push(`/pay?orderId=${showOrderDetail.id}`);
+                      router.push(
+                        showOrderDetail.type === 'lawyer'
+                          ? `/lawyer/pay?applicationId=${showOrderDetail.applicationId || showOrderDetail.id}`
+                          : `/pay?orderId=${showOrderDetail.id}`
+                      );
                     }}
                     className="w-full bg-[#C47353] hover:bg-[#A85D40] text-white rounded-full"
                   >

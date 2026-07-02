@@ -4,6 +4,19 @@ import { verifyCode } from '@/lib/sms/verify-code';
 import { generateToken } from '@/lib/auth/token';
 import { hashPassword, validatePasswordStrength, validateUsername } from '@/lib/auth/password';
 
+const AUTH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60;
+
+function attachAuthCookie(response: NextResponse, token: string) {
+  response.cookies.set('token', token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: AUTH_COOKIE_MAX_AGE,
+  });
+  return response;
+}
+
 /**
  * POST /api/auth/register
  * 注册接口
@@ -192,7 +205,7 @@ export async function POST(request: NextRequest) {
       userType: 'user'
     });
 
-    return NextResponse.json({
+    return attachAuthCookie(NextResponse.json({
       success: true,
       data: {
         user: {
@@ -203,7 +216,7 @@ export async function POST(request: NextRequest) {
         },
         token
       }
-    });
+    }), token);
 
   } catch (error) {
     console.error('注册失败:', error);

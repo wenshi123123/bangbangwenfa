@@ -64,6 +64,14 @@ export default function LawyerPublicProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.push(USER_CENTER_HREF);
+  };
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -105,7 +113,7 @@ export default function LawyerPublicProfilePage() {
             {error || '律师不存在'}
           </h2>
           <Button
-            onClick={() => router.back()}
+            onClick={handleBack}
             className="mt-4 bg-[#C47353] hover:bg-[#A85D40] text-white rounded-full"
           >
             返回
@@ -123,7 +131,7 @@ export default function LawyerPublicProfilePage() {
       <div className="sticky top-0 z-40 bg-[#FDF8F0]/95 backdrop-blur-xl border-b border-[#E8D5C0]/50">
         <div className="px-4 py-3 flex items-center max-w-2xl lg:max-w-5xl mx-auto">
           <button
-            onClick={() => router.back()}
+            onClick={handleBack}
             className="p-2 -ml-2 rounded-full hover:bg-[#FAF7F2] transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-[#3D322D]" />

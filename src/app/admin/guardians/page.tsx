@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Users, Search, RefreshCw, Eye, Wallet } from 'lucide-react';
 import { adminApiRequest } from '@/lib/api/request';
 
-const ADMIN_LOGIN_HREF = '/admin-login';
+const ADMIN_LOGIN_HREF = '/admin/login';
 
 interface Guardian {
   id: number;
@@ -36,13 +35,13 @@ interface GuardianStats {
 }
 
 export default function GuardiansPage() {
-  const router = useRouter();
   const [guardians, setGuardians] = useState<Guardian[]>([]);
   const [stats, setStats] = useState<GuardianStats>({ total: 0, active: 0, totalCommission: 0, availableCommission: 0 });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [needsLogin, setNeedsLogin] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -72,11 +71,11 @@ export default function GuardiansPage() {
   useEffect(() => {
     const adminInfo = localStorage.getItem('admin_info');
     if (!adminInfo) {
-      router.push(ADMIN_LOGIN_HREF);
+      setNeedsLogin(true);
       return;
     }
     fetchData();
-  }, [router, fetchData]);
+  }, [fetchData]);
 
   const formatMoney = (cents: number) => {
     return (cents / 100).toFixed(2);
@@ -92,6 +91,26 @@ export default function GuardiansPage() {
   };
 
   return (
+    <>
+      {needsLogin ? (
+        <div className="min-h-[60vh] flex items-center justify-center bg-slate-50 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-[0_12px_40px_rgba(15,23,42,0.08)] text-center">
+            <div className="mx-auto mb-4 w-14 h-14 rounded-full bg-green-50 flex items-center justify-center">
+              <Users className="w-7 h-7 text-green-600" />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-800">管理员登录</h1>
+            <p className="mt-2 text-sm text-slate-500">请先登录管理员账号后再访问守护者管理</p>
+            <div className="mt-6">
+              <Link
+                href={ADMIN_LOGIN_HREF}
+                className="inline-flex items-center justify-center rounded-full bg-green-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-700"
+              >
+                前往登录
+              </Link>
+            </div>
+          </div>
+        </div>
+      ) : (
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -284,5 +303,7 @@ export default function GuardiansPage() {
         </Card>
       </div>
     </div>
+      )}
+    </>
   );
 }

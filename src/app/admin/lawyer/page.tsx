@@ -56,7 +56,8 @@ export default function LawyerListPage() {
 
   // 从 URL 同步状态
   useEffect(() => {
-    const status = searchParams.get('status') || '';
+    const rawStatus = searchParams.get('status') || '';
+    const status = rawStatus === 'pending_review' ? 'pending' : rawStatus;
     if (status !== statusFilter) {
       setStatusFilter(status);
       setPage(1); // 切换状态时重置页码

@@ -16,6 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { adminApiRequest } from '@/lib/api/request';
 
+const ADMIN_LOGIN_HREF = '/admin/login';
+
 interface ExportType {
   id: string;
   label: string;
@@ -50,6 +52,7 @@ const exportTypes: ExportType[] = [
 
 export default function AdminAnalyticsPage() {
   const [adminInfo, setAdminInfo] = useState<any>(null);
+  const [needsLogin, setNeedsLogin] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     type: 'orders',
@@ -60,8 +63,15 @@ export default function AdminAnalyticsPage() {
 
   useEffect(() => {
     const storedAdmin = localStorage.getItem('admin_info');
-    if (storedAdmin) {
+    if (!storedAdmin) {
+      setNeedsLogin(true);
+      return;
+    }
+    try {
       setAdminInfo(JSON.parse(storedAdmin));
+    } catch (error) {
+      console.error('解析管理员信息失败:', error);
+      setNeedsLogin(true);
     }
   }, []);
 
@@ -118,6 +128,26 @@ export default function AdminAnalyticsPage() {
   };
 
   return (
+    <>
+      {needsLogin ? (
+        <div className="min-h-[60vh] flex items-center justify-center bg-slate-50 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-[0_12px_40px_rgba(15,23,42,0.08)] text-center">
+            <div className="mx-auto mb-4 w-14 h-14 rounded-full bg-green-50 flex items-center justify-center">
+              <FileText className="w-7 h-7 text-green-600" />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-800">管理员登录</h1>
+            <p className="mt-2 text-sm text-slate-500">请先登录管理员账号后再访问数据导出中心</p>
+            <div className="mt-6">
+              <Link
+                href={ADMIN_LOGIN_HREF}
+                className="inline-flex items-center justify-center rounded-full bg-green-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-700"
+              >
+                前往登录
+              </Link>
+            </div>
+          </div>
+        </div>
+      ) : (
     <div>
       {/* Page Header — 不再 sticky，复用 layout 导航栏 */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
@@ -292,5 +322,7 @@ export default function AdminAnalyticsPage() {
         </Card>
       </div>
     </div>
+      )}
+    </>
   );
 }

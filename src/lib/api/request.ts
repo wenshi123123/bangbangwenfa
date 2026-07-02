@@ -83,10 +83,23 @@ export async function apiRequest(
       (requestHeaders as Record<string, string>)['Authorization'] = `Bearer ${token}`;
     }
   }
+
+  const requestBody =
+    typeof restOptions.body === 'string'
+      ? restOptions.body
+      : restOptions.body instanceof FormData ||
+          restOptions.body instanceof Blob ||
+          restOptions.body instanceof ArrayBuffer ||
+          restOptions.body instanceof URLSearchParams
+        ? restOptions.body
+        : restOptions.body !== undefined
+          ? JSON.stringify(restOptions.body)
+          : undefined;
   
   const response = await fetch(url, {
     ...restOptions,
     headers: requestHeaders,
+    body: requestBody,
   });
   
   // 处理 401 未授权响应（Token 过期或无效）
@@ -122,10 +135,23 @@ export async function adminApiRequest(
   if (adminToken) {
     (requestHeaders as Record<string, string>)['Authorization'] = `Bearer ${adminToken}`;
   }
+
+  const requestBody =
+    typeof restOptions.body === 'string'
+      ? restOptions.body
+      : restOptions.body instanceof FormData ||
+          restOptions.body instanceof Blob ||
+          restOptions.body instanceof ArrayBuffer ||
+          restOptions.body instanceof URLSearchParams
+        ? restOptions.body
+        : restOptions.body !== undefined
+          ? JSON.stringify(restOptions.body)
+          : undefined;
   
   const response = await fetch(url, {
     ...restOptions,
     headers: requestHeaders,
+    body: requestBody,
   });
   
   // 处理 401 未授权响应（Token 过期或无效）

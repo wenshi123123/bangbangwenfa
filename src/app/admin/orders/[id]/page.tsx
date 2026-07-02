@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { 
+import {
   ArrowLeft, 
   Clock, 
   CheckCircle, 
@@ -21,6 +21,10 @@ import {
   UserPlus
 } from 'lucide-react';
 import { adminApiRequest } from '@/lib/api/request';
+import {
+  getAdminLawyerResponseText,
+  getAdminOrderServiceLabel,
+} from '@/lib/admin/order-detail-presenter';
 
 interface Order {
   id: string;
@@ -77,15 +81,6 @@ const assignmentStatusMap = {
 const categoryMap = {
   criminal: { label: '刑事案件', color: 'text-red-600' },
   civil: { label: '民事案件', color: 'text-blue-600' },
-};
-
-const serviceTypeMap = {
-  basic: { label: '基础咨询' },
-  standard: { label: '标准咨询' },
-  advanced: { label: '深度咨询' },
-  consult: { label: '咨询服务' },
-  lawyer_subscription: { label: '律师订阅' },
-  default: { label: '其他服务' },
 };
 
 export default function OrderDetailPage() {
@@ -230,7 +225,8 @@ export default function OrderDetailPage() {
   const paymentStatus = paymentStatusMap[order.payment_status as keyof typeof paymentStatusMap] || paymentStatusMap.default;
   const PayStatusIcon = paymentStatus.icon;
   const catInfo = categoryMap[order.category as keyof typeof categoryMap] || { label: order.category };
-  const serviceInfo = serviceTypeMap[order.service_type as keyof typeof serviceTypeMap] || serviceTypeMap.default;
+  const serviceLabel = getAdminOrderServiceLabel(order.service_type);
+  const lawyerResponseText = getAdminLawyerResponseText(order.lawyer_response);
   
   const assignmentStatus = assignmentStatusMap[order.assignment_status as keyof typeof assignmentStatusMap] || assignmentStatusMap.default;
   const AssignStatusIcon = assignmentStatus.icon;
@@ -327,7 +323,7 @@ export default function OrderDetailPage() {
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 py-2 border-b border-gray-50 last:border-0">
               <span className="text-slate-500 text-sm">咨询类型</span>
-              <span className="font-medium text-slate-800">{serviceInfo.label}</span>
+              <span className="font-medium text-slate-800">{serviceLabel}</span>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 py-2 border-b border-gray-50 last:border-0">
               <span className="text-slate-500 text-sm">订单金额</span>
@@ -362,6 +358,12 @@ export default function OrderDetailPage() {
             <p className="text-sm text-slate-500 mb-1">详细描述</p>
             <p className="text-slate-700 whitespace-pre-wrap">{order.case_description}</p>
           </div>
+          {lawyerResponseText && (
+            <div>
+              <p className="text-sm text-slate-500 mb-1">律师回复</p>
+              <p className="text-slate-700 whitespace-pre-wrap">{lawyerResponseText}</p>
+            </div>
+          )}
         </div>
       </div>
 

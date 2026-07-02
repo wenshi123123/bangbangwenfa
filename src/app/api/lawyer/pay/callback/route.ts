@@ -6,6 +6,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { verifyWechatPaySignature } from '@/lib/payment/wechat-cert';
+import crypto from 'crypto';
+
+function decryptNotifyData(
+  ciphertext: string,
+  associatedData: string,
+  nonce: string,
+  apiV3Key: string
+): string {
+  const key = Buffer.from(apiV3Key, 'utf8');
+  const iv = Buffer.from(nonce, 'utf8');
+  const authTag = Buffer.from(ciphertext.slice(-16), 'base64');
+  const data = Buffer.from(ciphertext.slice(0, -16), 'base64');
+
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(authTag);
+  decipher.setAAD(Buffer.from(associatedData, 'utf8'));
+
+  let decrypted = decipher.update(data, undefined, 'utf8');
+  decrypted += decipher.final('utf8');
+
+  return decrypted;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,34 +69,54 @@ export async function POST(request: NextRequest) {
     }
     console.log('律师入驻支付回调签名验证通过');
 
-    // 解析 JSON 数据（微信支付 v3 通知可能是 JSON 格式）
-    let notifyData: any;
-    try {
-      notifyData = JSON.parse(body);
-    } catch {
+    const apiV3Key = process.env.WEIXIN_APIV3_KEY || '';
+    if (!apiV3Key) {
+      console.error('未配置APIv3密钥，无法解密律师入驻支付回调');
       return NextResponse.json(
-        { code: 'FAIL', message: 'Invalid JSON' },
+        { code: 'FAIL', message: '配置错误' },
+        { status: 500 }
+      );
+    }
+
+    let paymentResult: any;
+    try {
+      const notifyData = JSON.parse(body);
+      if (notifyData.resource?.ciphertext) {
+        paymentResult = JSON.parse(
+          decryptNotifyData(
+            notifyData.resource.ciphertext,
+            notifyData.resource.associated_data || '',
+            notifyData.resource.nonce || '',
+            apiV3Key
+          )
+        );
+      } else {
+        paymentResult = notifyData;
+      }
+    } catch (parseError) {
+      console.error('律师入驻支付回调解析失败:', parseError);
+      return NextResponse.json(
+        { code: 'FAIL', message: 'Invalid notification' },
         { status: 400 }
       );
     }
 
     console.log('收到律师入驻支付回调:', {
-      transactionId: notifyData.transaction_id,
-      outTradeNo: notifyData.out_trade_no,
-      tradeState: notifyData.trade_state,
+      transactionId: paymentResult.transaction_id,
+      outTradeNo: paymentResult.out_trade_no,
+      tradeState: paymentResult.trade_state,
     });
 
-    // 验证交易状态
-    if (notifyData.trade_state !== 'SUCCESS') {
-      console.log('支付未成功:', notifyData.trade_state);
+    if (paymentResult.trade_state !== 'SUCCESS') {
+      console.log('支付未成功:', paymentResult.trade_state);
       return NextResponse.json(
         { code: 'FAIL', message: 'Payment not successful' },
         { status: 200 }
       );
     }
 
-    const transactionId = notifyData.transaction_id;
-    const outTradeNo = notifyData.out_trade_no;
+    const transactionId = paymentResult.transaction_id;
+    const outTradeNo = paymentResult.out_trade_no;
 
     const supabase = getSupabaseAdmin();
 
@@ -177,30 +219,10 @@ export async function POST(request: NextRequest) {
         newExpiry: newExpiryDate.toISOString(),
       });
     } else {
-      // 新律师：创建账号，到期时间从今天开始计算18个月
-      const expiresAt = calculateMemberExpiry(new Date(), PACKAGE_MONTHS);
-
-      await supabase.from('lawyers').insert({
-        user_id: applicationUserId,
-        name: application.name,
-        real_name: application.name,           // 🔧 从申请中带入
-        phone: application.phone,
-        wechat: application.wechat,
-        license_no: application.license_number, // 🔧 从申请中带入
-        specialization: application.specialties, // 🔧 从申请中带入
-        is_active: true,
-        is_available: true,
-        member_expires_at: expiresAt.toISOString(),
-        membership_status: 'normal',
-        rating: 5.0,                           // 🔧 初始评分
-        max_orders: 50,                        // 🔧 初始接单上限
-        created_at: new Date().toISOString(),
-      });
-
-      console.log('律师账号创建成功:', {
+      // 新入驻律师：仅记录支付完成，等待管理员审核后再创建正式律师账号
+      console.log('律师入驻支付已完成，等待管理员审核创建律师账号:', {
         userId: application.user_id,
         name: application.name,
-        expiresAt: expiresAt.toISOString(),
       });
     }
 

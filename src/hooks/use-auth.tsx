@@ -269,6 +269,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('guardian_user');
     localStorage.removeItem('user_id');
     localStorage.removeItem('token');
+    document.cookie = 'token=; path=/; max-age=0; samesite=lax';
     setUser(null);
     window.location.href = '/';
   }, []);

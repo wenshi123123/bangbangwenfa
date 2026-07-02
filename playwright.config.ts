@@ -38,7 +38,6 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        channel: 'chrome',
       },
     },
     // Firefox 需要额外下载，暂时注释
@@ -50,7 +49,6 @@ export default defineConfig({
       name: 'mobile-chrome',
       use: {
         ...devices['Pixel 5'],
-        channel: 'chrome',
       },
     },
   ],
@@ -58,7 +56,7 @@ export default defineConfig({
   webServer: process.env.CI
     ? undefined
     : {
-        command: 'npx next start --port 3000',
+        command: '/Users/Admin/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node /Users/Admin/Documents/帮帮问法网站/node_modules/.pnpm/next@16.1.1_@babel+core@7.29.0_@opentelemetry+api@1.9.1_@playwright+test@1.59.1_react-d_b956f762d85c6e2ea0d8cd9723bd8154/node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3000',
         url: 'http://localhost:3000',
         reuseExistingServer: !process.env.CI,
         timeout: 120000,

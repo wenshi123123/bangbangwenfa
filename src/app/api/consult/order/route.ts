@@ -6,9 +6,12 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const orderId = searchParams.get('orderId');
+    const orderNo = searchParams.get('orderNo');
     const requestOpenid = searchParams.get('oa_openid') || searchParams.get('openid');
 
-    if (!orderId) {
+    const orderRef = orderId || orderNo;
+
+    if (!orderRef) {
       return NextResponse.json(
         { success: false, error: '缺少订单号' },
         { status: 400 }
@@ -16,12 +19,29 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = getSupabaseClient();
+    const isNumericOrderId = /^\d+$/.test(orderRef);
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('consult_orders')
-      .select('*')
-      .eq('id', orderId)
-      .maybeSingle();
+      .select('*');
+
+    if (isNumericOrderId) {
+      query = query.eq('id', orderRef);
+    } else {
+      query = query.eq('order_no', orderRef);
+    }
+
+    let { data, error } = await query.maybeSingle();
+
+    if (!data && isNumericOrderId) {
+      const fallback = await supabase
+        .from('consult_orders')
+        .select('*')
+        .eq('order_no', orderRef)
+        .maybeSingle();
+      data = fallback.data;
+      error = fallback.error;
+    }
 
     if (error) {
       console.error('查询订单失败:', error);
@@ -60,7 +80,7 @@ export async function GET(request: NextRequest) {
     // 格式化返回数据
     const order = {
       id: data.id,
-      orderNo: data.order_no,
+      orderNo: data.order_no || `ORD${String(data.id).replace(/-/g, '').slice(0, 12)}`,
       caseType: data.case_type,
       caseTitle: data.case_title,
       caseDescription: data.case_description,

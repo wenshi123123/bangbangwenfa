@@ -14,15 +14,47 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const status = searchParams.get('status');
+    const rawSearch = searchParams.get('search')?.trim() || '';
     const offset = (page - 1) * limit;
     
     const supabase = getSupabaseAdmin();
-    let query = supabase
+    let withdrawalQuery = supabase
       .from('guardian_withdrawals')
       .select('*, guardian_id, amount, status, wechat_qrcode, admin_note, created_at, processed_at', { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-    if (status) query = query.eq('status', status);
+      .order('created_at', { ascending: false });
+    if (status) withdrawalQuery = withdrawalQuery.eq('status', status);
+
+    if (rawSearch) {
+      const keyword = rawSearch.replace(/[%]/g, '').replace(/,/g, ' ').trim();
+      const maybeId = Number(keyword);
+      const maybeAmount = Number(keyword);
+
+      const guardianSearchRes = await supabase
+        .from('guardian_users')
+        .select('id')
+        .or(`nickname.ilike.%${keyword}%,wechat_account.ilike.%${keyword}%`);
+
+      const guardianIds = guardianSearchRes.data?.map((item) => String(item.id)).filter(Boolean) || [];
+      const searchClauses: string[] = [];
+
+      if (guardianIds.length > 0) {
+        searchClauses.push(`guardian_id.in.(${guardianIds.join(',')})`);
+      }
+      if (!Number.isNaN(maybeId) && maybeId > 0) {
+        searchClauses.push(`id.eq.${maybeId}`);
+      }
+      if (!Number.isNaN(maybeAmount) && maybeAmount > 0) {
+        searchClauses.push(`amount.eq.${maybeAmount}`);
+      }
+
+      if (searchClauses.length > 0) {
+        withdrawalQuery = withdrawalQuery.or(searchClauses.join(','));
+      } else {
+        withdrawalQuery = withdrawalQuery.eq('id', -1);
+      }
+    }
+
+    const query = withdrawalQuery.range(offset, offset + limit - 1);
     
     const { data, error, count } = await query;
     if (error) {

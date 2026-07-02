@@ -31,14 +31,32 @@ interface Notification {
 }
 
 const typeConfig: Record<string, { label: string; color: string; icon: any }> = {
+  order_created: { label: '订单创建', color: 'bg-blue-100 text-blue-700', icon: Bell },
+  order_paid: { label: '订单支付', color: 'bg-blue-100 text-blue-700', icon: Bell },
   order_assigned: { label: '律师接单', color: 'bg-amber-100 text-amber-700', icon: UserCheck },
+  lawyer_accepted: { label: '律师接单', color: 'bg-amber-100 text-amber-700', icon: UserCheck },
   lawyer_confirmed: { label: '律师确认', color: 'bg-green-100 text-green-700', icon: CheckCircle2 },
   lawyer_rejected: { label: '律师拒单', color: 'bg-red-100 text-red-700', icon: AlertCircle },
   lawyer_replied: { label: '律师回复', color: 'bg-blue-100 text-blue-700', icon: MessageSquareText },
+  lawyer_response: { label: '律师回复', color: 'bg-blue-100 text-blue-700', icon: MessageSquareText },
+  order_completed: { label: '订单完成', color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle2 },
+  lawyer_review_passed: { label: '入驻通过', color: 'bg-green-100 text-green-700', icon: CheckCircle2 },
+  lawyer_review_failed: { label: '入驻拒绝', color: 'bg-red-100 text-red-700', icon: AlertCircle },
   system_notice: { label: '系统通知', color: 'bg-slate-100 text-slate-700', icon: Bell },
 };
 
 const USER_CENTER_HREF = '/me';
+const ORDER_NOTIFICATION_TYPES = new Set([
+  'order_created',
+  'order_paid',
+  'order_assigned',
+  'lawyer_accepted',
+  'lawyer_confirmed',
+  'lawyer_rejected',
+  'lawyer_replied',
+  'lawyer_response',
+  'order_completed',
+]);
 
 export default function UserNotificationsPage() {
   const router = useRouter();
@@ -51,6 +69,7 @@ export default function UserNotificationsPage() {
   // 🔧 必须在组件顶部声明所有 hooks，禁止放在条件 return 之后
   const [isClient, setIsClient] = useState(false);
   const [notLoggedIn, setNotLoggedIn] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -58,6 +77,7 @@ export default function UserNotificationsPage() {
     if (typeof window !== 'undefined' && !localStorage.getItem('token')) {
       setNotLoggedIn(true);
     }
+    setAuthChecked(true);
   }, []);
 
   const loadNotifications = useCallback(async (pageNum: number, append: boolean = false) => {
@@ -79,8 +99,11 @@ export default function UserNotificationsPage() {
   }, []);
 
   useEffect(() => {
+    if (!authChecked || notLoggedIn) {
+      return;
+    }
     loadNotifications(1, false);
-  }, [loadNotifications]);
+  }, [authChecked, notLoggedIn, loadNotifications]);
 
   const markAsRead = async (id: number) => {
     try {
@@ -129,9 +152,35 @@ export default function UserNotificationsPage() {
 
     const { type, data } = n;
 
-    // 派单/确认/回复类通知 → 跳转律师名片页
+    if (type === 'commission_approved' || type === 'commission_rejected') {
+      router.push('/guardian/center?tab=commissions');
+      return;
+    }
+
+    if (type === 'withdrawal_processing' || type === 'withdrawal_completed' || type === 'withdrawal_rejected') {
+      router.push('/guardian/center?tab=withdrawals');
+      return;
+    }
+
+    // 订单类通知 → 跳转我的订单详情
+    if (ORDER_NOTIFICATION_TYPES.has(type) && data?.orderId) {
+      router.push(`/me?orderId=${data.orderId}`);
+      return;
+    }
+
+    if (type === 'lawyer_review_passed') {
+      router.push('/lawyer');
+      return;
+    }
+
+    if (type === 'lawyer_review_failed') {
+      router.push('/lawyer/join');
+      return;
+    }
+
+    // 如果缺少订单 ID，但带了律师 ID，则保留律师名片入口作为兜底
     if (
-      ['order_assigned', 'lawyer_confirmed', 'lawyer_replied'].includes(type) &&
+      ['order_assigned', 'lawyer_confirmed', 'lawyer_replied', 'lawyer_response'].includes(type) &&
       data?.lawyerId
     ) {
       router.push(`/lawyer/${data.lawyerId}/profile`);
@@ -170,11 +219,12 @@ export default function UserNotificationsPage() {
           </div>
           <h2 className="font-serif text-[#3D322D] font-normal mb-2">请先登录</h2>
           <p className="text-[#8C7B6E] text-sm mb-6">登录后即可查看您的通知</p>
-          <Link href="/login-modal">
-            <Button className="bg-[#C47353] hover:bg-[#A85D40] text-white rounded-full px-8">
-              去登录
-            </Button>
-          </Link>
+          <Button
+            onClick={() => window.dispatchEvent(new CustomEvent('open-login-modal'))}
+            className="bg-[#C47353] hover:bg-[#A85D40] text-white rounded-full px-8"
+          >
+            去登录
+          </Button>
         </div>
       </div>
     );

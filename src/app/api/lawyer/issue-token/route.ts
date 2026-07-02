@@ -46,6 +46,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { data: approvedApp } = await supabase
+      .from('lawyer_applications')
+      .select('id, review_status')
+      .eq('review_status', 'approved')
+      .or(`user_id.eq.${userId},phone.eq.${lawyer.phone || ''}`)
+      .limit(1)
+      .maybeSingle();
+
+    if (!approvedApp) {
+      return NextResponse.json(
+        { success: false, error: '该用户的律师申请尚未通过审核' },
+        { status: 403 }
+      );
+    }
+
     // 签发律师专用 token
     const token = generateToken({
       id: userId,

@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { adminApiRequest } from '@/lib/api/request';
 
-const ADMIN_LOGIN_HREF = '/admin-login';
+const ADMIN_LOGIN_HREF = '/admin/login';
 
 interface TargetOption {
   value: string;
@@ -42,6 +42,7 @@ export default function AdminNotificationsPage() {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [adminInfo, setAdminInfo] = useState<any>(null);
+  const [needsLogin, setNeedsLogin] = useState(false);
   const [formData, setFormData] = useState({
     target_type: 'all_users',
     title: '',
@@ -53,11 +54,16 @@ export default function AdminNotificationsPage() {
   useEffect(() => {
     const storedAdmin = localStorage.getItem('admin_info');
     if (!storedAdmin) {
-      router.push(ADMIN_LOGIN_HREF);
+      setNeedsLogin(true);
       return;
     }
-    const admin = JSON.parse(storedAdmin);
-    setAdminInfo(admin);
+    try {
+      const admin = JSON.parse(storedAdmin);
+      setAdminInfo(admin);
+    } catch (error) {
+      console.error('解析管理员信息失败:', error);
+      setNeedsLogin(true);
+    }
   }, []);
 
   const handleSubmit = async () => {
@@ -67,7 +73,14 @@ export default function AdminNotificationsPage() {
       router.push(ADMIN_LOGIN_HREF);
       return;
     }
-    const adminData = JSON.parse(storedAdmin);
+    let adminData: any;
+    try {
+      adminData = JSON.parse(storedAdmin);
+    } catch (error) {
+      console.error('解析管理员信息失败:', error);
+      router.push(ADMIN_LOGIN_HREF);
+      return;
+    }
     // 兼容两种存储格式：直接存储admin对象 或 存储包含admin的包装对象
     const admin = adminData.admin || adminData;
     
@@ -122,6 +135,26 @@ export default function AdminNotificationsPage() {
   };
 
   return (
+    <>
+      {needsLogin ? (
+        <div className="min-h-[60vh] flex items-center justify-center bg-slate-50 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-[0_12px_40px_rgba(15,23,42,0.08)] text-center">
+            <div className="mx-auto mb-4 w-14 h-14 rounded-full bg-green-50 flex items-center justify-center">
+              <Bell className="w-7 h-7 text-green-600" />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-800">管理员登录</h1>
+            <p className="mt-2 text-sm text-slate-500">请先登录管理员账号后再发送系统通知</p>
+            <div className="mt-6">
+              <Link
+                href={ADMIN_LOGIN_HREF}
+                className="inline-flex items-center justify-center rounded-full bg-green-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-700"
+              >
+                前往登录
+              </Link>
+            </div>
+          </div>
+        </div>
+      ) : (
     <div>
       {/* Page Header — 不再 sticky，复用 layout 导航栏 */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
@@ -298,5 +331,7 @@ export default function AdminNotificationsPage() {
         </Card>
       </div>
     </div>
+      )}
+    </>
   );
 }

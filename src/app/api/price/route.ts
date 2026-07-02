@@ -4,12 +4,24 @@ import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 export const dynamic = 'force-dynamic';
 
+const defaultPrices = [
+  { category: 'civil', plan_id: 'basic', plan_name: '基础咨询', price: 6900 },
+  { category: 'civil', plan_id: 'standard', plan_name: '标准方案', price: 19900 },
+  { category: 'civil', plan_id: 'advanced', plan_name: '深度服务', price: 29900 },
+  { category: 'criminal', plan_id: 'basic', plan_name: '基础咨询', price: 9900 },
+  { category: 'criminal', plan_id: 'standard', plan_name: '标准方案', price: 24900 },
+  { category: 'criminal', plan_id: 'advanced', plan_name: '深度服务', price: 37900 },
+  { category: 'lawyer', plan_id: 'civil_premium', plan_name: '民事律师（臻选）', price: 500000 },
+  { category: 'lawyer', plan_id: 'criminal_premium', plan_name: '刑事律师（臻选）', price: 800000 },
+];
+
 // GET /api/price - 获取所有价格配置（公开）
 export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const category = searchParams.get('category');
+
   try {
     const supabase = getSupabaseClient();
-    const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
 
     let query = supabase
       .from('price_configs')
@@ -26,10 +38,11 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Error fetching price configs:', error);
-      return NextResponse.json(
-        { success: false, error: '获取价格配置失败' },
-        { status: 500 }
-      );
+      return NextResponse.json({
+        success: true,
+        data: category ? defaultPrices.filter(item => item.category === category) : defaultPrices,
+        fallback: true,
+      });
     }
 
     return NextResponse.json({
@@ -38,9 +51,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error fetching price configs:', error);
-    return NextResponse.json(
-      { success: false, error: '获取价格配置失败' },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: true,
+      data: category ? defaultPrices.filter(item => item.category === category) : defaultPrices,
+      fallback: true,
+    });
   }
 }

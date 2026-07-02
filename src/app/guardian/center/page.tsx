@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, Copy, Download, Users, Wallet, TrendingUp, Gift, ChevronRight, CheckCircle, X, AlertCircle, RefreshCw, Info, Clock, Banknote, Shield, Upload, Image, Share2, Loader2, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -57,13 +58,20 @@ interface WithdrawalRecord {
 }
 
 export default function GuardianCenterPage() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get('tab');
+  const hasToken = typeof window !== 'undefined' ? !!localStorage.getItem('token') : false;
+  const [isLoggedIn, setIsLoggedIn] = useState(hasToken);
   const [guardian, setGuardian] = useState<GuardianData | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // 合并 loading 和 isChecking
+  const [isLoading, setIsLoading] = useState(hasToken); // 合并 loading 和 isChecking
   const [commissions, setCommissions] = useState<CommissionRecord[]>([]);
   const [invitees, setInvitees] = useState<InviteeRecord[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRecord[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'commissions' | 'invitees' | 'withdrawals'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'commissions' | 'invitees' | 'withdrawals'>(
+    initialTab === 'commissions' || initialTab === 'invitees' || initialTab === 'withdrawals'
+      ? initialTab
+      : 'overview'
+  );
   const [refreshing, setRefreshing] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
   const [qrcodeUrl, setQrcodeUrl] = useState<string>('');
@@ -168,6 +176,12 @@ export default function GuardianCenterPage() {
   // 检查登录状态并初始化守护者
   useEffect(() => {
     const checkAndInit = async () => {
+      if (!hasToken) {
+        setIsLoggedIn(false);
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
       
       // 1. 检查登录状态
@@ -214,7 +228,7 @@ export default function GuardianCenterPage() {
     return () => {
       window.removeEventListener('user-logged-in', handleLoginSuccess);
     };
-  }, [fetchData, generateQRCode]);
+  }, [fetchData, generateQRCode, hasToken]);
 
   const copyInviteLink = () => {
     const inviteUrl = `${window.location.origin}/register?code=${guardian?.invite_code}`;

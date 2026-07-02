@@ -30,6 +30,7 @@ const USER_CENTER_HREF = "/me";
 
 export function Header() {
     const pathname = usePathname();
+    const [showDesktopNav, setShowDesktopNav] = useState(false);
 
     const { user, isLoggedIn, isLoading, logout, checkAuth } = useAuth();
 
@@ -67,6 +68,14 @@ export function Header() {
         return () =>
             window.removeEventListener("user-logged-in", handleLoginSuccess);
     }, [checkAuth]);
+
+    useEffect(() => {
+        const media = window.matchMedia('(min-width: 1024px)');
+        const update = () => setShowDesktopNav(media.matches);
+        update();
+        media.addEventListener('change', update);
+        return () => media.removeEventListener('change', update);
+    }, []);
 
     const isHomePage = pathname === "/";
     const isAboutPage = pathname === "/about";
@@ -140,7 +149,8 @@ export function Header() {
                         </span>
                     </Link>
 
-                    {/* 桌面端主导航 - 均匀分布 */}
+                    {/* 桌面端主导航 - 仅在桌面端挂载，避免移动端出现隐藏按钮影响首个可见控件判断 */}
+                    {showDesktopNav ? (
                     <div className="hidden lg:flex flex-1 items-center justify-between mx-8">
                         {/* 首页 */}
                         <Link
@@ -287,6 +297,9 @@ export function Header() {
                             </NavigationMenuList>
                         </NavigationMenu>
                     </div>
+                    ) : (
+                        <div className="flex-1" />
+                    )}
 
                     {/* 右侧：用户区 + 移动端菜单 */}
                     <div className="flex items-center gap-1.5 shrink-0 nav-actions">

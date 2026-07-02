@@ -35,6 +35,8 @@ const serviceTypeMap: Record<string, { label: string; color: string }> = {
   basic: { label: '基础咨询', color: 'bg-[#7B9B6E]/10 text-[#7B9B6E]' },
   standard: { label: '标准咨询', color: 'bg-[#6E9B7B]/10 text-[#6E9B7B]' },
   advanced: { label: '深度咨询', color: 'bg-[#7B7B9B]/10 text-[#7B7B9B]' },
+  consult: { label: '咨询服务', color: 'bg-[#C47353]/10 text-[#C47353]' },
+  lawyer_subscription: { label: '律师订阅', color: 'bg-[#8C7B6E]/10 text-[#8C7B6E]' },
 };
 
 const categoryMap: Record<string, { label: string; color: string }> = {
@@ -140,7 +142,7 @@ export default function LawyerPendingPage() {
       const result = await response.json();
       if (result.success) {
         alert(result.message);
-        setOrders(orders.filter((o) => o.id !== orderId));
+        setOrders((prev) => prev.filter((o) => o.id !== orderId));
       } else {
         console.error('[接单/拒单] 后端返回失败', { orderId, action, lawyerId, status: response.status, result });
         alert(result.error || '操作失败');

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -18,10 +18,10 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 export default function LawyerLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isLoggedIn, isLoading } = useAuth();
   const [authFallbackChecked, setAuthFallbackChecked] = useState(false);
   const [fallbackUser, setFallbackUser] = useState<any>(null);
@@ -40,6 +40,11 @@ export default function LawyerLoginPage() {
   const timeoutRef = useRef<NodeJS.Timeout>(undefined!);
   const effectiveUser = user || fallbackUser;
   const effectiveLoggedIn = isLoggedIn || !!fallbackUser;
+  const redirectTarget = searchParams.get('redirect');
+  const safeRedirectTarget =
+    redirectTarget && redirectTarget.startsWith('/lawyer') && redirectTarget !== '/lawyer/login'
+      ? redirectTarget
+      : '/lawyer?fromLogin=true';
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
@@ -129,14 +134,22 @@ export default function LawyerLoginPage() {
           // 签发token失败不影响主流程
         }
         setTimeout(() => {
-          if (mountedRef.current) router.push('/lawyer?fromLogin=true');
+          if (mountedRef.current) router.push(safeRedirectTarget);
         }, 1200);
         return;
       }
 
-      if (appData.success && appData.application) {
-        setApplicationData(appData.application);
-        if (appData.application.review_status === 'approved') {
+      const application = appData.application || (appData.hasApplication ? {
+        id: appData.applicationId || appData.id,
+        name: appData.name || effectiveUser?.nickname || '律师申请',
+        review_status: appData.applicationStatus,
+        payment_status: appData.paymentStatus,
+        created_at: appData.created_at || appData.createdAt || new Date().toISOString(),
+      } : null);
+
+      if (appData.hasApplication && application) {
+        setApplicationData(application);
+        if (application.review_status === 'approved') {
           setStatus('approved');
           try {
             const oldToken = localStorage.getItem('token');
@@ -161,11 +174,11 @@ export default function LawyerLoginPage() {
             // 签发token失败不影响主流程
           }
           setTimeout(() => {
-            if (mountedRef.current) router.push('/lawyer?fromLogin=true');
+            if (mountedRef.current) router.push(safeRedirectTarget);
           }, 1200);
-        } else if (appData.application.review_status === 'rejected') {
+        } else if (application.review_status === 'rejected') {
           setStatus('rejected');
-        } else if (appData.application.payment_status === 'paid') {
+        } else if (application.payment_status === 'paid') {
           setStatus('paid_not_reviewed');
         } else {
           setStatus('pending');

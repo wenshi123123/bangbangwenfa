@@ -80,6 +80,7 @@ const serviceTypeMap: Record<string, { label: string; color: string }> = {
   standard: { label: '标准咨询', color: 'bg-[#B8860B]/10 text-[#B8860B]' },
   advanced: { label: '深度咨询', color: 'bg-[#7B4B8B]/10 text-[#7B4B8B]' },
   consult: { label: '咨询服务', color: 'bg-[#C47353]/10 text-[#C47353]' },
+  lawyer_subscription: { label: '律师订阅', color: 'bg-[#8C7B6E]/10 text-[#8C7B6E]' },
 };
 
 const categoryMap: Record<string, { label: string; color: string; barColor: string }> = {
@@ -282,7 +283,7 @@ export default function LawyerPage() {
         await fetchLawyerData();
         return;
       }
-      const userInfo = sessionStorage.getItem('user_info');
+      const userInfo = sessionStorage.getItem('user_info') || localStorage.getItem('user_info');
       if (userInfo) {
         const userData = JSON.parse(userInfo);
         const res = await fetch(`/api/lawyer/check?userId=${userData.id}`);
@@ -312,7 +313,13 @@ export default function LawyerPage() {
     const token = localStorage.getItem('token');
     if (token) {
       try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
+        const parts = token.split('.');
+        if (parts.length !== 3) return false;
+        let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const pad = base64.length % 4;
+        if (pad === 2) base64 += '==';
+        else if (pad === 3) base64 += '=';
+        const payload = JSON.parse(atob(base64));
         if (payload.userType === 'lawyer' || payload.lawyerId) return true;
       } catch { /* empty */ }
     }
@@ -366,7 +373,7 @@ export default function LawyerPage() {
       const result = await response.json();
       if (result.success) {
         alert(result.message);
-        setPendingOrders(pendingOrders.filter((o) => o.id !== orderId));
+        setPendingOrders((prev) => prev.filter((o) => o.id !== orderId));
         // 乐观更新 stats，无需等待 API 刷新
         setStats(prev => {
           const result = { ...prev, pending: Math.max(0, prev.pending - 1) };
@@ -418,6 +425,28 @@ export default function LawyerPage() {
     return '晚上好';
   };
 
+  const isLawyerAuthenticated = fromLogin || isAuthorized || hasLawyerIdentity();
+
+  if (!authLoading && !isLawyerAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-[#FAF7F2]">
+        <div className="bg-white rounded-xl p-8 shadow-lg max-w-sm w-full text-center">
+          <div className="w-14 h-14 rounded-full bg-[#C47353]/10 flex items-center justify-center mx-auto mb-4">
+            <Shield className="w-7 h-7 text-[#C47353]" />
+          </div>
+          <h2 className="text-xl font-bold text-[#3D322D] mb-2 font-serif">请先登录</h2>
+          <p className="text-[#8C7B6E] mb-6">登录后即可使用律师后台</p>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('open-login-modal'))}
+            className="w-full py-3 bg-[#C47353] text-white font-medium rounded-xl hover:bg-[#A85D40] transition-colors"
+          >
+            手机号登录
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2]">
@@ -430,8 +459,6 @@ export default function LawyerPage() {
       </div>
     );
   }
-
-  const isLawyerAuthenticated = fromLogin || isAuthorized || hasLawyerIdentity();
 
   if (fetchError) {
     return (
@@ -447,26 +474,6 @@ export default function LawyerPage() {
             className="w-full py-3 bg-[#C47353] text-white font-medium rounded-xl hover:bg-[#A85D40] transition-colors"
           >
             刷新页面
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isLawyerAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-[#FAF7F2]">
-        <div className="bg-white rounded-xl p-8 shadow-lg max-w-sm w-full text-center">
-          <div className="w-14 h-14 rounded-full bg-[#C47353]/10 flex items-center justify-center mx-auto mb-4">
-            <Shield className="w-7 h-7 text-[#C47353]" />
-          </div>
-          <h2 className="text-xl font-bold text-[#3D322D] mb-2 font-serif">请先登录</h2>
-          <p className="text-[#8C7B6E] mb-6">登录后即可使用律师后台</p>
-          <button
-            onClick={() => window.dispatchEvent(new CustomEvent('open-login-modal'))}
-            className="w-full py-3 bg-[#C47353] text-white font-medium rounded-xl hover:bg-[#A85D40] transition-colors"
-          >
-            手机号登录
           </button>
         </div>
       </div>

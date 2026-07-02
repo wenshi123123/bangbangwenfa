@@ -234,6 +234,27 @@ export interface PaymentCallbackResult {
   order?: any;
 }
 
+function decryptCallbackResource(
+  ciphertext: string,
+  associatedData: string,
+  nonce: string,
+  apiV3Key: string
+): string {
+  const key = Buffer.from(apiV3Key, 'utf8');
+  const iv = Buffer.from(nonce, 'utf8');
+  const authTag = Buffer.from(ciphertext.slice(-16), 'base64');
+  const data = Buffer.from(ciphertext.slice(0, -16), 'base64');
+
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(authTag);
+  decipher.setAAD(Buffer.from(associatedData, 'utf8'));
+
+  let decrypted = decipher.update(data, undefined, 'utf8');
+  decrypted += decipher.final('utf8');
+
+  return decrypted;
+}
+
 /**
  * 处理微信支付回调，更新订单状态
  * @param body 回调请求体
@@ -241,7 +262,26 @@ export interface PaymentCallbackResult {
  */
 export async function updateOrderStatusAfterPayment(body: string): Promise<PaymentCallbackResult> {
   try {
-    const data = JSON.parse(body);
+    const rawData = JSON.parse(body);
+    const apiV3Key = getEnvValue('WEIXIN_APIV3_KEY') || process.env.WECHAT_PAY_API_V3_KEY || process.env.WEIXIN_APIV3_KEY || '';
+
+    let data: any;
+    if (rawData.resource?.ciphertext) {
+      if (!apiV3Key) {
+        return { success: false, error: '未配置APIv3密钥' };
+      }
+      data = JSON.parse(
+        decryptCallbackResource(
+          rawData.resource.ciphertext,
+          rawData.resource.associated_data || '',
+          rawData.resource.nonce || '',
+          apiV3Key
+        )
+      );
+    } else {
+      data = rawData;
+    }
+
     const { out_trade_no, transaction_id, trade_state } = data;
 
     // 验证支付状态

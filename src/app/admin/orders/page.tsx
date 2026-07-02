@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { 
   Search, 
   Eye,
@@ -13,6 +14,7 @@ import {
   Scale
 } from 'lucide-react';
 import { adminApiRequest } from '@/lib/api/request';
+import { getAdminOrderServiceLabel } from '@/lib/admin/order-detail-presenter';
 
 interface TrendData {
   todayOrders: number;
@@ -47,19 +49,11 @@ const categoryMap = {
   civil: { label: '民事案件', color: 'text-blue-600' },
 };
 
-const serviceTypeMap = {
-  basic: { label: '基础咨询' },
-  standard: { label: '标准咨询' },
-  advanced: { label: '深度咨询' },
-  consult: { label: '咨询服务' },
-  lawyer_subscription: { label: '律师订阅' },
-  default: { label: '其他服务' },
-};
-
-const ADMIN_LOGIN_HREF = '/admin-login';
+const ADMIN_LOGIN_HREF = '/admin/login';
 export const dynamic = 'force-dynamic';
 
 export default function OrderListPage() {
+  const searchParams = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [needsLogin, setNeedsLogin] = useState(false);
@@ -70,6 +64,21 @@ export default function OrderListPage() {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [trend, setTrend] = useState<TrendData | null>(null);
   const pageSize = 10;
+
+  useEffect(() => {
+    const rawStatus = searchParams.get('status') || '';
+    const rawCategory = searchParams.get('category') || '';
+
+    if (rawStatus !== statusFilter) {
+      setStatusFilter(rawStatus);
+      setPage(1);
+    }
+
+    if (rawCategory !== categoryFilter) {
+      setCategoryFilter(rawCategory);
+      setPage(1);
+    }
+  }, [searchParams, statusFilter, categoryFilter]);
 
   useEffect(() => {
     const fetchList = async () => {
@@ -84,21 +93,12 @@ export default function OrderListPage() {
         const params = new URLSearchParams({ page: page.toString(), pageSize: pageSize.toString() });
         if (statusFilter) params.set('status', statusFilter);
         if (categoryFilter) params.set('category', categoryFilter);
+        if (searchKeyword.trim()) params.set('search', searchKeyword.trim());
 
         const response = await adminApiRequest(`/api/admin/order/list?${params}`);
         const result = await response.json();
         if (result.success) {
-          let list = result.data.list;
-          // 客户端搜索过滤
-          if (searchKeyword) {
-            const keyword = searchKeyword.toLowerCase();
-            list = list.filter((order: Order) => 
-              order.contact_name.toLowerCase().includes(keyword) ||
-              order.contact_phone.includes(keyword) ||
-              order.case_title.toLowerCase().includes(keyword)
-            );
-          }
-          setOrders(list);
+          setOrders(result.data.list || []);
           setTotal(result.data.total);
         }
       } catch (error) {
@@ -124,7 +124,7 @@ export default function OrderListPage() {
             todayRevenue: result.data.todayRevenue || 0,
             yesterdayRevenue: result.data.yesterdayRevenue || 0,
             pendingOrders: result.data.pendingOrders || 0,
-            pendingPaymentOrders: 0,
+            pendingPaymentOrders: result.data.pendingPaymentOrders || 0,
           });
         }
       } catch (e) {
@@ -201,7 +201,7 @@ export default function OrderListPage() {
           <div className="bg-white rounded-xl p-4 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
             <p className="text-xs text-slate-500 mb-1">待支付</p>
             <p className="text-2xl font-bold text-blue-600">
-              {orders.filter(o => o.payment_status === 'pending').length}
+              {trend.pendingPaymentOrders}
             </p>
             <p className="text-xs text-slate-400 mt-1">未付款订单</p>
           </div>
@@ -326,7 +326,7 @@ export default function OrderListPage() {
                 orders.map((order) => {
                   const paymentStatus = paymentStatusMap[order.payment_status as keyof typeof paymentStatusMap] || paymentStatusMap.pending;
                   const catInfo = categoryMap[order.category as keyof typeof categoryMap] || { label: order.category };
-                  const serviceInfo = serviceTypeMap[order.service_type as keyof typeof serviceTypeMap] || serviceTypeMap.default;
+                  const serviceLabel = getAdminOrderServiceLabel(order.service_type);
 
                   return (
                     <tr key={order.id} className="hover:bg-slate-50">
@@ -344,7 +344,7 @@ export default function OrderListPage() {
                         <div className="text-xs text-slate-400 mt-0.5">{order.case_type}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-slate-600">
-                        {serviceInfo.label}
+                        {serviceLabel}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="font-medium text-slate-800">

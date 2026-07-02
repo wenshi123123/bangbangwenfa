@@ -24,17 +24,23 @@ function calculateExpiry(baseDate: Date, months: number): Date {
 }
 
 // 解密微信支付 v3 回调数据（AES-256-GCM）
-function decryptNotifyData(encryptedData: Buffer, apiV3Key: string): Buffer {
-  const nonce = encryptedData.subarray(0, 16);
-  const tag = encryptedData.subarray(16, 32);
-  const ciphertext = encryptedData.subarray(32);
-
+function decryptNotifyData(
+  ciphertext: string,
+  associatedData: string,
+  nonce: string,
+  apiV3Key: string
+): string {
   const key = Buffer.from(apiV3Key, 'utf8');
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, nonce);
-  decipher.setAuthTag(tag);
+  const iv = Buffer.from(nonce, 'utf8');
+  const authTag = Buffer.from(ciphertext.slice(-16), 'base64');
+  const data = Buffer.from(ciphertext.slice(0, -16), 'base64');
 
-  let decrypted = decipher.update(ciphertext);
-  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(authTag);
+  decipher.setAAD(Buffer.from(associatedData, 'utf8'));
+
+  let decrypted = decipher.update(data, undefined, 'utf8');
+  decrypted += decipher.final('utf8');
 
   return decrypted;
 }
@@ -201,15 +207,20 @@ export async function POST(request: NextRequest) {
     // 解密通知数据
     let paymentResult: any;
 
-    if (notifyData.resource?.ciphertext) {
-      // 加密数据：需要解密
-      const { ciphertext, associated_data, nonce: resourceNonce } = notifyData.resource;
-      const encryptedBuffer = Buffer.from(ciphertext, 'base64');
-      const decrypted = decryptNotifyData(encryptedBuffer, apiV3Key);
-      paymentResult = JSON.parse(decrypted.toString('utf8'));
-    } else if (notifyData.trade_state) {
-      // 未加密的明文数据（某些测试环境）
-      paymentResult = notifyData;
+      if (notifyData.resource?.ciphertext) {
+        // 加密数据：需要解密
+        const { ciphertext, associated_data, nonce: resourceNonce } = notifyData.resource;
+        paymentResult = JSON.parse(
+          decryptNotifyData(
+            ciphertext,
+            associated_data || '',
+            resourceNonce || '',
+            apiV3Key
+          )
+        );
+      } else if (notifyData.trade_state) {
+        // 未加密的明文数据（某些测试环境）
+        paymentResult = notifyData;
     } else {
       console.error('无法解析回调数据:', notifyData);
       return NextResponse.json(

@@ -1,8 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState, useCallback } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Loader2, Search, ArrowRight, Home } from 'lucide-react';
@@ -13,11 +12,11 @@ const USER_CENTER_HREF = '/me';
 
 interface OrderData {
   id: number;
-  contact_name: string;
-  case_title: string;
-  service_type: string;
+  orderNo: string;
+  caseTitle: string;
+  serviceType: string | string[];
   servicePrice: number;
-  payment_status: string;
+  paymentStatus: string;
 }
 
 const serviceTypeLabels: Record<string, string> = {
@@ -29,19 +28,26 @@ const serviceTypeLabels: Record<string, string> = {
 
 function SuccessContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const orderId = searchParams.get('orderId') || searchParams.get('orderNo');
   const orderType = searchParams.get('type'); // 'lawyer' 或其他
+  const isLawyerOrder = orderType === 'lawyer';
+  const centerHref = isLawyerOrder ? '/lawyer' : USER_CENTER_HREF;
+  const centerLabel = isLawyerOrder ? '前往律师中心' : '查看我的订单';
   
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchOrder = useCallback(async () => {
+    if (!orderId || orderType === 'lawyer') {
+      setLoading(false);
+      return;
+    }
+
     try {
       // 🔧 使用 apiRequest 代替 fetch，自动携带 Authorization token
       const response = await apiRequest(`/api/consult/order?orderId=${orderId}`);
       const data = await response.json();
-      if (data.success) {
+      if (data.success && data.order) {
         setOrder(data.order);
       }
     } catch (error) {
@@ -49,12 +55,10 @@ function SuccessContent() {
     } finally {
       setLoading(false);
     }
-  }, [orderId]);
+  }, [orderId, orderType]);
 
   useEffect(() => {
-    if (orderId) {
-      fetchOrder();
-    }
+    fetchOrder();
   }, [orderId, fetchOrder]);
 
   if (loading) {
@@ -153,11 +157,15 @@ function SuccessContent() {
                   </div>
                   <div className="col-span-2">
                     <span className="text-muted-foreground block">咨询主题</span>
-                    <p className="font-medium text-sm sm:text-base truncate">{order.case_title}</p>
+                    <p className="font-medium text-sm sm:text-base truncate">{order.caseTitle}</p>
                   </div>
                   <div className="col-span-2">
                     <span className="text-muted-foreground block">服务类型</span>
-                    <p className="font-medium text-sm sm:text-base">{serviceTypeLabels[order.service_type] || order.service_type}</p>
+                    <p className="font-medium text-sm sm:text-base">
+                      {Array.isArray(order.serviceType)
+                        ? order.serviceType.map((type) => serviceTypeLabels[type] || type).join(' + ')
+                        : (serviceTypeLabels[order.serviceType] || order.serviceType)}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -166,9 +174,9 @@ function SuccessContent() {
 
           {/* 操作按钮 */}
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            <Link href={USER_CENTER_HREF} className="flex-1">
+            <Link href={centerHref} className="flex-1">
               <Button variant="outline" className="w-full rounded-xl py-3 sm:py-6 text-sm sm:text-base">
-                查看我的订单
+                {centerLabel}
               </Button>
             </Link>
             <Link href="/" className="flex-1">

@@ -1,83 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAuth } from '@/hooks/use-auth';
-
-/**
- * 安全解码 JWT payload（支持 base64url）
- */
-function decodeJwtPayload(token: string): any | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    // base64url → base64: 替换 - → +, _ → /, 补 padding
-    let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    const pad = base64.length % 4;
-    if (pad === 2) base64 += '==';
-    else if (pad === 3) base64 += '=';
-    else if (pad === 1) return null; // invalid
-    const json = atob(base64);
-    return JSON.parse(json);
-  } catch {
-    return null;
-  }
-}
-
-/**
- * 从 localStorage 同步读取律师身份
- * 在 useState 初始化器中调用，确保首次渲染前已完成读取
- */
-function getFallbackFromStorage(): {
-  isLawyer: boolean;
-  lawyerId: string | null;
-  userId: string | null;
-} {
-  if (typeof window === 'undefined') {
-    return { isLawyer: false, lawyerId: null, userId: null };
-  }
-
-  // 1. 检查 JWT token
-  const token = localStorage.getItem('token');
-  if (token) {
-    const payload = decodeJwtPayload(token);
-    if (payload && payload.userType === 'lawyer') {
-      return {
-        isLawyer: true,
-        lawyerId: payload.lawyerId || null,
-        userId: payload.id || null,
-      };
-    }
-  }
-
-  // 2. 检查 localStorage.user_info
-  const userInfoStr = localStorage.getItem('user_info');
-  if (userInfoStr) {
-    try {
-      const userData = JSON.parse(userInfoStr);
-      const isLawyer =
-        userData.isLawyer === true ||
-        userData.userType === 'lawyer' ||
-        !!userData.lawyerInfo;
-      if (isLawyer) {
-        return {
-          isLawyer: true,
-          lawyerId: userData.lawyerInfo?.id || userData.lawyerId || null,
-          userId: userData.id || null,
-        };
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  // 3. 检查 sessionStorage
-  const savedLawyerId = sessionStorage.getItem('currentLawyerId');
-  if (savedLawyerId) {
-    return { isLawyer: true, lawyerId: savedLawyerId, userId: null };
-  }
-
-  return { isLawyer: false, lawyerId: null, userId: null };
-}
+import { useAuth } from './use-auth';
+import { getFallbackFromStorage } from '@/lib/auth/lawyer-auth-storage';
 
 /**
  * 律师后台统一的认证检查 Hook

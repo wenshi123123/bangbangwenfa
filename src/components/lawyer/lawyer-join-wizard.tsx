@@ -103,6 +103,7 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
 
   // 打开登录弹窗
   const handleOpenLogin = () => {
+    sessionStorage.setItem('login_redirect', '/lawyer/join');
     window.dispatchEvent(new CustomEvent('open-login-modal'));
   };
 

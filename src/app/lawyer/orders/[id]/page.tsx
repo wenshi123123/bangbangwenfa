@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useLawyerAuth } from '@/hooks/use-lawyer-auth';
 import { LawyerBottomNav } from '@/components/lawyer/lawyer-bottom-nav';
+import { getLawyerOrderResponseText } from '@/lib/lawyer/order-detail-presenter';
 
 interface Order {
   id: number;
@@ -35,6 +36,7 @@ interface Order {
   confirmed_at: string;
   completed_at: string;
   status: string;
+  lawyer_response: string;
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -244,6 +246,7 @@ export default function LawyerOrderDetailPage() {
   const status = statusConfig[order.assignment_status] || statusConfig.default;
   const serviceLabel = serviceTypeMap[order.service_type] || serviceTypeMap.default;
   const categoryLabel = categoryMap[order.category] || order.category;
+  const lawyerResponseText = getLawyerOrderResponseText(order.lawyer_response);
 
   return (
     <div className="min-h-screen pb-24 bg-[#FAF7F2]">
@@ -326,6 +329,14 @@ export default function LawyerOrderDetailPage() {
                 {order.case_description}
               </p>
             </div>
+            {lawyerResponseText && (
+              <div className="p-4 bg-[#F8FBF7] rounded-xl border border-[#DDE8DB]">
+                <h4 className="text-sm font-medium text-[#5C7A5A] mb-2">律师回复</h4>
+                <p className="text-sm text-[#4A5A44] whitespace-pre-wrap leading-relaxed">
+                  {lawyerResponseText}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

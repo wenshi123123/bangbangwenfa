@@ -10,7 +10,8 @@ export async function GET(request: NextRequest) {
   
   try {
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
+    const rawStatus = searchParams.get('status');
+    const status = rawStatus === 'pending_review' ? 'pending' : rawStatus;
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
     const from = (page - 1) * pageSize;

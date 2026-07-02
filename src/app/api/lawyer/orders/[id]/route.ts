@@ -12,21 +12,22 @@ export async function GET(
     return unauthorizedResponse(auth.error);
   }
 
-  // 确保是律师类型
-  if (auth.userType !== 'lawyer') {
+  // 兼容存量 token：只要已解析出 lawyerId，就视为律师身份
+  if (!auth.lawyerId) {
     return NextResponse.json({ success: false, error: '非律师账号' }, { status: 403 });
   }
 
   const lawyerId = auth.lawyerId!;
+  const lawyerIdFilter = String(lawyerId);
 
   try {
     const { id } = await params;
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from('consult_orders')
-      .select('id, contact_name, contact_phone, case_type, case_title, case_description, service_type, assigned_at, category, created_at, assignment_status, assigned_lawyer_id, user_id, payment_status, confirmed_at, completed_at, status')
+      .select('id, contact_name, contact_phone, contact_wechat, case_type, case_title, case_description, service_type, service_price, assigned_at, category, created_at, assignment_status, assigned_lawyer_id, user_id, payment_status, confirmed_at, completed_at, lawyer_response, status')
       .eq('id', id)
-      .eq('assigned_lawyer_id', lawyerId)
+      .eq('assigned_lawyer_id', lawyerIdFilter)
       .single();
 
     if (error || !data) {

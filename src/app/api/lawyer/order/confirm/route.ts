@@ -9,8 +9,8 @@ export async function POST(request: NextRequest) {
     return unauthorizedResponse(auth.error);
   }
   
-  // 确保是律师类型
-  if (auth.userType !== 'lawyer') {
+  // 兼容存量 token：只要能解析出 lawyerId，就允许进入接单/拒单流程
+  if (!auth.lawyerId) {
     return NextResponse.json({ success: false, error: '非律师账号' }, { status: 403 });
   }
   

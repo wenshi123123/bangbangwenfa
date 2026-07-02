@@ -36,6 +36,7 @@ export function PriceStep({ formData, inviteCode, onBack }: PriceStepProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [plans, setPlans] = useState<PricePlan[]>(defaultPlans);
   const [loading, setLoading] = useState(true);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // 从 API 加载价格配置
   useEffect(() => {
@@ -89,6 +90,7 @@ export function PriceStep({ formData, inviteCode, onBack }: PriceStepProps) {
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    setSubmitError(null);
     
     try {
       // 再次获取最新价格
@@ -134,11 +136,11 @@ export function PriceStep({ formData, inviteCode, onBack }: PriceStepProps) {
       if (result.success) {
         router.push(`/pay?orderId=${result.data.orderId}`);
       } else {
-        alert(result.error || '提交失败，请重试');
+        setSubmitError(result.error || '提交失败，请重试');
       }
     } catch (error) {
       console.error('Submit error:', error);
-      alert('提交失败，请重试');
+      setSubmitError('提交失败，请重试');
     } finally {
       setIsSubmitting(false);
     }
@@ -307,6 +309,12 @@ export function PriceStep({ formData, inviteCode, onBack }: PriceStepProps) {
           </p>
         )}
       </div>
+
+      {submitError && (
+        <div className="mb-3 sm:mb-4 md:mb-6 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+          {submitError}
+        </div>
+      )}
 
       {/* Navigation Buttons */}
       <div className="flex gap-2 sm:gap-3">

@@ -3,11 +3,12 @@
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Calendar, CheckCircle, Clock, CreditCard, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, CheckCircle, Clock, CreditCard, Loader2, AlertCircle, Shield } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { LawyerBottomNav } from '@/components/lawyer/lawyer-bottom-nav';
+import { useLawyerAuth } from '@/hooks/use-lawyer-auth';
 
 // 套餐配置
 const renewalPackages = [
@@ -19,6 +20,7 @@ const renewalPackages = [
 
 function RenewContent() {
   const router = useRouter();
+  const { isAuthorized, isLoading: authLoading } = useLawyerAuth();
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +50,36 @@ function RenewContent() {
   }, [orderId, router]);
 
   const handleSelectPackage = (pkgId: string) => { setSelectedPackage(pkgId); setError(null); };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-[#FAF7F2]">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-[#C47353] animate-spin mx-auto mb-4" />
+          <p className="text-lg font-serif text-[#3D322D]">加载中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-[#FAF7F2]">
+        <div className="bg-white rounded-xl p-8 max-w-sm w-full text-center shadow-[0_4px_16px_rgba(61,50,45,0.08)]">
+          <div className="w-16 h-16 bg-[#C47353]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Shield className="w-8 h-8 text-[#C47353]" />
+          </div>
+          <h2 className="text-xl font-serif text-[#3D322D] mb-2">请先登录律师账号</h2>
+          <p className="text-sm text-[#8C7B6E] mb-6">登录后才能进行会员续费操作</p>
+          <Link href="/lawyer/login">
+            <Button className="w-full py-3 bg-[#C47353] hover:bg-[#A85D40] text-white rounded-full font-serif tracking-wide shadow-[0_2px_12px_rgba(196,115,83,0.3)]">
+              前往登录
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const handlePay = useCallback(async () => {
     if (!selectedPackage || loading) return;

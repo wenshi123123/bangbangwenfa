@@ -9,8 +9,10 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const orderId = searchParams.get('orderId');
+    const orderNo = searchParams.get('orderNo');
+    const orderRef = orderId || orderNo;
 
-    if (!orderId) {
+    if (!orderRef) {
       return NextResponse.json(
         { success: false, error: '订单号不能为空' },
         { status: 400 }
@@ -22,8 +24,8 @@ export async function GET(request: NextRequest) {
     // 通过订单号查找申请
     const { data: application, error } = await supabase
       .from('lawyer_applications')
-      .select('payment_status')
-      .eq('order_no', orderId)
+      .select('id, order_no, payment_status')
+      .or(`order_no.eq.${orderRef},id.eq.${orderRef}`)
       .single();
 
     if (error || !application) {
@@ -36,6 +38,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
+        orderId: application.order_no || application.id,
         status: application.payment_status,
         isPaid: application.payment_status === 'paid',
       },

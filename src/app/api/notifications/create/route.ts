@@ -6,7 +6,10 @@ import { requireAdminAuth, adminUnauthorizedResponse } from '@/lib/auth/admin-mi
 export type NotificationType = 
   | 'order_created'      // 订单已创建
   | 'order_paid'          // 订单已支付
+  | 'order_assigned'     // 订单已分配律师
   | 'lawyer_accepted'     // 律师已接单
+  | 'lawyer_confirmed'    // 律师已确认
+  | 'lawyer_rejected'     // 律师已拒单
   | 'lawyer_response'     // 律师已回复
   | 'order_completed'     // 订单已完成
   | 'commission_approved' // 分成已发放
@@ -22,7 +25,10 @@ export type NotificationType =
 const notificationTemplates: Record<NotificationType, { title: string; contentTemplate: string }> = {
   order_created: { title: '订单已创建', contentTemplate: '您的咨询订单 #{orderId} 已创建，请完成支付' },
   order_paid: { title: '订单已支付', contentTemplate: '订单 #{orderId} 已支付成功，律师即将为您服务' },
+  order_assigned: { title: '律师已分配', contentTemplate: '您的订单 #{orderId} 已分配给律师 {lawyerName}' },
   lawyer_accepted: { title: '律师已接单', contentTemplate: '律师 {lawyerName} 已接单，开始为您服务' },
+  lawyer_confirmed: { title: '律师已确认', contentTemplate: '律师 {lawyerName} 已确认接单，请留意后续回复' },
+  lawyer_rejected: { title: '律师已拒单', contentTemplate: '您的订单 #{orderId} 已被律师拒单，平台将尽快重新分配' },
   lawyer_response: { title: '律师回复', contentTemplate: '律师对您的订单 #{orderId} 有了新回复' },
   order_completed: { title: '订单已完成', contentTemplate: '订单 #{orderId} 已完成，感谢您的信任' },
   commission_approved: { title: '分成已到账', contentTemplate: '恭喜！您获得 ¥{amount} 分成奖励，已到可提现余额' },
@@ -47,17 +53,30 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { user_id, type, title, content, data } = body;
 
-    if (!user_id || !type || !content) {
-      return NextResponse.json({ 
-        success: false, 
-        error: '缺少必要参数：user_id, type, content' 
+    if (!user_id || !type) {
+      return NextResponse.json({
+        success: false,
+        error: '缺少必要参数：user_id, type',
       }, { status: 400 });
     }
 
     const supabase = getSupabaseAdmin();
 
     // 使用模板或自定义标题
-    const finalTitle = title || notificationTemplates[type as NotificationType]?.title || '通知';
+    const template = notificationTemplates[type as NotificationType];
+    const finalTitle = title || template?.title || '通知';
+    const rawContent = content || template?.contentTemplate || '';
+    const finalContent = rawContent.replace(/\{(\w+)\}/g, (_match: string, key: string) => {
+      const value = data?.[key];
+      return value === undefined || value === null ? `{${key}}` : String(value);
+    });
+
+    if (!finalContent) {
+      return NextResponse.json({
+        success: false,
+        error: '缺少必要参数：content',
+      }, { status: 400 });
+    }
     
     const { data: notification, error } = await supabase
       .from('notifications')
@@ -65,7 +84,7 @@ export async function POST(request: NextRequest) {
         user_id,
         type,
         title: finalTitle,
-        content,
+        content: finalContent,
         data: data || {},
         is_read: false
       })

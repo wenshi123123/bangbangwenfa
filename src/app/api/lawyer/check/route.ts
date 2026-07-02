@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
+import { hasSupabaseConfig } from '@/storage/database/supabase-client';
 
 // POST 方法：通过手机号检查
 export async function POST(request: NextRequest) {
@@ -13,13 +14,15 @@ export async function POST(request: NextRequest) {
     }
 
     // 限流检查（仅对有效请求限流）
-    const clientIP = getClientIP(request);
-    const rateLimit = checkRateLimit(`${clientIP}:lawyer-check`, 5, 60000);
-    if (!rateLimit.allowed) {
-      return NextResponse.json(
-        { success: false, error: '请求过于频繁，请稍后再试' },
-        { status: 429 }
-      );
+    if (hasSupabaseConfig()) {
+      const clientIP = getClientIP(request);
+      const rateLimit = checkRateLimit(`${clientIP}:lawyer-check`, 5, 60000);
+      if (!rateLimit.allowed) {
+        return NextResponse.json(
+          { success: false, error: '请求过于频繁，请稍后再试' },
+          { status: 429 }
+        );
+      }
     }
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
@@ -94,7 +97,18 @@ export async function GET(request: NextRequest) {
     }
     
     if (lawyerData) {
-      return NextResponse.json({ success: true, data: lawyerData });
+      // 只有对应申请已审核通过时，才将律师记录视为可登录状态
+      const { data: approvedApp } = await supabase
+        .from('lawyer_applications')
+        .select('id, review_status')
+        .eq('review_status', 'approved')
+        .or(`user_id.eq.${userId},phone.eq.${lawyerData.phone || ''}`)
+        .limit(1)
+        .maybeSingle();
+
+      if (approvedApp) {
+        return NextResponse.json({ success: true, data: lawyerData });
+      }
     }
 
     // 没有律师记录，检查是否有申请记录（兜底）

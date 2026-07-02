@@ -9,7 +9,7 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
   const { count: pendingLawyerApplications } = await supabase
     .from('lawyer_applications')
     .select('*', { count: 'exact', head: true })
-    .eq('status', 'pending');
+    .eq('review_status', 'pending');
 
   // 资料修改 - 待审核数
   const { count: pendingProfileRevisions } = await supabase
@@ -99,6 +99,12 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
 
   const todayRevenue = todayRevenueData?.reduce((sum, item) => sum + (item.service_price || 0), 0) || 0;
 
+  // 待支付订单总数
+  const { count: pendingPaymentOrders } = await supabase
+    .from('consult_orders')
+    .select('*', { count: 'exact', head: true })
+    .eq('payment_status', 'pending');
+
   // 守护者分成 - 待审核数
   const { count: pendingCommissions } = await supabase
     .from('guardian_commissions')
@@ -117,6 +123,7 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
       pendingLawyerApplications: pendingLawyerApplications || 0,
       pendingProfileRevisions: pendingProfileRevisions || 0,
       pendingOrders: pendingOrders || 0,
+      pendingPaymentOrders: pendingPaymentOrders || 0,
       pendingRefunds: pendingRefunds || 0,
       pendingGuardianWithdrawals: pendingGuardianWithdrawals || 0,
       newUsersToday: newUsersToday || 0,

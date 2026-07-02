@@ -38,7 +38,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
-const ADMIN_LOGIN_HREF = '/admin-login';
+const ADMIN_LOGIN_HREF = '/admin/login';
 export const dynamic = 'force-dynamic';
 
 interface DashboardStats {
@@ -163,7 +163,7 @@ export default function AdminDashboard() {
       if (withdrawData.success) {
         setStats(prev => ({
           ...prev,
-          pendingGuardianWithdrawals: withdrawData.total || 0
+          pendingGuardianWithdrawals: withdrawData.data?.length || 0
         }));
       }
 
@@ -533,7 +533,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* 律师入驻审核 */}
-            <Link href="/admin/lawyer?status=pending_review">
+            <Link href="/admin/lawyer?status=pending">
               <div className={`flex items-center justify-between p-4 rounded-xl transition-all ${
                 stats.pendingLawyers > 0 
                   ? 'bg-amber-50 hover:bg-amber-100' 

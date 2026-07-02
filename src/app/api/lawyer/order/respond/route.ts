@@ -10,12 +10,13 @@ export async function POST(request: NextRequest) {
     return unauthorizedResponse(auth.error);
   }
   
-  // 确保是律师类型
-  if (auth.userType !== 'lawyer') {
+  // 兼容存量 token：只要能解析出 lawyerId，就允许进入律师回复流程
+  if (!auth.lawyerId) {
     return NextResponse.json({ success: false, error: '非律师账号' }, { status: 403 });
   }
   
   const lawyerId = auth.lawyerId!;
+  const lawyerIdFilter = String(lawyerId);
   
   try {
     const body = await request.json();
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 校验律师归属
-    if (order.assigned_lawyer_id !== lawyerId) {
+    if (String(order.assigned_lawyer_id) !== String(lawyerId)) {
       return NextResponse.json({ 
         success: false, 
         error: '无权回复此订单' 
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
       if (orderInfo?.user_id) {
         await supabase.from('notifications').insert({
           user_id: orderInfo.user_id,
-          type: 'lawyer_replied',
+          type: 'lawyer_response',
           title: '律师已回复您的咨询',
           content: `律师 ${orderInfo.lawyer_name || '律师'} 已回复您的咨询订单，请查看。订单号：${orderInfo.order_no}`,
           data: { orderId, orderNo: orderInfo.order_no, lawyerId, lawyerName: orderInfo.lawyer_name || '' },
@@ -137,12 +138,13 @@ export async function GET(request: NextRequest) {
     return unauthorizedResponse(auth.error);
   }
   
-  // 确保是律师类型
-  if (auth.userType !== 'lawyer') {
+  // 兼容存量 token：只要能解析出 lawyerId，就允许查看回复记录
+  if (!auth.lawyerId) {
     return NextResponse.json({ success: false, error: '非律师账号' }, { status: 403 });
   }
   
   const lawyerId = auth.lawyerId!;
+  const lawyerIdFilter = String(lawyerId);
   
   try {
     const { searchParams } = new URL(request.url);
@@ -162,7 +164,7 @@ export async function GET(request: NextRequest) {
       .from('consult_orders')
       .select('lawyer_response, response_at')
       .eq('id', orderId)
-      .eq('assigned_lawyer_id', lawyerId)
+      .eq('assigned_lawyer_id', lawyerIdFilter)
       .single();
 
     if (error) {

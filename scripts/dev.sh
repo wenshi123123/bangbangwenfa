@@ -12,4 +12,4 @@ cd "${COZE_WORKSPACE_PATH}"
 
 echo "Starting Next.js dev server on port ${PORT}..."
 cd "${COZE_WORKSPACE_PATH}"
-PORT=$PORT pnpm_cmd next dev --port ${PORT}
+PORT=$PORT pnpm_cmd exec next dev --webpack --hostname 127.0.0.1 --port ${PORT}

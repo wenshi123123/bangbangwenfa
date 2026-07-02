@@ -66,11 +66,18 @@ async function apiRequest(path: string, options?: { method?: string; body?: any;
 }
 
 function PayPageInner() {
-  const formatPrice = (price: number) => price.toFixed(2);
+  const formatPrice = (price: number) => (price / 100).toFixed(2);
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderIdParam = searchParams.get('orderId') || searchParams.get('orderNo');
   const { user, isLoggedIn, isLoading } = useAuth();
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.push('/me');
+  };
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -203,7 +210,7 @@ function PayPageInner() {
         method: 'POST',
         body: {
           orderId: order.id,  // 使用数据库主键作为支付订单ID
-          amount: Math.round(order.servicePrice * 100), // 元转分
+          amount: order.servicePrice, // 订单金额已是分，直接传给支付接口
           description: order.caseTitle || order.serviceName || '法律咨询服务',
           openid: oaOpenid || undefined,
         },
@@ -384,7 +391,7 @@ function PayPageInner() {
           <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
           <h2 className="text-xl font-semibold mb-2">加载失败</h2>
           <p className="text-muted-foreground mb-4">{error}</p>
-          <Button onClick={() => router.push('/')} className="bg-[#C47353] hover:bg-[#A85D40]">返回首页</Button>
+          <Button onClick={() => router.push('/me')} className="bg-[#C47353] hover:bg-[#A85D40]">返回我的</Button>
         </div>
       </div>
     );
@@ -473,7 +480,7 @@ function PayPageInner() {
     <div className="min-h-screen bg-[#FAF7F2]">
       <header className="bg-[#FAF7F2]/80 backdrop-blur-md border-b border-[rgba(196,115,83,0.15)] sticky top-0 z-10">
         <div className="container mx-auto px-4 py-3 sm:py-4">
-          <button onClick={() => router.back()} className="flex items-center gap-2 text-sm sm:text-base text-muted-foreground hover:text-foreground transition-colors">
+          <button onClick={handleBack} className="flex items-center gap-2 text-sm sm:text-base text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="h-4 w-4" /><span>返回</span>
           </button>
         </div>

@@ -13,8 +13,8 @@ import crypto from 'crypto';
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    let { orderId, openid } = body;
+    const body = await request.json().catch(() => null);
+    const { orderId, openid } = body ?? {};
 
     if (!orderId) {
       return NextResponse.json(
@@ -46,50 +46,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 测试模式：如果订单不存在，自动创建一个测试订单
     if (orderError || !order) {
-      console.log('[Pay/Create] 订单不存在，自动创建测试订单');
-      try {
-        const { data: newOrder, error: createError } = await supabase
-          .from('consult_orders')
-          .insert({
-            user_id: 1,  // 用整数（表结构是 INTEGER，不是 UUID）
-            service_price: 99,
-            case_title: '测试咨询订单',
-            payment_status: 'unpaid',
-            status: 'pending',
-          })
-          .select()
-          .single();
-        
-        if (createError || !newOrder) {
-          console.error('[Pay/Create] 创建测试订单失败:', createError);
-          return NextResponse.json(
-            { success: false, error: '创建测试订单失败', details: createError },
-            { status: 500 }
-          );
-        }
-        
-        order = newOrder;
-        orderId = newOrder.id;
-        console.log('[Pay/Create] 测试订单创建成功:', { orderId });
-      } catch (insertError: any) {
-        console.error('[Pay/Create] 插入订单异常:', insertError);
-        return NextResponse.json(
-          { success: false, error: '插入订单异常', details: insertError?.message },
-          { status: 500 }
-        );
-      }
+      console.error('[Pay/Create] 订单不存在:', orderError);
+      return NextResponse.json(
+        { success: false, error: '订单不存在' },
+        { status: 404 }
+      );
     }
 
-    // 验证订单归属：从 Token 获取用户ID，不允许为他人订单创建支付（测试模式：暂时注释掉）
-    // const tokenUserId = auth.userId || auth.guardianId || auth.lawyerId;
-    // if (order.user_id && tokenUserId && String(order.user_id) !== String(tokenUserId)) {
-    //   return NextResponse.json(
-    //     { success: false, error: '无权操作此订单' },
-    //     { status: 403 }
-    //   );
-    // }
+    // 验证订单归属：仅允许订单所有者发起支付
+    const tokenUserId = auth.userId;
+    if (order.user_id && tokenUserId && String(order.user_id) !== String(tokenUserId)) {
+      return NextResponse.json(
+        { success: false, error: '无权操作此订单' },
+        { status: 403 }
+      );
+    }
 
     // 检查订单状态
     if (order.payment_status === 'paid') {

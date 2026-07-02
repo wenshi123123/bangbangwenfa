@@ -20,10 +20,10 @@ export async function POST(request: NextRequest) {
   const queryAppId = searchParams.get('applicationId');
   
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
     
     // 认证逻辑：支持 JWT 认证或 applicationId 参数（入驻流程场景）
-    const { applicationId, openid } = body;
+    const { applicationId, openid } = body ?? {};
     const effectiveAppId = applicationId || queryAppId;
     const isAuthenticated = auth?.success && auth?.user;
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { 
   Search, 
   Eye,
@@ -54,6 +55,7 @@ const statusMap = {
 };
 
 export default function GuardianCommissionsPage() {
+  const searchParams = useSearchParams();
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -67,27 +69,26 @@ export default function GuardianCommissionsPage() {
   const [adminNote, setAdminNote] = useState('');
   const pageSize = 10;
 
+  useEffect(() => {
+    const rawStatus = searchParams.get('status') || '';
+    if (rawStatus !== statusFilter) {
+      setStatusFilter(rawStatus);
+      setPage(1);
+    }
+  }, [searchParams, statusFilter]);
+
   const fetchList = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: page.toString(), limit: pageSize.toString() });
       if (statusFilter) params.set('status', statusFilter);
+      if (searchKeyword.trim()) params.set('search', searchKeyword.trim());
 
       const response = await adminApiRequest(`/api/admin/guardian-commissions?${params}`);
       const result = await response.json();
       
       if (result.success) {
-        let list = result.data;
-        // 客户端搜索过滤
-        if (searchKeyword) {
-          const keyword = searchKeyword.toLowerCase();
-          list = list.filter((c: Commission) => 
-            c.guardian?.nickname?.toLowerCase().includes(keyword) ||
-            c.order_id?.toString().includes(keyword) ||
-            c.id?.toString().includes(keyword)
-          );
-        }
-        setCommissions(list);
+        setCommissions(result.data || []);
         setTotal(result.total);
       }
     } catch (error) {

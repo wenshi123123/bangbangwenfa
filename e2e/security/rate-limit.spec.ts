@@ -12,8 +12,8 @@ test.describe('频率限制 (Rate Limiting)', () => {
     const phone = '13800138000';
     const results: number[] = [];
 
-    // 快速连续发送多次请求
-    for (let i = 0; i < 6; i++) {
+    // 快速连续发送多次请求，超过当前配置的 20 次/小时阈值后应出现 429
+    for (let i = 0; i < 21; i++) {
       const response = await request.post(SMS_ENDPOINT, {
         data: { phone },
         headers: { 'Content-Type': 'application/json' },
@@ -21,10 +21,8 @@ test.describe('频率限制 (Rate Limiting)', () => {
       results.push(response.status());
     }
 
-    // 至少有一些请求应被限制（429或400）
     const hasRateLimit = results.some(s => s === 429);
-    const hasTooMany = results.some(s => s === 400);
-    expect(hasRateLimit || hasTooMany).toBeTruthy();
+    expect(hasRateLimit).toBeTruthy();
   });
 
   test('登录API应限制暴力破解', async ({ request }) => {

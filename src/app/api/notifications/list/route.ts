@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     if (type) {
       // 分类映射
       const categoryMap: Record<string, string[]> = {
-        order: ['order_created', 'order_paid', 'lawyer_accepted', 'lawyer_response', 'order_completed'],
+        order: ['order_created', 'order_paid', 'order_assigned', 'lawyer_accepted', 'lawyer_confirmed', 'lawyer_rejected', 'lawyer_replied', 'lawyer_response', 'order_completed'],
         commission: ['commission_approved', 'commission_rejected'],
         withdrawal: ['withdrawal_processing', 'withdrawal_completed', 'withdrawal_rejected'],
         lawyer: ['lawyer_review_passed', 'lawyer_review_failed'],

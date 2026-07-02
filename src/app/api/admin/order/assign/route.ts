@@ -8,7 +8,7 @@ import { requireAdminAuth, adminUnauthorizedResponse } from '@/lib/auth/admin-mi
  */
 async function notifyLawyerOfNewOrder(
   supabase: any,
-  lawyerId: number,
+  lawyerId: string | number,
   orderId: number,
   orderNo: string,
   orderTitle: string
@@ -17,7 +17,7 @@ async function notifyLawyerOfNewOrder(
     // 获取律师信息（包含手机号）
     const { data: lawyer } = await supabase
       .from('lawyers')
-      .select('name, phone')
+      .select('name, phone, user_id')
       .eq('id', lawyerId)
       .single();
 
@@ -53,7 +53,8 @@ async function notifyLawyerOfNewOrder(
       .from('notifications')
       .insert({
         user_type: 'lawyer',
-        user_id: lawyerId,
+        // 优先写入律师登录用的 user_id，旧数据缺失时回退到 lawyers.id
+        user_id: lawyer.user_id ? String(lawyer.user_id) : String(lawyerId),
         title: '新订单提醒',
         content: `您有一个新的咨询订单：${orderTitle}，请及时处理。`,
         type: 'order_assigned',
@@ -99,11 +100,27 @@ export async function POST(req: NextRequest) {
       }, { status: 404 });
     }
 
+    // 获取律师信息，后续同时用于订单展示字段和通知
+    const { data: lawyer } = await supabase
+      .from('lawyers')
+      .select('name, phone, wechat')
+      .eq('id', lawyerId)
+      .single();
+
+    if (!lawyer) {
+      return NextResponse.json({
+        success: false,
+        error: '律师不存在'
+      }, { status: 404 });
+    }
+
     // 更新订单的派单信息
     const { error: updateError } = await supabase
       .from('consult_orders')
       .update({
         assigned_lawyer_id: lawyerId,
+        lawyer_name: lawyer.name || null,
+        lawyer_wechat: lawyer.wechat || null,
         status: 'assigned',
         assignment_status: 'pending',
         assigned_at: new Date().toISOString(),
@@ -112,13 +129,6 @@ export async function POST(req: NextRequest) {
       .eq('id', orderId);
 
     if (updateError) throw updateError;
-
-    // 获取律师姓名
-    const { data: lawyer } = await supabase
-      .from('lawyers')
-      .select('name')
-      .eq('id', lawyerId)
-      .single();
 
     console.log(`✅ 订单 ${orderId} 已成功派单给律师 ${lawyer?.name || lawyerId}`);
 

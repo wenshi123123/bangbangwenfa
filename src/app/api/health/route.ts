@@ -59,6 +59,7 @@ export async function GET() {
   // 汇总状态
   const hasError = Object.values(checks).some(c => c.status === 'error');
   const overallStatus = hasError ? 'degraded' : 'ok';
+  const httpStatus = hasError && process.env.NODE_ENV === 'production' ? 503 : 200;
 
   return NextResponse.json({
     status: overallStatus,
@@ -73,6 +74,6 @@ export async function GET() {
     },
     checks,
   }, {
-    status: hasError ? 503 : 200,
+    status: httpStatus,
   });
 }

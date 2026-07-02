@@ -14,16 +14,67 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const status = searchParams.get('status');
+    const rawSearch = searchParams.get('search')?.trim() || '';
     const offset = (page - 1) * limit;
     
     const supabase = getSupabaseAdmin();
-    let query = supabase
+    let commissionQuery = supabase
       .from('guardian_commissions')
-      .select('id, guardian_id, order_id, commission_amount, status, admin_note, created_at, processed_at', { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-    if (status) query = query.eq('status', status);
-    
+      .select('id, guardian_id, order_id, commission_amount, commission_rate, status, admin_note, created_at, processed_at', { count: 'exact' })
+      .order('created_at', { ascending: false });
+    if (status) commissionQuery = commissionQuery.eq('status', status);
+
+    if (rawSearch) {
+      const keyword = rawSearch.replace(/[%]/g, '').replace(/,/g, ' ').trim();
+      const maybeId = Number(keyword);
+      const guardianIds: string[] = [];
+      const orderIds: number[] = [];
+
+      const [guardianSearchRes, orderSearchRes] = await Promise.all([
+        supabase
+          .from('guardian_users')
+          .select('id')
+          .or(`nickname.ilike.%${keyword}%,invite_code.ilike.%${keyword}%`),
+        supabase
+          .from('consult_orders')
+          .select('id')
+          .or(`case_title.ilike.%${keyword}%,contact_name.ilike.%${keyword}%,order_no.ilike.%${keyword}%`),
+      ]);
+
+      if (!guardianSearchRes.error && guardianSearchRes.data) {
+        guardianIds.push(...guardianSearchRes.data.map((item) => String(item.id)));
+      }
+      if (!orderSearchRes.error && orderSearchRes.data) {
+        orderIds.push(...orderSearchRes.data.map((item) => Number(item.id)).filter((id) => !Number.isNaN(id)));
+      }
+
+      if (!Number.isNaN(maybeId) && maybeId > 0) {
+        orderIds.push(maybeId);
+      }
+
+      const uniqueGuardianIds = [...new Set(guardianIds)];
+      const uniqueOrderIds = [...new Set(orderIds)];
+
+      const searchClauses: string[] = [];
+      if (uniqueGuardianIds.length > 0) {
+        searchClauses.push(`guardian_id.in.(${uniqueGuardianIds.join(',')})`);
+      }
+      if (uniqueOrderIds.length > 0) {
+        searchClauses.push(`order_id.in.(${uniqueOrderIds.join(',')})`);
+      }
+      if (searchClauses.length === 0 && !Number.isNaN(maybeId) && maybeId > 0) {
+        searchClauses.push(`id.eq.${maybeId}`);
+      }
+
+      if (searchClauses.length > 0) {
+        commissionQuery = commissionQuery.or(searchClauses.join(','));
+      } else {
+        commissionQuery = commissionQuery.eq('id', -1);
+      }
+    }
+
+    const query = commissionQuery.range(offset, offset + limit - 1);
+
     const { data, error, count } = await query;
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });

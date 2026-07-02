@@ -38,6 +38,8 @@ export async function GET(request: NextRequest) {
     if (!validation.valid) {
       return NextResponse.json({
         success: true,
+        available: false,
+        reason: validation.message,
         data: {
           available: false,
           reason: validation.message
@@ -57,6 +59,8 @@ export async function GET(request: NextRequest) {
     if (existingUser) {
       return NextResponse.json({
         success: true,
+        available: false,
+        reason: '该用户名已被使用',
         data: {
           available: false,
           reason: '该用户名已被使用'
@@ -66,6 +70,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      available: true,
       data: {
         available: true
       }
