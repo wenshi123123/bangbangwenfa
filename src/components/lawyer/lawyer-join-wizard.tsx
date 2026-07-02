@@ -5,7 +5,6 @@ import { ArrowLeft } from 'lucide-react';
 import { LawyerFormStep } from './lawyer-form-step';
 import { LawyerUploadStep } from './lawyer-upload-step';
 import { LawyerPackageStep } from './lawyer-package-step';
-import { LawyerPromoSection } from './lawyer-promo-section';
 import { useAuth } from '@/hooks/use-auth';
 
 export interface LawyerFormData {
@@ -53,7 +52,6 @@ interface LawyerJoinWizardProps {
 export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<LawyerFormData>(initialFormData);
-  const [showPromo, setShowPromo] = useState(true);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [authGraceExpired, setAuthGraceExpired] = useState(false);
   const { user, isLoggedIn, isLoading } = useAuth();
@@ -91,16 +89,6 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
     }
   }, [authGraceExpired, isLoggedIn]);
 
-  // 从宣传页进入表单时，滚动到顶部
-  useEffect(() => {
-    if (!showPromo) {
-      setTimeout(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }, 50);
-    }
-  }, [showPromo]);
-
-
   // 打开登录弹窗
   const handleOpenLogin = () => {
     sessionStorage.setItem('login_redirect', '/lawyer/join');
@@ -114,8 +102,6 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
   const handleBack = () => {
     if (step === 1 && onBack) {
       onBack();
-    } else if (step === 1 && showPromo) {
-      setShowPromo(false);
     } else {
       setStep(step - 1);
       // 延迟 300ms 确保 DOM 完全渲染
@@ -132,11 +118,6 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
     setTimeout(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 300);
-  };
-
-  const scrollToForm = () => {
-    setShowPromo(false);
-    // useEffect 会处理滚动到顶部
   };
 
   const renderStep = () => {
@@ -239,14 +220,6 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
             返回首页
           </button>
         </div>
-      </div>
-    );
-  }
-
-  if (showPromo) {
-    return (
-      <div>
-        <LawyerPromoSection onStartApply={scrollToForm} />
       </div>
     );
   }
