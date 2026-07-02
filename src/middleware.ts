@@ -2,7 +2,18 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getSiteUrl, shouldRedirectToCanonicalHost } from '@/lib/site';
 
-const CACHE_BUST_PAGES = new Set(['/', '/register', '/user', '/lawyer', '/lawyer/login', '/lawyer/join']);
+const CACHE_BUST_PAGES = new Set([
+  '/',
+  '/register',
+  '/user',
+  '/lawyer',
+  '/lawyer/login',
+  '/lawyer/join',
+  '/admin/dashboard',
+  '/admin/orders',
+  '/admin/users',
+  '/admin/lawyers',
+]);
 const CACHE_BUST_PARAM = '__bbwv';
 const CACHE_BUST_VALUE = '20260702';
 
