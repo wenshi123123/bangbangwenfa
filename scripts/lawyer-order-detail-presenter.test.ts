@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { getLawyerOrderResponseText } from '../src/lib/lawyer/order-detail-presenter.ts';
+import { getLawyerOrderResponseText } from '../src/lib/lawyer/order-detail-presenter';
 
 assert.equal(
   getLawyerOrderResponseText('{"content":"已电话联系当事人，等待补充资料"}'),

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { getFallbackFromStorage } from '../src/lib/auth/lawyer-auth-storage.ts';
+import { getFallbackFromStorage } from '../src/lib/auth/lawyer-auth-storage';
 
 function createToken(payload: Record<string, unknown>) {
   const encode = (value: Record<string, unknown>) =>

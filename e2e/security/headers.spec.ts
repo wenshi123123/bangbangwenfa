@@ -35,9 +35,10 @@ test.describe('安全响应头', () => {
     expect(headers['x-frame-options']).toBe('DENY');
   });
 
-  test('不应暴露服务器版本信息', async ({ request }) => {
-    const response = await request.get('/');
-    const headers = response.headers();
+  test('不应暴露服务器版本信息', async ({ page }) => {
+    const response = await page.goto('/');
+    expect(response, '首页应成功返回响应').not.toBeNull();
+    const headers = response!.headers();
 
     // 不应包含 X-Powered-By
     expect(headers['x-powered-by']).toBeUndefined();

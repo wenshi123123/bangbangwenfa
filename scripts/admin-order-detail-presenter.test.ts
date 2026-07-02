@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {
   getAdminLawyerResponseText,
   getAdminOrderServiceLabel,
-} from '../src/lib/admin/order-detail-presenter.ts';
+} from '../src/lib/admin/order-detail-presenter';
 
 assert.equal(
   getAdminOrderServiceLabel('civil_premium'),

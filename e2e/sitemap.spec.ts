@@ -60,4 +60,14 @@ test.describe('站点地图完整性', () => {
     expect(text.length).toBeGreaterThan(0);
     expect(text.toLowerCase()).toContain('user-agent');
   });
+
+  test('sitemap.xml 存在且包含关键页面', async ({ request }) => {
+    const res = await request.get('/sitemap.xml');
+    expect(res.status()).toBe(200);
+    const text = await res.text();
+    expect(text.length).toBeGreaterThan(0);
+    expect(text.toLowerCase()).toContain('<urlset');
+    expect(text).toContain('/consult');
+    expect(text).toContain('/lawyer/join');
+  });
 });
