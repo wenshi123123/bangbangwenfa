@@ -33,7 +33,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl, 308);
   }
 
-  if (isProd && CACHE_BUST_PAGES.has(pathname)) {
+  if (
+    isProd &&
+    CACHE_BUST_PAGES.has(pathname) &&
+    request.nextUrl.searchParams.get(CACHE_BUST_PARAM) !== CACHE_BUST_VALUE
+  ) {
     const rewriteUrl = request.nextUrl.clone();
     rewriteUrl.searchParams.set(CACHE_BUST_PARAM, CACHE_BUST_VALUE);
     return NextResponse.rewrite(rewriteUrl);

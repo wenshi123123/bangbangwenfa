@@ -100,15 +100,28 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
   };
 
   const handleBack = () => {
-    if (step === 1 && onBack) {
-      onBack();
-    } else {
-      setStep(step - 1);
-      // 延迟 300ms 确保 DOM 完全渲染
-      setTimeout(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }, 300);
+    if (step === 1) {
+      if (onBack) {
+        onBack();
+        return;
+      }
+
+      if (typeof window !== 'undefined' && window.history.length > 1) {
+        window.history.back();
+        return;
+      }
+
+      if (typeof window !== 'undefined') {
+        window.location.assign('/');
+      }
+      return;
     }
+
+    setStep(step - 1);
+    // 延迟 300ms 确保 DOM 完全渲染
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 300);
   };
 
   // 统一处理步骤切换 + 滚动到顶部
