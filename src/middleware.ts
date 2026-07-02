@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getSiteUrl, shouldRedirectToCanonicalHost } from '@/lib/site';
 
+const CACHE_BUST_PAGES = new Set(['/', '/register', '/user', '/lawyer', '/lawyer/login', '/lawyer/join']);
+const CACHE_BUST_PARAM = '__bbwv';
+const CACHE_BUST_VALUE = '20260702';
+
 /**
  * 全局中间件
  * 1. 添加安全响应头
@@ -27,6 +31,12 @@ export function middleware(request: NextRequest) {
     redirectUrl.hostname = canonicalUrl.hostname;
     redirectUrl.port = canonicalUrl.port;
     return NextResponse.redirect(redirectUrl, 308);
+  }
+
+  if (isProd && CACHE_BUST_PAGES.has(pathname)) {
+    const rewriteUrl = request.nextUrl.clone();
+    rewriteUrl.searchParams.set(CACHE_BUST_PARAM, CACHE_BUST_VALUE);
+    return NextResponse.rewrite(rewriteUrl);
   }
 
   // 添加安全响应头
