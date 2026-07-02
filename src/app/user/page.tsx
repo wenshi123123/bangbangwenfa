@@ -109,10 +109,16 @@ function UserCenterPageContent() {
   }, [orders, targetOrderId, showOrderDetail?.id]);
 
   useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
     if (!effectiveLoggedIn) {
       setNeedsAuthRedirect(true);
+    } else {
+      setNeedsAuthRedirect(false);
     }
-  }, [effectiveLoggedIn]);
+  }, [effectiveLoggedIn, isLoading]);
 
   useLayoutEffect(() => {
     if (!needsAuthRedirect) return;
@@ -120,6 +126,17 @@ function UserCenterPageContent() {
   }, [needsAuthRedirect]);
 
   if (!effectiveLoggedIn) {
+    if (isLoading) {
+      return (
+        <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center p-4">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#C47353] mx-auto mb-3" />
+            <p className="text-[#8C7B6E]">正在恢复登录状态...</p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center p-4">
         <Card className="max-w-sm shadow-[0_4px_16px_rgba(61,50,45,0.08)] rounded-xl">

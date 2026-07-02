@@ -85,7 +85,7 @@ function GlobalScrollReset() {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserInfo | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // 从存储数据构建用户信息
   const buildUserInfo = useCallback((userData: any): UserInfo => {
@@ -194,7 +194,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // 初始化检查 + 监听登录成功事件
   useEffect(() => {
-    checkAuth();
+    let mounted = true;
+
+    const initializeAuth = async () => {
+      setIsLoading(true);
+      try {
+        await checkAuth();
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    initializeAuth();
     
     // 监听登录成功事件
     const handleLoginSuccess = (event: Event) => {
@@ -249,6 +262,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.addEventListener('storage', handleStorageChange);
     
     return () => {
+      mounted = false;
       window.removeEventListener('user-logged-in', handleLoginSuccess);
       window.removeEventListener('lawyer-status-updated', handleLawyerStatusUpdated);
       window.removeEventListener('auth-expired', handleAuthExpired);
