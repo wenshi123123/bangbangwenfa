@@ -4,6 +4,7 @@ import { getSiteUrl, shouldRedirectToCanonicalHost } from '@/lib/site';
 
 const CACHE_BUST_PAGES = new Set([
   '/',
+  '/sitemap.xml',
   '/register',
   '/user',
   '/lawyer',
