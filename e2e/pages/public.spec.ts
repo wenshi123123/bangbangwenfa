@@ -50,4 +50,10 @@ test.describe('公共页面渲染', () => {
     const formElements = page.locator('input, button, form');
     await expect(formElements.first()).toBeVisible({ timeout: 5000 });
   });
+
+  test('首页底部帮帮问法应指向管理后台入口', async ({ page }) => {
+    await page.goto('/');
+    const adminLink = page.locator('footer a[href="/admin/login"]');
+    await expect(adminLink).toHaveText('帮帮问法');
+  });
 });

@@ -90,8 +90,9 @@ export function Footer() {
             <p className="text-xs text-[#B4A99A]">
               © 2024{' '}
               <Link
-                href="/"
+                href="/admin/login"
                 className="text-[#B4A99A] hover:text-[#C47353] transition-colors duration-200"
+                title="管理后台入口"
               >
                 帮帮问法
               </Link>{' '}
