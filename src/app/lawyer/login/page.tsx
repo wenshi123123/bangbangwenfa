@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { Suspense, useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -17,9 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 
-export const dynamic = 'force-dynamic';
-
-export default function LawyerLoginPage() {
+function LawyerLoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoggedIn, isLoading } = useAuth();
@@ -521,5 +519,20 @@ export default function LawyerLoginPage() {
         </button>
       </div>
     </div>
+  );
+}
+
+export default function LawyerLoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#C47353] mx-auto mb-4" />
+          <p className="text-[#8C7B6E]">加载中...</p>
+        </div>
+      </div>
+    }>
+      <LawyerLoginPageContent />
+    </Suspense>
   );
 }

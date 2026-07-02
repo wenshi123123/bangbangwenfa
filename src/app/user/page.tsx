@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useState, useCallback } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { User, Shield, Briefcase, Settings, ChevronRight, LogOut, QrCode, X, ShoppingCart, Clock, CheckCircle, AlertCircle, Bell } from 'lucide-react';
@@ -9,8 +9,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { apiRequest } from '@/lib/api/request';
-
-export const dynamic = 'force-dynamic';
 
 interface Order {
   id: number;
@@ -27,7 +25,7 @@ interface Order {
   paidAt: string | null;
 }
 
-export default function UserCenterPage() {
+function UserCenterPageContent() {
   const { user, isLoggedIn, isLoading, logout, updateUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -555,5 +553,17 @@ export default function UserCenterPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function UserCenterPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center">
+        <div className="text-center text-[#8C7B6E]">加载中...</div>
+      </div>
+    }>
+      <UserCenterPageContent />
+    </Suspense>
   );
 }

@@ -5,8 +5,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { LawyerBottomNav } from '@/components/lawyer/lawyer-bottom-nav';
 
-export const dynamic = 'force-dynamic';
-
 // 不需要认证的律师相关页面
 const PUBLIC_LAWYER_PATHS = ['/lawyer/login', '/lawyer/join'];
 
