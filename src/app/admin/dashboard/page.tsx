@@ -39,9 +39,7 @@ import {
 } from 'recharts';
 
 const ADMIN_LOGIN_HREF = '/admin-login';
-
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 interface DashboardStats {
   totalLawyers: number;
@@ -113,10 +111,7 @@ export default function AdminDashboard() {
   });
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [needsLogin, setNeedsLogin] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return !localStorage.getItem('admin_info');
-  });
+  const [needsLogin, setNeedsLogin] = useState(false);
   const [period, setPeriod] = useState(30);
   const pathname = usePathname();
 

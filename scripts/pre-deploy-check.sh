@@ -8,7 +8,7 @@ echo "=== 预部署检查 ==="
 echo ""
 
 # 1. 检查是否启用了数据库迁移
-echo "[1/4] 检查数据库迁移配置..."
+echo "[1/5] 检查数据库迁移配置..."
 if [ -f ".cozerc" ]; then
     if grep -q '"autoMigrate": false' .cozerc || grep -q '"syncSchema": false' .cozerc; then
         echo "✓ .cozerc 中已禁用自动迁移"
@@ -21,19 +21,24 @@ fi
 echo ""
 
 # 2. 检查 schema.ts 中是否有问题的表定义
-echo "[2/4] 检查 schema.ts 中的敏感表..."
+echo "[2/5] 检查 schema.ts 中的敏感表..."
 SENSITIVE_TABLES=("lawyers" "admin_users" "guardian_users")
-for table in "${SENSITIVE_TABLES[@]}"; do
-    if grep -q "^export const $table = pgTable" src/storage/database/shared/schema.ts; then
-        echo "⚠ 发现 $table 表定义，可能需要检查"
-    else
-        echo "✓ $table 表已禁用或不存在"
-    fi
-done
+SCHEMA_FILE="src/storage/database/shared/schema.ts"
+if [ -f "${SCHEMA_FILE}" ]; then
+    for table in "${SENSITIVE_TABLES[@]}"; do
+        if grep -q "^export const $table = pgTable" "${SCHEMA_FILE}"; then
+            echo "⚠ 发现 $table 表定义，可能需要检查"
+        else
+            echo "✓ $table 表已禁用或不存在"
+        fi
+    done
+else
+    echo "ℹ 未找到 ${SCHEMA_FILE}，跳过旧 schema 路径检查"
+fi
 echo ""
 
 # 3. 检查构建是否成功
-echo "[3/4] 检查构建..."
+echo "[3/5] 检查构建..."
 if [ -d ".next" ]; then
     echo "✓ .next 目录存在"
 else
@@ -41,8 +46,17 @@ else
 fi
 echo ""
 
-# 4. 总结
-echo "[4/4] 总结"
+# 4. 检查生产环境变量
+echo "[4/5] 检查生产环境变量..."
+if bash "${PWD}/scripts/check-production-env.sh" "${PWD}"; then
+    echo "✓ 生产环境变量检查通过"
+else
+    echo "⚠ 生产环境变量检查未通过，请根据输出修复后再部署"
+fi
+echo ""
+
+# 5. 总结
+echo "[5/5] 总结"
 echo "============"
 echo "如果所有检查通过，可以安全部署。"
 echo "如果有任何警告，请先解决后再部署。"

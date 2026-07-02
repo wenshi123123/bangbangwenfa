@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 const ADMIN_LOGIN_HREF = '/admin-login';
 
@@ -31,7 +30,6 @@ function buildAdminLoginHref(redirectPath?: string | null) {
 
   return `${ADMIN_LOGIN_HREF}?redirect=${encodeURIComponent(redirectPath)}`;
 }
-
 interface AdminUser {
   id: number;
   username: string;
@@ -149,14 +147,8 @@ export default function AdminLayout({
   const pathname = usePathname();
   const isPublicPath = pathname?.startsWith('/admin/login') ?? false;
   const [admin, setAdmin] = useState<AdminUser | null>(null);
-  const [authResolved, setAuthResolved] = useState(() => {
-    if (isPublicPath || typeof window === 'undefined') return isPublicPath;
-    return !!localStorage.getItem('admin_info');
-  });
-  const [unauthorized, setUnauthorized] = useState(() => {
-    if (isPublicPath || typeof window === 'undefined') return false;
-    return !localStorage.getItem('admin_info');
-  });
+  const [authResolved, setAuthResolved] = useState(false);
+  const [unauthorized, setUnauthorized] = useState(false);
   const [stats, setStats] = useState<Stats>({
     pendingLawyerApplications: 0,
     pendingProfileRevisions: 0,

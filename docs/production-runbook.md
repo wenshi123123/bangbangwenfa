@@ -2,13 +2,27 @@
 
 > 新任务和新验证流程请优先参考 [`docs/harness-engineering.md`](./harness-engineering.md) 与 [`docs/harness-task-template.md`](./harness-task-template.md)。
 
+生产环境变量请同时参考 [`docs/env-production-checklist.md`](./env-production-checklist.md) 和 [`docs/env-production-fill-guide.md`](./env-production-fill-guide.md)。
+
 ## 常用命令
 
 ```bash
+pnpm check:prod-env
+bash scripts/pre-deploy-check.sh
 pnpm ts-check
 pnpm build
 pnpm test:prod:smoke
 ```
+
+## 上线前最低门槛
+
+1. 本地构建通过：`pnpm ts-check`、`pnpm build`。
+2. 本地核心回归通过：
+   `e2e/consult/flow.spec.ts`、`e2e/payment/pay.spec.ts`、`e2e/lawyer/admin-smoke.spec.ts`。
+3. `.cozerc` 中自动迁移保持关闭。
+4. 正式环境已配置真实 `.env.production` 对应变量，而不是依赖本地 mock。
+5. 线上 `/api/health` 无核心 error。
+6. 至少完成一次真实支付与一次真实后台登录验收。
 
 ## 腾讯云云托管排查顺序
 
@@ -34,3 +48,16 @@ pnpm test:prod:smoke
 |  |  | 律师入口 |  |  |  |
 |  |  | 后台入口 |  |  |  |
 |  |  | 微信支付 |  |  |  |
+
+## 建议执行顺序
+
+1. 部署前：
+   先执行 `pnpm check:prod-env`，再运行 `scripts/pre-deploy-check.sh`，然后执行 `pnpm ts-check` 与 `pnpm build`。
+2. 部署完成后：
+   先检查 CloudRun 状态、域名访问、`/api/health`。
+3. 只读验证：
+   执行 `pnpm test:prod:smoke`。
+4. 写操作验证：
+   依次验证用户登录、咨询下单、微信支付、律师入口、后台入口。
+5. 验收留痕：
+   把真实测试账号、订单号、支付结果回填到 `docs/launch-acceptance.md`。
