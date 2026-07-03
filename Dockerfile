@@ -17,14 +17,13 @@ RUN pnpm install --prefer-frozen-lockfile --prefer-offline --prod=false
 # 复制所有源码（.dockerignore 会过滤掉不需要的文件）
 COPY . .
 
-# 构建参数 - 用于破坏 Docker 缓存，确保每次构建使用最新代码
-ARG CACHE_BUST=unknown
-RUN echo "Cache bust: ${CACHE_BUST}"
-ENV BUILD_CACHE_BUST_VALUE=${CACHE_BUST}
-ENV NEXT_PUBLIC_BUILD_CACHE_BUST_VALUE=${CACHE_BUST}
-
-# 构建应用
-RUN pnpm exec next build
+# 构建应用，同时生成每次构建唯一的缓存破坏 token
+RUN BUILD_CACHE_BUST_VALUE="$(git rev-parse --short HEAD 2>/dev/null || date -u +%Y%m%d%H%M%S)"; \
+    echo "Cache bust: ${BUILD_CACHE_BUST_VALUE}"; \
+    export BUILD_CACHE_BUST_VALUE="${BUILD_CACHE_BUST_VALUE}"; \
+    export NEXT_PUBLIC_BUILD_CACHE_BUST_VALUE="${BUILD_CACHE_BUST_VALUE}"; \
+    node -e 'const fs=require("fs"); const path=require("path"); const token=process.env.BUILD_CACHE_BUST_VALUE || process.env.NEXT_PUBLIC_BUILD_CACHE_BUST_VALUE || "unknown"; const file=path.join(process.cwd(),"src/lib/build-meta.ts"); fs.writeFileSync(file, `export const BUILD_CACHE_BUST_VALUE = ${JSON.stringify(token)};\n`);'; \
+    pnpm exec next build
 
 # 构建 server bundle
 RUN pnpm exec tsup src/server.mts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
