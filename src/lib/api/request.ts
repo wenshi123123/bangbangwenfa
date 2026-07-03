@@ -3,6 +3,8 @@
  * 自动携带 Token 认证
  */
 
+import { getAdminLoginUrl } from '@/lib/site';
+
 interface RequestOptions extends RequestInit {
   skipAuth?: boolean; // 是否跳过认证
 }
@@ -163,7 +165,7 @@ export async function adminApiRequest(
       const currentPath = window.location.pathname;
       if (currentPath !== '/admin/login' && !currentPath.startsWith('/admin/login')) {
         // 先给用户提示，再跳转
-        window.location.href = '/admin/login';
+        window.location.href = getAdminLoginUrl();
       }
     }
     // 抛出错误终止调用链，避免调用方继续处理已无意义的 response

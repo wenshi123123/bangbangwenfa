@@ -9,8 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Users, Search, RefreshCw, Eye, Wallet } from 'lucide-react';
 import { adminApiRequest } from '@/lib/api/request';
-
-const ADMIN_LOGIN_HREF = '/admin/login';
+import { getAdminLoginUrl } from '@/lib/site';
 
 interface Guardian {
   id: number;
@@ -100,11 +99,11 @@ export default function GuardiansPage() {
             </div>
             <h1 className="text-2xl font-bold text-slate-800">管理员登录</h1>
             <p className="mt-2 text-sm text-slate-500">请先登录管理员账号后再访问守护者管理</p>
-            <div className="mt-6">
-              <Link
-                href={ADMIN_LOGIN_HREF}
-                className="inline-flex items-center justify-center rounded-full bg-green-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-700"
-              >
+          <div className="mt-6">
+            <Link
+              href={getAdminLoginUrl()}
+              className="inline-flex items-center justify-center rounded-full bg-green-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-700"
+            >
                 前往登录
               </Link>
             </div>

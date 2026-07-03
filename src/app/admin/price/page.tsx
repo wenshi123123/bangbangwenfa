@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Save, Loader2, AlertCircle } from 'lucide-react';
 import { adminApiRequest } from '@/lib/api/request';
+import { getAdminLoginUrl } from '@/lib/site';
 
 interface PriceConfig {
   id: number | string;
@@ -122,7 +123,7 @@ export default function PriceManagementPage() {
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
           <span>{message.text}</span>
           <button 
-            onClick={() => window.location.href = '/admin/login'}
+            onClick={() => window.location.href = getAdminLoginUrl()}
             className="ml-auto text-sm underline hover:no-underline"
           >
             去登录

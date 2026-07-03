@@ -3,7 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { getCivilUrl } from "@/lib/site";
+import { getAdminLoginUrl, getCivilUrl } from "@/lib/site";
 
 const footerLinks = {
   服务: [
@@ -91,7 +91,7 @@ export function Footer() {
             <p className="text-xs text-[#B4A99A]">
               © 2024{' '}
               <Link
-                href="/admin/login"
+                href={getAdminLoginUrl()}
                 className="text-[#B4A99A] hover:text-[#C47353] transition-colors duration-200"
                 title="管理后台入口"
               >

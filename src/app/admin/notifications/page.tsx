@@ -19,8 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { adminApiRequest } from '@/lib/api/request';
-
-const ADMIN_LOGIN_HREF = '/admin/login';
+import { getAdminLoginUrl } from '@/lib/site';
 
 interface TargetOption {
   value: string;
@@ -70,7 +69,7 @@ export default function AdminNotificationsPage() {
     // 直接从 localStorage 读取，避免异步状态问题
     const storedAdmin = localStorage.getItem('admin_info');
     if (!storedAdmin) {
-      router.push(ADMIN_LOGIN_HREF);
+      router.push(getAdminLoginUrl());
       return;
     }
     let adminData: any;
@@ -78,14 +77,14 @@ export default function AdminNotificationsPage() {
       adminData = JSON.parse(storedAdmin);
     } catch (error) {
       console.error('解析管理员信息失败:', error);
-      router.push(ADMIN_LOGIN_HREF);
+      router.push(getAdminLoginUrl());
       return;
     }
     // 兼容两种存储格式：直接存储admin对象 或 存储包含admin的包装对象
     const admin = adminData.admin || adminData;
     
     if (!admin || !admin.id) {
-      router.push(ADMIN_LOGIN_HREF);
+      router.push(getAdminLoginUrl());
       return;
     }
 
@@ -144,11 +143,11 @@ export default function AdminNotificationsPage() {
             </div>
             <h1 className="text-2xl font-bold text-slate-800">管理员登录</h1>
             <p className="mt-2 text-sm text-slate-500">请先登录管理员账号后再发送系统通知</p>
-            <div className="mt-6">
-              <Link
-                href={ADMIN_LOGIN_HREF}
-                className="inline-flex items-center justify-center rounded-full bg-green-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-700"
-              >
+          <div className="mt-6">
+            <Link
+              href={getAdminLoginUrl()}
+              className="inline-flex items-center justify-center rounded-full bg-green-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-700"
+            >
                 前往登录
               </Link>
             </div>

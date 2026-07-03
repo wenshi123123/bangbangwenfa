@@ -88,3 +88,7 @@ export function getVersionedPath(pathname: string): string {
 export function getCivilUrl(): string {
   return getVersionedPath('/civil');
 }
+
+export function getAdminLoginUrl(): string {
+  return getVersionedPath('/admin/login');
+}

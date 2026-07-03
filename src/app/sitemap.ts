@@ -16,7 +16,6 @@ const publicRoutes = [
   '/lawyer/login',
   '/guardian',
   '/pay',
-  '/admin/login',
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { adminApiRequest } from '@/lib/api/request';
 import { getAdminOrderServiceLabel } from '@/lib/admin/order-detail-presenter';
+import { getAdminLoginUrl } from '@/lib/site';
 
 interface TrendData {
   todayOrders: number;
@@ -49,7 +50,6 @@ const categoryMap = {
   civil: { label: '民事案件', color: 'text-blue-600' },
 };
 
-const ADMIN_LOGIN_HREF = '/admin/login';
 export const dynamic = 'force-dynamic';
 
 export default function OrderListPage() {
@@ -153,7 +153,7 @@ export default function OrderListPage() {
           <p className="mt-2 text-sm text-slate-500">请先登录管理员账号后再访问订单管理</p>
           <div className="mt-6">
             <Link
-              href={ADMIN_LOGIN_HREF}
+              href={getAdminLoginUrl()}
               className="inline-flex items-center justify-center rounded-full bg-green-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-700"
             >
               前往登录

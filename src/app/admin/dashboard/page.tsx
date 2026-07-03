@@ -22,6 +22,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { adminApiRequest } from '@/lib/api/request';
+import { getAdminLoginUrl } from '@/lib/site';
 import {
   LineChart,
   Line,
@@ -38,7 +39,6 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
-const ADMIN_LOGIN_HREF = '/admin/login';
 export const dynamic = 'force-dynamic';
 
 interface DashboardStats {
@@ -238,7 +238,7 @@ export default function AdminDashboard() {
           <p className="mt-2 text-sm text-slate-500">请先登录管理员账号后再访问后台</p>
           <div className="mt-6">
             <Link
-              href={ADMIN_LOGIN_HREF}
+              href={getAdminLoginUrl()}
               className="inline-flex items-center justify-center rounded-full bg-green-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-700"
             >
               前往登录

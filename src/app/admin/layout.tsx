@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { getAdminLoginUrl } from '@/lib/site';
 import { 
   LayoutDashboard, 
   Users, 
@@ -21,14 +22,14 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-const ADMIN_LOGIN_HREF = '/admin/login';
-
 function buildAdminLoginHref(redirectPath?: string | null) {
-  if (!redirectPath) {
-    return ADMIN_LOGIN_HREF;
+  const url = new URL(getAdminLoginUrl(), 'https://bangbangwenfa.com');
+
+  if (redirectPath) {
+    url.searchParams.set('redirect', redirectPath);
   }
 
-  return `${ADMIN_LOGIN_HREF}?redirect=${encodeURIComponent(redirectPath)}`;
+  return `${url.pathname}${url.search}`;
 }
 interface AdminUser {
   id: number;
@@ -240,10 +241,10 @@ export default function AdminLayout({
     const handleLoginChange = () => {
       window.location.reload();
     };
-    const handleLogout = () => {
-      setUnauthorized(true);
-      router.replace(ADMIN_LOGIN_HREF);
-    };
+  const handleLogout = () => {
+    setUnauthorized(true);
+    router.replace(getAdminLoginUrl());
+  };
 
     window.addEventListener('admin-logged-in', handleLoginChange);
     window.addEventListener('admin-logged-out', handleLogout);
@@ -285,7 +286,7 @@ export default function AdminLayout({
     localStorage.removeItem('admin_info');
     localStorage.removeItem('admin_token');
     window.dispatchEvent(new Event('admin-logged-out'));
-    router.push(ADMIN_LOGIN_HREF);
+    router.push(getAdminLoginUrl());
   };
 
   // 过滤有权限的菜单项
@@ -313,7 +314,7 @@ export default function AdminLayout({
           </p>
           <div className="mt-6">
             <button
-              onClick={() => router.replace(ADMIN_LOGIN_HREF)}
+              onClick={() => router.replace(getAdminLoginUrl())}
               className="inline-flex items-center justify-center rounded-full bg-green-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-700"
             >
               前往登录
