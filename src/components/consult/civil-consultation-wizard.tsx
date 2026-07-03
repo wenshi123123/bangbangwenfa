@@ -49,7 +49,7 @@ export function CivilConsultationWizard({ onBack }: CivilConsultationWizardProps
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isChecking, setIsChecking] = useState(true);
+  const [isChecking, setIsChecking] = useState(false);
   const [formData, setFormData] = useState({
     caseType: '',
     description: '',
@@ -80,10 +80,16 @@ export function CivilConsultationWizard({ onBack }: CivilConsultationWizardProps
   // 检查登录状态
   useEffect(() => {
     const checkLogin = () => {
-      const savedUser = localStorage.getItem('user_info');
-      const loggedIn = !!savedUser;
-      setIsLoggedIn(loggedIn);
-      setIsChecking(false);
+      try {
+        const savedUser = localStorage.getItem('user_info');
+        const loggedIn = !!savedUser;
+        setIsLoggedIn(loggedIn);
+      } catch (error) {
+        console.error('Failed to check civil login state:', error);
+        setIsLoggedIn(false);
+      } finally {
+        setIsChecking(false);
+      }
     };
     checkLogin();
     
