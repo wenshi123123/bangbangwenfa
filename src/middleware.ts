@@ -150,7 +150,7 @@ export async function middleware(request: NextRequest) {
   ) {
     const rewriteUrl = request.nextUrl.clone();
     rewriteUrl.searchParams.set(CACHE_BUST_PARAM, BUILD_CACHE_BUST_VALUE);
-    return applySecurityHeaders(NextResponse.rewrite(rewriteUrl), isProd);
+    return applySecurityHeaders(NextResponse.redirect(rewriteUrl, 307), isProd);
   }
 
   // 添加安全响应头
