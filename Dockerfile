@@ -20,6 +20,7 @@ COPY . .
 # 构建参数 - 用于破坏 Docker 缓存，确保每次构建使用最新代码
 ARG CACHE_BUST=unknown
 RUN echo "Cache bust: ${CACHE_BUST}"
+ENV BUILD_CACHE_BUST_VALUE=${CACHE_BUST}
 
 # 构建应用
 RUN pnpm exec next build

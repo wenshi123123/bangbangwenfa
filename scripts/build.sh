@@ -9,6 +9,26 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 cd "${COZE_WORKSPACE_PATH}"
 
+BUILD_CACHE_BUST_VALUE="$(git rev-parse --short HEAD 2>/dev/null || date -u +%Y%m%d%H%M%S)"
+echo "Preparing build cache-bust token: ${BUILD_CACHE_BUST_VALUE}"
+export BUILD_CACHE_BUST_VALUE
+
+NODE_BIN="${NODE_BIN:-$(command -v node || true)}"
+if [ -z "${NODE_BIN}" ] && [ -x "/Users/Admin/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node" ]; then
+  NODE_BIN="/Users/Admin/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"
+fi
+if [ -z "${NODE_BIN}" ]; then
+  echo "Unable to locate a usable Node.js binary."
+  exit 1
+fi
+
+RESOLVE_PKG_DIR='const path = require("path"); const pkg = process.argv[1]; try { console.log(path.dirname(require.resolve(`${pkg}/package.json`))); } catch (err) { process.exit(1); }'
+NEXT_PKG_DIR="$("${NODE_BIN}" -e "${RESOLVE_PKG_DIR}" next)"
+TSUP_PKG_DIR="$("${NODE_BIN}" -e "${RESOLVE_PKG_DIR}" tsup)"
+
+NEXT_BIN="${NEXT_BIN:-${NEXT_PKG_DIR}/dist/bin/next}"
+TSUP_BIN="${TSUP_BIN:-${TSUP_PKG_DIR}/dist/cli-default.js}"
+
 # ============================================
 # COZE_ 前缀变量映射（与 start.sh 保持同步）
 # 扣子平台自动给环境变量添加 COZE_ 前缀，
@@ -88,10 +108,10 @@ if [ "${DEPLOY_ENV:-}" = "PROD" ] || [ "${NODE_ENV:-}" = "production" ]; then
 fi
 
 echo "Building the Next.js project..."
-pnpm_cmd exec next build --webpack
+"${NODE_BIN}" "${NEXT_BIN}" build --webpack
 
 echo "Bundling server with tsup..."
-pnpm_cmd exec tsup src/server.mts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
+"${NODE_BIN}" "${TSUP_BIN}" src/server.mts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
 
 # 构建完成后移除 drizzle-kit，防止扣子平台自动执行 schema 同步
 # 放在 build 之后不影响构建产物完整性

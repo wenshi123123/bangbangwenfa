@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { BUILD_CACHE_BUST_VALUE } from '@/lib/build-meta';
 import { getSiteUrl, shouldRedirectToCanonicalHost } from '@/lib/site';
 
 const CACHE_BUST_PAGES = new Set([
@@ -16,7 +17,6 @@ const CACHE_BUST_PAGES = new Set([
   '/admin/lawyers',
 ]);
 const CACHE_BUST_PARAM = '__bbwv';
-const CACHE_BUST_VALUE = '20260702';
 
 function applySecurityHeaders(response: NextResponse, isProd: boolean) {
   // 隐藏技术栈信息
@@ -72,7 +72,10 @@ export function middleware(request: NextRequest) {
   const hostname = request.nextUrl.hostname?.toLowerCase();
   const { pathname, search } = request.nextUrl;
 
-  if ((pathname === '/user' || pathname === '/me') && !request.cookies.get('token')?.value) {
+  const tokenCookie = request.cookies.get('token')?.value;
+  const authSyncCookie = request.cookies.get('auth_sync')?.value;
+
+  if ((pathname === '/user' || pathname === '/me') && !tokenCookie && !authSyncCookie) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = '/register';
     redirectUrl.search = `?next=${encodeURIComponent(`${pathname}${search}`)}`;
@@ -91,10 +94,10 @@ export function middleware(request: NextRequest) {
   if (
     isProd &&
     CACHE_BUST_PAGES.has(pathname) &&
-    request.nextUrl.searchParams.get(CACHE_BUST_PARAM) !== CACHE_BUST_VALUE
+    request.nextUrl.searchParams.get(CACHE_BUST_PARAM) !== BUILD_CACHE_BUST_VALUE
   ) {
     const rewriteUrl = request.nextUrl.clone();
-    rewriteUrl.searchParams.set(CACHE_BUST_PARAM, CACHE_BUST_VALUE);
+    rewriteUrl.searchParams.set(CACHE_BUST_PARAM, BUILD_CACHE_BUST_VALUE);
     return applySecurityHeaders(NextResponse.rewrite(rewriteUrl), isProd);
   }
 
