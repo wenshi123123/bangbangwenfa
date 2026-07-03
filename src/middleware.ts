@@ -10,7 +10,11 @@ const RECOVERY_SCRIPT_PATH = `/__bbwv-recover-${BUILD_CACHE_BUST_VALUE}.js`;
 let currentChunkNames: Set<string> | null = null;
 let currentChunkNamesPromise: Promise<Set<string> | null> | null = null;
 
-function applySecurityHeaders(response: NextResponse, isProd: boolean) {
+function applySecurityHeaders(
+  response: NextResponse,
+  isProd: boolean,
+  clearBrowserCache = false
+) {
   // 隐藏技术栈信息
   response.headers.delete('X-Powered-By');
 
@@ -28,6 +32,9 @@ function applySecurityHeaders(response: NextResponse, isProd: boolean) {
   response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
   response.headers.set('Pragma', 'no-cache');
   response.headers.set('Expires', '0');
+  if (clearBrowserCache) {
+    response.headers.set('Clear-Site-Data', '"cache"');
+  }
 
   if (isProd) {
     response.headers.set(
@@ -150,11 +157,15 @@ export async function middleware(request: NextRequest) {
   ) {
     const rewriteUrl = request.nextUrl.clone();
     rewriteUrl.searchParams.set(CACHE_BUST_PARAM, BUILD_CACHE_BUST_VALUE);
-    return applySecurityHeaders(NextResponse.redirect(rewriteUrl, 307), isProd);
+    return applySecurityHeaders(
+      NextResponse.redirect(rewriteUrl, 307),
+      isProd,
+      true
+    );
   }
 
   // 添加安全响应头
-  return applySecurityHeaders(NextResponse.next(), isProd);
+  return applySecurityHeaders(NextResponse.next(), isProd, isHtmlNavigation && !isApiRoute);
 }
 
 export const config = {
