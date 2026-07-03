@@ -3,21 +3,6 @@ import type { NextRequest } from 'next/server';
 import { BUILD_CACHE_BUST_VALUE } from '@/lib/build-meta';
 import { getSiteUrl, shouldRedirectToCanonicalHost } from '@/lib/site';
 
-const CACHE_BUST_PAGES = new Set([
-  '/',
-  '/civil',
-  '/consult',
-  '/sitemap.xml',
-  '/register',
-  '/user',
-  '/lawyer',
-  '/lawyer/login',
-  '/lawyer/join',
-  '/admin/dashboard',
-  '/admin/orders',
-  '/admin/users',
-  '/admin/lawyers',
-]);
 const CACHE_BUST_PARAM = '__bbwv';
 
 function applySecurityHeaders(response: NextResponse, isProd: boolean) {
@@ -73,6 +58,9 @@ export function middleware(request: NextRequest) {
   const isProd = process.env.DEPLOY_ENV === 'PROD' || process.env.NODE_ENV === 'production';
   const hostname = request.nextUrl.hostname?.toLowerCase();
   const { pathname, search } = request.nextUrl;
+  const acceptHeader = request.headers.get('accept') || '';
+  const isHtmlNavigation = acceptHeader.includes('text/html');
+  const isApiRoute = pathname === '/api' || pathname.startsWith('/api/');
 
   const tokenCookie = request.cookies.get('token')?.value;
   const authSyncCookie = request.cookies.get('auth_sync')?.value;
@@ -95,7 +83,8 @@ export function middleware(request: NextRequest) {
 
   if (
     isProd &&
-    CACHE_BUST_PAGES.has(pathname) &&
+    isHtmlNavigation &&
+    !isApiRoute &&
     request.nextUrl.searchParams.get(CACHE_BUST_PARAM) !== BUILD_CACHE_BUST_VALUE
   ) {
     const rewriteUrl = request.nextUrl.clone();
