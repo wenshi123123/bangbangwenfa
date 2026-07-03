@@ -109,6 +109,7 @@ async function loadCurrentChunkNames(request: NextRequest): Promise<Set<string> 
  */
 export async function middleware(request: NextRequest) {
   const isProd = process.env.DEPLOY_ENV === 'PROD' || process.env.NODE_ENV === 'production';
+  const hasBuildCacheBust = BUILD_CACHE_BUST_VALUE !== 'dev';
   const hostname = request.nextUrl.hostname?.toLowerCase();
   const { pathname, search } = request.nextUrl;
   const acceptHeader = request.headers.get('accept') || '';
@@ -136,7 +137,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl, 308);
   }
 
-  if (isProd && isStaticChunkRequest) {
+  if (hasBuildCacheBust && isStaticChunkRequest) {
     const requestedChunk = pathname.slice('/_next/static/chunks/'.length);
     const currentChunkNames = await loadCurrentChunkNames(request);
 
@@ -150,7 +151,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (
-    isProd &&
+    hasBuildCacheBust &&
     isHtmlNavigation &&
     !isApiRoute &&
     request.nextUrl.searchParams.get(CACHE_BUST_PARAM) !== BUILD_CACHE_BUST_VALUE
