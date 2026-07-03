@@ -67,10 +67,18 @@ async function main() {
     recoveryPath,
     `(() => {\n` +
       `  try {\n` +
+      `    const key = '__bbwv_chunk_recovered';\n` +
+      `    if (sessionStorage.getItem(key) === '1') return;\n` +
+      `    sessionStorage.setItem(key, '1');\n` +
       `    const target = new URL(window.location.href);\n` +
       `    target.searchParams.set('__bbwv', ${JSON.stringify(buildToken)});\n` +
       `    window.location.replace(target.toString());\n` +
       `  } catch {\n` +
+      `    try {\n` +
+      `      const key = '__bbwv_chunk_recovered';\n` +
+      `      if (sessionStorage.getItem(key) === '1') return;\n` +
+      `      sessionStorage.setItem(key, '1');\n` +
+      `    } catch {}\n` +
       `    window.location.reload();\n` +
       `  }\n` +
       `})();\n`,
