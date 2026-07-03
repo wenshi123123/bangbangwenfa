@@ -9,10 +9,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 cd "${COZE_WORKSPACE_PATH}"
 
-BUILD_CACHE_BUST_VALUE="$(git rev-parse --short HEAD 2>/dev/null || date -u +%Y%m%d%H%M%S)"
+BUILD_CACHE_BUST_VALUE="$(date -u +%Y%m%d%H%M%S)"
 echo "Preparing build cache-bust token: ${BUILD_CACHE_BUST_VALUE}"
 export BUILD_CACHE_BUST_VALUE
 export NEXT_PUBLIC_BUILD_CACHE_BUST_VALUE="${BUILD_CACHE_BUST_VALUE}"
+
+echo "Cleaning previous build artifacts..."
+rm -rf .next dist
 
 NODE_BIN="${NODE_BIN:-$(command -v node || true)}"
 if [ -z "${NODE_BIN}" ] && [ -x "/Users/Admin/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node" ]; then
