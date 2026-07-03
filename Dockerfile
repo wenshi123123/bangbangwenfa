@@ -21,6 +21,7 @@ COPY . .
 ARG CACHE_BUST=unknown
 RUN echo "Cache bust: ${CACHE_BUST}"
 ENV BUILD_CACHE_BUST_VALUE=${CACHE_BUST}
+ENV NEXT_PUBLIC_BUILD_CACHE_BUST_VALUE=${CACHE_BUST}
 
 # 构建应用
 RUN pnpm exec next build
