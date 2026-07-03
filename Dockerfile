@@ -25,7 +25,8 @@ RUN BUILD_CACHE_BUST_VALUE="$(date -u +%Y%m%d%H%M%S)"; \
     export BUILD_CACHE_BUST_VALUE="${BUILD_CACHE_BUST_VALUE}"; \
     export NEXT_PUBLIC_BUILD_CACHE_BUST_VALUE="${BUILD_CACHE_BUST_VALUE}"; \
     node -e 'const fs=require("fs"); const path=require("path"); const token=process.env.BUILD_CACHE_BUST_VALUE || process.env.NEXT_PUBLIC_BUILD_CACHE_BUST_VALUE || "dev"; const file=path.join(process.cwd(),"src/lib/build-meta.ts"); fs.writeFileSync(file, `export const BUILD_CACHE_BUST_VALUE = ${JSON.stringify(token)};\n`);'; \
-    pnpm exec next build --webpack
+    pnpm exec next build --webpack && \
+    node ./scripts/generate-cache-recovery-assets.mjs
 
 # 构建 server bundle
 RUN pnpm exec tsup src/server.mts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify

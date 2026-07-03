@@ -4,6 +4,10 @@ import { BUILD_CACHE_BUST_VALUE } from '@/lib/build-meta';
 import { getSiteUrl, shouldRedirectToCanonicalHost } from '@/lib/site';
 
 const CACHE_BUST_PARAM = '__bbwv';
+const CHUNK_MANIFEST_PATH = `/__bbwv-chunks-${BUILD_CACHE_BUST_VALUE}.json`;
+const RECOVERY_SCRIPT_PATH = `/__bbwv-recover-${BUILD_CACHE_BUST_VALUE}.js`;
+
+let currentChunkNamesPromise: Promise<Set<string>> | null = null;
 
 function applySecurityHeaders(response: NextResponse, isProd: boolean) {
   // 隐藏技术栈信息
@@ -48,19 +52,49 @@ function applySecurityHeaders(response: NextResponse, isProd: boolean) {
   return response;
 }
 
+async function loadCurrentChunkNames(request: NextRequest): Promise<Set<string>> {
+  if (!currentChunkNamesPromise) {
+    const manifestUrl = new URL(CHUNK_MANIFEST_PATH, request.url);
+    currentChunkNamesPromise = fetch(manifestUrl.toString(), { cache: 'no-store' })
+      .then(async response => {
+        if (!response.ok) {
+          return new Set<string>();
+        }
+
+        const payload = (await response.json()) as
+          | { chunks?: string[] }
+          | string[]
+          | null;
+
+        const chunkList = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.chunks)
+            ? payload.chunks
+            : [];
+
+        return new Set(chunkList);
+      })
+      .catch(() => new Set<string>());
+  }
+
+  return currentChunkNamesPromise;
+}
+
 /**
  * 全局中间件
  * 1. 添加安全响应头
  * 2. 隐藏技术栈信息（移除 X-Powered-By）
  * 3. 静默放行业务请求（各 API 自行验证权限）
  */
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const isProd = process.env.DEPLOY_ENV === 'PROD' || process.env.NODE_ENV === 'production';
   const hostname = request.nextUrl.hostname?.toLowerCase();
   const { pathname, search } = request.nextUrl;
   const acceptHeader = request.headers.get('accept') || '';
   const isHtmlNavigation = acceptHeader.includes('text/html');
   const isApiRoute = pathname === '/api' || pathname.startsWith('/api/');
+  const isStaticChunkRequest =
+    pathname.startsWith('/_next/static/chunks/') && pathname.endsWith('.js');
 
   const tokenCookie = request.cookies.get('token')?.value;
   const authSyncCookie = request.cookies.get('auth_sync')?.value;
@@ -81,6 +115,19 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl, 308);
   }
 
+  if (isProd && isStaticChunkRequest) {
+    const requestedChunk = pathname.slice('/_next/static/chunks/'.length);
+    const currentChunkNames = await loadCurrentChunkNames(request);
+
+    if (!currentChunkNames.has(requestedChunk)) {
+      const recoveryUrl = request.nextUrl.clone();
+      recoveryUrl.pathname = RECOVERY_SCRIPT_PATH;
+      recoveryUrl.search = '';
+      recoveryUrl.hash = '';
+      return applySecurityHeaders(NextResponse.rewrite(recoveryUrl), isProd);
+    }
+  }
+
   if (
     isProd &&
     isHtmlNavigation &&
@@ -98,7 +145,7 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // 匹配所有路径（排除静态资源和 Next.js 内部路径）
-    '/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    // 匹配所有路径（保留静态 chunk 以便旧 HTML 可自动跳转到当前构建）
+    '/((?!_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|woff2?|ttf|map)$).*)',
   ],
 };

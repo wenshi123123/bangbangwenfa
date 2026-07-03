@@ -114,6 +114,9 @@ fi
 echo "Building the Next.js project..."
 "${NODE_BIN}" "${NEXT_BIN}" build --webpack
 
+echo "Generating cache-recovery assets..."
+"${NODE_BIN}" "${COZE_WORKSPACE_PATH}/scripts/generate-cache-recovery-assets.mjs"
+
 echo "Bundling server with tsup..."
 "${NODE_BIN}" "${TSUP_BIN}" src/server.mts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
 
