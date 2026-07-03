@@ -26,6 +26,7 @@ import {
     SheetTrigger,
 } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/use-auth";
+import { getCivilUrl } from "@/lib/site";
 
 const USER_CENTER_HREF = "/me";
 
@@ -138,7 +139,7 @@ export function MobileNav() {
                         </span>
                     </div>
                     <Link
-                        href="/civil"
+                        href={getCivilUrl()}
                         onClick={() => setOpen(false)}
                         className={linkClass(isCivil)}
                     >

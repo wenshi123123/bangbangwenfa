@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 
 import Link from "next/link";
+import { getCivilUrl } from "@/lib/site";
 
 function ScrollReveal(
     {
@@ -346,7 +347,7 @@ export default function Home() {
                                 超<span className="font-medium">3小时</span>费用全免
                             </p>
                             <div className="flex gap-3.5 flex-wrap justify-center md:justify-start">
-                                <Link href="/civil">
+                                <Link href={getCivilUrl()}>
                                     <Button
                                         className="bg-[#C47353] hover:bg-[#A85D40] text-white font-sans text-[14px] font-medium rounded-full px-9 py-[14px] tracking-[0.02em] shadow-md transition-all"
                                     >民事咨询 <ArrowRight className="ml-1.5 h-4 w-4" /></Button>

@@ -1,5 +1,9 @@
 const PREFERRED_CANONICAL_HOST = 'bangbangwenfa.com';
 const WWW_CANONICAL_HOST = `www.${PREFERRED_CANONICAL_HOST}`;
+const BUILD_CACHE_BUST_VALUE =
+  process.env.BUILD_CACHE_BUST_VALUE ||
+  process.env.NEXT_PUBLIC_BUILD_CACHE_BUST_VALUE ||
+  'dev';
 
 function normalizeUrl(input: string): URL | null {
   if (!input) return null;
@@ -65,4 +69,22 @@ export function isCanonicalHost(hostname: string | null | undefined): boolean {
 export function shouldRedirectToCanonicalHost(hostname: string | null | undefined): boolean {
   if (!hostname) return false;
   return hostname.toLowerCase() === WWW_CANONICAL_HOST;
+}
+
+export function getVersionedPath(pathname: string): string {
+  if (!pathname.startsWith('/')) {
+    return pathname;
+  }
+
+  if (BUILD_CACHE_BUST_VALUE === 'dev') {
+    return pathname;
+  }
+
+  const url = new URL(`https://${PREFERRED_CANONICAL_HOST}${pathname}`);
+  url.searchParams.set('__bbwv', BUILD_CACHE_BUST_VALUE);
+  return `${url.pathname}${url.search}`;
+}
+
+export function getCivilUrl(): string {
+  return getVersionedPath('/civil');
 }

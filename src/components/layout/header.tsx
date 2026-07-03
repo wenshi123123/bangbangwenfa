@@ -16,6 +16,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { getCivilUrl } from "@/lib/site";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import {
     NavigationMenu,
@@ -175,7 +176,7 @@ export function Header() {
                                                 asChild
                                                 className={dropdownLinkClass(isCivilPage)}
                                             >
-                                                <Link href="/civil">
+                                                <Link href={getCivilUrl()}>
                                                     <FileText className="w-5 h-5 mt-0.5 text-[#C47353]" />
                                                     <div>
                                                         <div className="font-medium">民事服务</div>

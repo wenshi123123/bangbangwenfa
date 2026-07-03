@@ -4,10 +4,11 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { X, Search, Scale, FileText, Shield, Info, ArrowRight } from "lucide-react";
+import { getCivilUrl } from "@/lib/site";
 
 // 快捷搜索建议
 const quickLinks = [
-  { href: "/civil", label: "民事服务", desc: "离婚纠纷、合同纠纷、劳动仲裁", icon: FileText },
+  { href: getCivilUrl(), label: "民事服务", desc: "离婚纠纷、合同纠纷、劳动仲裁", icon: FileText },
   { href: "/consult", label: "刑事服务", desc: "取保候审、刑事辩护、刑事控告", icon: Scale },
   { href: "/guardian", label: "守护者计划", desc: "了解并加入守护者计划", icon: Shield },
   { href: "/about", label: "关于帮帮", desc: "了解帮帮问法平台", icon: Info },
@@ -56,14 +57,15 @@ export default function SearchModal() {
       // 映射常见搜索词到对应页面
       const civilKeywords = ["离婚", "合同", "劳动仲裁", "欠款", "交通", "房产", "遗产", "借贷"];
       const consultKeywords = ["刑事", "辩护", "取保", "控告", "逮捕", "诈骗", "盗窃"];
+      const civilUrl = getCivilUrl();
 
       if (civilKeywords.some((kw) => trimmed.includes(kw))) {
-        router.push("/civil");
+        router.push(civilUrl);
       } else if (consultKeywords.some((kw) => trimmed.includes(kw))) {
         router.push("/consult");
       } else {
         // 默认跳转到民事服务页
-        router.push("/civil");
+        router.push(civilUrl);
       }
 
       onClose();
@@ -178,12 +180,13 @@ export default function SearchModal() {
                     // 自动提交
                     const civilKeywords = ["离婚", "合同", "劳动仲裁", "欠款", "交通", "房产", "遗产", "借贷"];
                     const consultKeywords = ["刑事", "辩护", "取保", "控告", "逮捕", "诈骗", "盗窃"];
+                    const civilUrl = getCivilUrl();
                     if (civilKeywords.some((kw) => term.includes(kw))) {
-                      router.push("/civil");
+                      router.push(civilUrl);
                     } else if (consultKeywords.some((kw) => term.includes(kw))) {
                       router.push("/consult");
                     } else {
-                      router.push("/civil");
+                      router.push(civilUrl);
                     }
                     onClose();
                   }}

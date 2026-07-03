@@ -3,10 +3,11 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { getCivilUrl } from "@/lib/site";
 
 const footerLinks = {
   服务: [
-    { label: "民事咨询", href: "/civil" },
+    { label: "民事咨询", href: getCivilUrl() },
     { label: "刑事咨询", href: "/consult" },
     { label: "守护者计划", href: "/guardian" },
   ],
