@@ -7,7 +7,8 @@ const CACHE_BUST_PARAM = '__bbwv';
 const CHUNK_MANIFEST_PATH = `/__bbwv-chunks-${BUILD_CACHE_BUST_VALUE}.json`;
 const RECOVERY_SCRIPT_PATH = `/__bbwv-recover-${BUILD_CACHE_BUST_VALUE}.js`;
 
-let currentChunkNamesPromise: Promise<Set<string>> | null = null;
+let currentChunkNames: Set<string> | null = null;
+let currentChunkNamesPromise: Promise<Set<string> | null> | null = null;
 
 function applySecurityHeaders(response: NextResponse, isProd: boolean) {
   // 隐藏技术栈信息
@@ -52,13 +53,17 @@ function applySecurityHeaders(response: NextResponse, isProd: boolean) {
   return response;
 }
 
-async function loadCurrentChunkNames(request: NextRequest): Promise<Set<string>> {
+async function loadCurrentChunkNames(request: NextRequest): Promise<Set<string> | null> {
+  if (currentChunkNames) {
+    return currentChunkNames;
+  }
+
   if (!currentChunkNamesPromise) {
     const manifestUrl = new URL(CHUNK_MANIFEST_PATH, request.url);
     currentChunkNamesPromise = fetch(manifestUrl.toString(), { cache: 'no-store' })
       .then(async response => {
         if (!response.ok) {
-          return new Set<string>();
+          return null;
         }
 
         const payload = (await response.json()) as
@@ -74,10 +79,19 @@ async function loadCurrentChunkNames(request: NextRequest): Promise<Set<string>>
 
         return new Set(chunkList);
       })
-      .catch(() => new Set<string>());
+      .catch(() => null)
+      .finally(() => {
+        currentChunkNamesPromise = null;
+      });
   }
 
-  return currentChunkNamesPromise;
+  const resolvedChunkNames = await currentChunkNamesPromise;
+
+  if (resolvedChunkNames && resolvedChunkNames.size > 0) {
+    currentChunkNames = resolvedChunkNames;
+  }
+
+  return resolvedChunkNames;
 }
 
 /**
@@ -119,7 +133,7 @@ export async function middleware(request: NextRequest) {
     const requestedChunk = pathname.slice('/_next/static/chunks/'.length);
     const currentChunkNames = await loadCurrentChunkNames(request);
 
-    if (!currentChunkNames.has(requestedChunk)) {
+    if (currentChunkNames && !currentChunkNames.has(requestedChunk)) {
       const recoveryUrl = request.nextUrl.clone();
       recoveryUrl.pathname = RECOVERY_SCRIPT_PATH;
       recoveryUrl.search = '';
