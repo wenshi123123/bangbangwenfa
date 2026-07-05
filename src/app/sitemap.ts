@@ -13,6 +13,7 @@ const publicRoutes = [
   '/lawyer-entry-agreement',
   '/lawyer',
   '/lawyer/join',
+  '/lawyer/join/apply',
   '/lawyer/login',
   '/guardian',
   '/pay',

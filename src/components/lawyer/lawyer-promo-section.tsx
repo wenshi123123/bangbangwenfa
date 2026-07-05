@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Shield, Users, TrendingUp, CheckCircle, Sparkles, ArrowRight, ArrowLeft, ChevronDown } from 'lucide-react';
 
 interface LawyerPromoSectionProps {
-  onStartApply: () => void;
+  applyHref: string;
 }
 
 // 背景漂浮圆点组件
@@ -85,7 +85,7 @@ function ScrollProgress() {
   );
 }
 
-export function LawyerPromoSection({ onStartApply }: LawyerPromoSectionProps) {
+export function LawyerPromoSection({ applyHref }: LawyerPromoSectionProps) {
   return (
     <>
       {/* 背景漂浮圆点 */}
@@ -309,13 +309,13 @@ export function LawyerPromoSection({ onStartApply }: LawyerPromoSectionProps) {
 
               {/* 引导按钮 */}
               <div className="text-center mt-10 sm:mt-12 animate-fade-in-up" style={{ animationDelay: '1.6s' }}>
-                <button
-                  onClick={onStartApply}
+                <Link
+                  href={applyHref}
                   className="inline-flex items-center gap-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 group"
                 >
                   <span className="text-lg">立即申请入驻</span>
                   <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
-                </button>
+                </Link>
                 <p className="mt-4 text-sm text-muted-foreground">
                   填写入驻信息，开启律师新篇章
                 </p>

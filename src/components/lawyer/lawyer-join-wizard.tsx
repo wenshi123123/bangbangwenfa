@@ -6,7 +6,7 @@ import { LawyerFormStep } from './lawyer-form-step';
 import { LawyerUploadStep } from './lawyer-upload-step';
 import { LawyerPackageStep } from './lawyer-package-step';
 import { useAuth } from '@/hooks/use-auth';
-import { getVersionedPath } from '@/lib/site';
+import { getLawyerJoinApplyUrl, getVersionedPath } from '@/lib/site';
 
 export interface LawyerFormData {
   name: string;
@@ -92,7 +92,7 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
 
   // 打开登录弹窗
   const handleOpenLogin = () => {
-    sessionStorage.setItem('login_redirect', getVersionedPath('/lawyer/join'));
+    sessionStorage.setItem('login_redirect', getLawyerJoinApplyUrl());
     window.dispatchEvent(new CustomEvent('open-login-modal'));
   };
 

@@ -117,6 +117,10 @@ export function getLawyerJoinUrl(): string {
   return getVersionedPath('/lawyer/join');
 }
 
+export function getLawyerJoinApplyUrl(): string {
+  return getVersionedPath('/lawyer/join/apply');
+}
+
 export function getLawyerLoginUrl(): string {
   return getVersionedPath('/lawyer/login');
 }

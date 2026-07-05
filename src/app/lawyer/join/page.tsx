@@ -1,8 +1,8 @@
-import { LawyerJoinWizard } from '@/components/lawyer/lawyer-join-wizard';
+"use client";
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+import { LawyerPromoSection } from '@/components/lawyer/lawyer-promo-section';
+import { getLawyerJoinApplyUrl } from '@/lib/site';
 
-export default function LawyerJoinPage() {
-  return <LawyerJoinWizard />;
+export default function LawyerJoinIntroPage() {
+  return <LawyerPromoSection applyHref={getLawyerJoinApplyUrl()} />;
 }
