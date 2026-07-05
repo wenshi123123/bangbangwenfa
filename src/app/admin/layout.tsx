@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { getAdminLoginUrl } from '@/lib/site';
-import { 
+import {
   LayoutDashboard, 
   Users, 
   FileText, 
@@ -19,6 +19,7 @@ import {
   Settings,
   Award,
 } from 'lucide-react';
+import { getVersionedPath } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
 
@@ -190,13 +191,14 @@ export default function AdminLayout({
       const currentRedirectPath = currentQuery
         ? `${pathname || '/admin/dashboard'}?${currentQuery}`
         : (pathname || '/admin/dashboard');
+      const versionedRedirectPath = getVersionedPath(currentRedirectPath);
       const adminInfo = localStorage.getItem('admin_info');
       const adminToken = localStorage.getItem('admin_token');
 
       if (!adminInfo || !adminToken) {
         setUnauthorized(true);
         setAuthResolved(true);
-        router.replace(buildAdminLoginHref(currentRedirectPath));
+        router.replace(buildAdminLoginHref(versionedRedirectPath));
         return false;
       }
       try {
@@ -205,7 +207,7 @@ export default function AdminLayout({
         console.error('解析管理员信息失败', e);
         setUnauthorized(true);
         setAuthResolved(true);
-        router.replace(buildAdminLoginHref(currentRedirectPath));
+        router.replace(buildAdminLoginHref(versionedRedirectPath));
         return false;
       }
 
@@ -221,7 +223,7 @@ export default function AdminLayout({
           localStorage.removeItem('admin_token');
           setUnauthorized(true);
           setAuthResolved(true);
-          router.replace(buildAdminLoginHref(currentRedirectPath));
+          router.replace(buildAdminLoginHref(versionedRedirectPath));
           return false;
         }
       } catch (err) {

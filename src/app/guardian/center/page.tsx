@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, Copy, Download, Users, Wallet, TrendingUp, Gift, ChevronRight, CheckCircle, X, AlertCircle, RefreshCw, Info, Clock, Banknote, Shield, Upload, Image, Share2, Loader2, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getGuardianUrl } from '@/lib/site';
 import { Card, CardContent } from '@/components/ui/card';
 import QRCode from 'qrcode';
 import { usePosterGenerator } from '@/hooks/use-poster';
@@ -271,7 +272,7 @@ export default function GuardianCenterPage() {
   const handleLogout = () => {
     localStorage.removeItem('user_info');
     localStorage.removeItem('guardian_user');
-    window.location.href = '/guardian';
+    window.location.href = getGuardianUrl();
   };
 
   // 注册成为守护者
@@ -525,7 +526,7 @@ export default function GuardianCenterPage() {
             {/* 顶部导航 */}
             <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-rose-100/50 mb-8">
               <div className="flex items-center justify-between py-3">
-                <Link href="/guardian" className="flex items-center gap-2 text-rose-600 hover:text-rose-700">
+                <Link href={getGuardianUrl()} className="flex items-center gap-2 text-rose-600 hover:text-rose-700">
                   <ArrowLeft className="w-5 h-5" />
                   <span className="text-sm font-medium">返回</span>
                 </Link>
@@ -575,7 +576,7 @@ export default function GuardianCenterPage() {
           {/* 顶部导航 */}
           <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-rose-100/50 mb-8">
             <div className="flex items-center justify-between py-3">
-              <Link href="/guardian" className="flex items-center gap-2 text-rose-600 hover:text-rose-700">
+              <Link href={getGuardianUrl()} className="flex items-center gap-2 text-rose-600 hover:text-rose-700">
                 <ArrowLeft className="w-5 h-5" />
                 <span className="text-sm font-medium">返回</span>
               </Link>
@@ -638,7 +639,7 @@ export default function GuardianCenterPage() {
       <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-rose-100/50">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <Link href="/guardian" className="flex items-center gap-2 text-rose-600 hover:text-rose-700">
+            <Link href={getGuardianUrl()} className="flex items-center gap-2 text-rose-600 hover:text-rose-700">
               <ArrowLeft className="w-5 h-5" />
               <span className="text-sm font-medium">返回</span>
             </Link>

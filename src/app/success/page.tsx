@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle, Loader2, Search, ArrowRight, Home } from 'lucide-react';
 import Link from 'next/link';
 import { apiRequest } from '@/lib/api/request';
+import { getLawyerUrl, getVersionedPath } from '@/lib/site';
 
 const USER_CENTER_HREF = '/me';
 
@@ -31,7 +32,7 @@ function SuccessContent() {
   const orderId = searchParams.get('orderId') || searchParams.get('orderNo');
   const orderType = searchParams.get('type'); // 'lawyer' 或其他
   const isLawyerOrder = orderType === 'lawyer';
-  const centerHref = isLawyerOrder ? '/lawyer' : USER_CENTER_HREF;
+  const centerHref = isLawyerOrder ? getLawyerUrl() : getVersionedPath(USER_CENTER_HREF);
   const centerLabel = isLawyerOrder ? '前往律师中心' : '查看我的订单';
   
   const [order, setOrder] = useState<OrderData | null>(null);

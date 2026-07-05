@@ -6,6 +6,7 @@ import { LawyerFormStep } from './lawyer-form-step';
 import { LawyerUploadStep } from './lawyer-upload-step';
 import { LawyerPackageStep } from './lawyer-package-step';
 import { useAuth } from '@/hooks/use-auth';
+import { getVersionedPath } from '@/lib/site';
 
 export interface LawyerFormData {
   name: string;
@@ -91,7 +92,7 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
 
   // 打开登录弹窗
   const handleOpenLogin = () => {
-    sessionStorage.setItem('login_redirect', '/lawyer/join');
+    sessionStorage.setItem('login_redirect', getVersionedPath('/lawyer/join'));
     window.dispatchEvent(new CustomEvent('open-login-modal'));
   };
 
@@ -190,7 +191,7 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
           <h2 className="text-xl font-bold text-gray-900 mb-2">您已是认证律师</h2>
           <p className="text-gray-500 mb-6">无需重复入驻，可前往律师工作台管理您的业务</p>
           <a
-            href="/lawyer/dashboard"
+            href={getVersionedPath('/lawyer/dashboard')}
             className="block w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-3 px-6 rounded-xl font-semibold transition-all"
           >
             前往律师工作台

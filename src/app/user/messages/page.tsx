@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { getVersionedPath } from '@/lib/site';
 import Link from 'next/link';
 import { 
   ArrowLeft,
@@ -163,7 +164,7 @@ export default function MessagesPage() {
     if (!user?.id) {
       setNeedsAuth(true);
       setLoading(false);
-      router.replace('/register?next=/user/messages');
+      router.replace(getVersionedPath('/register?next=/user/messages'));
       return;
     }
 
@@ -174,7 +175,7 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!needsAuth) return;
     const timer = setTimeout(() => {
-      router.replace('/register?next=/user/messages');
+      router.replace(getVersionedPath('/register?next=/user/messages'));
     }, 300);
     return () => clearTimeout(timer);
   }, [needsAuth, router]);
@@ -267,22 +268,22 @@ export default function MessagesPage() {
     }
 
     if (notification.type === 'commission_approved' || notification.type === 'commission_rejected') {
-      router.push('/guardian/center?tab=commissions');
+      router.push(getVersionedPath('/guardian/center?tab=commissions'));
       return;
     }
 
     if (notification.type === 'withdrawal_processing' || notification.type === 'withdrawal_completed' || notification.type === 'withdrawal_rejected') {
-      router.push('/guardian/center?tab=withdrawals');
+      router.push(getVersionedPath('/guardian/center?tab=withdrawals'));
       return;
     }
 
     if (notification.type === 'lawyer_review_passed') {
-      router.push('/lawyer');
+      router.push(getVersionedPath('/lawyer'));
       return;
     }
 
     if (notification.type === 'lawyer_review_failed') {
-      router.push('/lawyer/join');
+      router.push(getVersionedPath('/lawyer/join'));
       return;
     }
 
@@ -343,7 +344,7 @@ export default function MessagesPage() {
           <p className="mt-2 text-sm text-[#8C7B6E]">登录后才能查看消息通知</p>
           <div className="mt-6">
             <button
-              onClick={() => router.replace('/register?next=/user/messages')}
+              onClick={() => router.replace(getVersionedPath('/register?next=/user/messages'))}
               className="inline-flex items-center justify-center rounded-full bg-rose-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-rose-600"
             >
               前往注册 / 登录

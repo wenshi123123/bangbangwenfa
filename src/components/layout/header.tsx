@@ -16,7 +16,18 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { getCivilUrl } from "@/lib/site";
+import {
+    getAboutUrl,
+    getConsultUrl,
+    getCivilUrl,
+    getGuardianCenterUrl,
+    getGuardianUrl,
+    getHomeUrl,
+    getLawyerJoinUrl,
+    getLawyerLoginUrl,
+    getRegisterUrl,
+    getVersionedPath,
+} from "@/lib/site";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import {
     NavigationMenu,
@@ -96,7 +107,10 @@ export function Header() {
 
     const handleLoginClick = () => {
         if (typeof window !== "undefined") {
-            sessionStorage.setItem("login_redirect", pathname || "/");
+            sessionStorage.setItem(
+                "login_redirect",
+                getVersionedPath(`${pathname || "/"}${window.location.search}`)
+            );
         }
         window.dispatchEvent(new CustomEvent("open-login-modal"));
     };
@@ -135,7 +149,7 @@ export function Header() {
                 <div className="flex items-center justify-between h-12 sm:h-14">
                     {/* Logo */}
                     <Link
-                        href="/"
+                        href={getHomeUrl()}
                         className="flex items-center gap-2 shrink-0 group nav-logo"
                     >
                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg overflow-hidden border border-[rgba(196,115,83,0.2)] group-hover:border-[#C47353] transition-colors">
@@ -155,7 +169,7 @@ export function Header() {
                     <div className="hidden lg:flex flex-1 items-center justify-between mx-8">
                         {/* 首页 */}
                         <Link
-                            href="/"
+                            href={getHomeUrl()}
                             className={mainLinkClass(isHomePage)}
                         >
                             首页
@@ -189,7 +203,7 @@ export function Header() {
                                                 asChild
                                                 className={dropdownLinkClass(isConsultPage)}
                                             >
-                                                <Link href="/consult">
+                                                <Link href={getConsultUrl()}>
                                                     <Scale className="w-5 h-5 mt-0.5 text-[#C47353]" />
                                                     <div>
                                                         <div className="font-medium flex items-center gap-1.5">
@@ -208,7 +222,7 @@ export function Header() {
 
                         {/* 关于帮帮 */}
                         <Link
-                            href="/about"
+                            href={getAboutUrl()}
                             className={mainLinkClass(isAboutPage)}
                         >
                             关于帮帮
@@ -229,7 +243,7 @@ export function Header() {
                                                 asChild
                                                 className={dropdownLinkClass(isGuardianPage && !isGuardianCenter)}
                                             >
-                                                <Link href="/guardian">
+                                                <Link href={getGuardianUrl()}>
                                                     <Shield className="w-5 h-5 mt-0.5 text-[#C47353]" />
                                                     <div>
                                                         <div className="font-medium">守护者计划</div>
@@ -242,7 +256,7 @@ export function Header() {
                                                 asChild
                                                 className={dropdownLinkClass(isGuardianCenter)}
                                             >
-                                                <Link href="/guardian/center">
+                                                <Link href={getGuardianCenterUrl()}>
                                                     <User className="w-5 h-5 mt-0.5 text-[#8C7B6E]" />
                                                     <div>
                                                         <div className="font-medium">守护者中心</div>
@@ -271,7 +285,7 @@ export function Header() {
                                                 asChild
                                                 className={dropdownLinkClass(isLawyerJoin)}
                                             >
-                                                <Link href="/lawyer/join">
+                                                <Link href={getLawyerJoinUrl()}>
                                                     <UserPlus className="w-5 h-5 mt-0.5 text-[#8C7B6E]" />
                                                     <div>
                                                         <div className="font-medium">律师入驻</div>
@@ -284,7 +298,7 @@ export function Header() {
                                                 asChild
                                                 className={dropdownLinkClass(isLawyerLogin)}
                                             >
-                                                <Link href="/lawyer/login">
+                                                <Link href={getLawyerLoginUrl()}>
                                                     <Briefcase className="w-5 h-5 mt-0.5 text-[#8C7B6E]" />
                                                     <div>
                                                         <div className="font-medium">律师登录</div>
@@ -311,7 +325,7 @@ export function Header() {
                             <div className="flex items-center gap-1">
                                 {user?.isLawyer && (
                                     <Link
-                                        href="/lawyer"
+                                        href={getVersionedPath('/lawyer')}
                                         className="hidden lg:flex items-center gap-1.5 px-2 py-1 text-sm font-medium text-[#C47353] hover:bg-[#FAF7F2] rounded-lg transition-colors font-serif"
                                     >
                                         <Briefcase className="w-4 h-4" />
@@ -320,7 +334,7 @@ export function Header() {
                                 )}
                                 {user?.isGuardian && (
                                     <Link
-                                        href="/guardian/center"
+                                        href={getGuardianCenterUrl()}
                                         className="hidden lg:flex items-center gap-1.5 px-2 py-1 text-sm font-medium text-[#8C7B6E] hover:bg-[#FAF7F2] rounded-lg transition-colors font-serif"
                                     >
                                         <Shield className="w-4 h-4" />
@@ -354,7 +368,7 @@ export function Header() {
                         ) : (
                             <div className="flex items-center gap-1.5">
                                 <Link
-                                    href="/register"
+                                    href={getRegisterUrl()}
                                     className="hidden lg:inline-flex items-center px-3 py-1.5 text-sm font-medium font-serif text-[#C47353] hover:bg-[#FAF7F2] rounded-full transition-colors"
                                 >
                                     注册

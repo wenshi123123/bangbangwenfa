@@ -16,6 +16,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { getVersionedPath } from '@/lib/site';
 
 function LawyerLoginPageContent() {
   const router = useRouter();
@@ -207,7 +208,7 @@ function LawyerLoginPageContent() {
 
   const handleLogin = () => {
     if (typeof window !== 'undefined') {
-      sessionStorage.setItem('login_redirect', '/lawyer/login');
+      sessionStorage.setItem('login_redirect', getVersionedPath('/lawyer/login'));
       window.dispatchEvent(new CustomEvent('open-login-modal'));
     }
   };
@@ -362,7 +363,7 @@ function LawyerLoginPageContent() {
             <p className="text-[#3D322D] font-medium text-sm">您还没有提交入驻申请</p>
             <p className="text-xs text-[#A89B90] mt-1">点击下方按钮开始申请流程</p>
           </div>
-          <Link href="/lawyer/join">
+          <Link href={getVersionedPath('/lawyer/join')}>
             <button className="w-full py-3.5 bg-[#C47353] text-white font-medium rounded-xl hover:bg-[#A85D40] transition-colors text-sm">
               申请成为臻选律师
             </button>
@@ -503,7 +504,7 @@ function LawyerLoginPageContent() {
     <div className="min-h-screen bg-[#FAF7F2] flex flex-col">
       <div className="p-4">
         <Link
-          href="/"
+          href={getVersionedPath('/')}
           className="inline-flex items-center gap-2 text-sm text-[#8C7B6E]"
         >
           <ArrowLeft className="w-4 h-4" />

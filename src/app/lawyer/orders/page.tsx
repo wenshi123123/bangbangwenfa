@@ -15,6 +15,7 @@ import {
 import { useLawyerAuth } from '@/hooks/use-lawyer-auth';
 import { LawyerBottomNav } from '@/components/lawyer/lawyer-bottom-nav';
 import { getLawyerOrderResponseText } from '@/lib/lawyer/order-detail-presenter';
+import { getLawyerUrl } from '@/lib/site';
 
 interface Order {
   id: number;
@@ -165,7 +166,7 @@ export default function LawyerOrdersPage() {
       {/* ===== 顶栏 ===== */}
       <div className="sticky top-0 z-40 bg-[#FDF8F0]/95 backdrop-blur-xl border-b border-[#E8D5C0]/50">
         <div className="px-4 py-3 flex items-center justify-between max-w-2xl lg:max-w-5xl mx-auto">
-          <Link href="/lawyer" className="text-sm text-[#8C7B6E] hover:text-[#C47353] transition-colors">
+          <Link href={getLawyerUrl()} className="text-sm text-[#8C7B6E] hover:text-[#C47353] transition-colors">
             ← 返回工作台
           </Link>
           <span className="text-[15px] font-semibold text-[#1C1917] font-serif tracking-wide">我的订单</span>

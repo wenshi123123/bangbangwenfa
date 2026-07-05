@@ -4,15 +4,15 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { X, Search, Scale, FileText, Shield, Info, ArrowRight } from "lucide-react";
-import { getCivilUrl } from "@/lib/site";
+import { getAboutUrl, getCivilUrl, getConsultUrl, getGuardianUrl, getLawyerJoinUrl } from "@/lib/site";
 
 // 快捷搜索建议
 const quickLinks = [
   { href: getCivilUrl(), label: "民事服务", desc: "离婚纠纷、合同纠纷、劳动仲裁", icon: FileText },
-  { href: "/consult", label: "刑事服务", desc: "取保候审、刑事辩护、刑事控告", icon: Scale },
-  { href: "/guardian", label: "守护者计划", desc: "了解并加入守护者计划", icon: Shield },
-  { href: "/about", label: "关于帮帮", desc: "了解帮帮问法平台", icon: Info },
-  { href: "/lawyer/join", label: "律师入驻", desc: "申请成为平台律师", icon: Scale },
+  { href: getConsultUrl(), label: "刑事服务", desc: "取保候审、刑事辩护、刑事控告", icon: Scale },
+  { href: getGuardianUrl(), label: "守护者计划", desc: "了解并加入守护者计划", icon: Shield },
+  { href: getAboutUrl(), label: "关于帮帮", desc: "了解帮帮问法平台", icon: Info },
+  { href: getLawyerJoinUrl(), label: "律师入驻", desc: "申请成为平台律师", icon: Scale },
 ];
 
 // 热门搜索词
@@ -62,7 +62,7 @@ export default function SearchModal() {
       if (civilKeywords.some((kw) => trimmed.includes(kw))) {
         router.push(civilUrl);
       } else if (consultKeywords.some((kw) => trimmed.includes(kw))) {
-        router.push("/consult");
+        router.push(getConsultUrl());
       } else {
         // 默认跳转到民事服务页
         router.push(civilUrl);
@@ -184,7 +184,7 @@ export default function SearchModal() {
                     if (civilKeywords.some((kw) => term.includes(kw))) {
                       router.push(civilUrl);
                     } else if (consultKeywords.some((kw) => term.includes(kw))) {
-                      router.push("/consult");
+        router.push(getConsultUrl());
                     } else {
                       router.push(civilUrl);
                     }

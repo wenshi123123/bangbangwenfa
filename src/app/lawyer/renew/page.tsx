@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { LawyerBottomNav } from '@/components/lawyer/lawyer-bottom-nav';
 import { useLawyerAuth } from '@/hooks/use-lawyer-auth';
+import { getLawyerLoginUrl, getLawyerUrl } from '@/lib/site';
 
 // 套餐配置
 const renewalPackages = [
@@ -39,7 +40,7 @@ function RenewContent() {
         const result = await res.json();
         if (result.success && result.data?.status === 'paid') {
           setPaid(true);
-          setTimeout(() => { router.push('/lawyer'); }, 2000);
+          setTimeout(() => { router.push(getLawyerUrl()); }, 2000);
         }
       } catch (err: any) {
         console.warn('轮询支付状态失败:', err?.message || err);
@@ -71,7 +72,7 @@ function RenewContent() {
           </div>
           <h2 className="text-xl font-serif text-[#3D322D] mb-2">请先登录律师账号</h2>
           <p className="text-sm text-[#8C7B6E] mb-6">登录后才能进行会员续费操作</p>
-          <Link href="/lawyer/login">
+          <Link href={getLawyerLoginUrl()}>
             <Button className="w-full py-3 bg-[#C47353] hover:bg-[#A85D40] text-white rounded-full font-serif tracking-wide shadow-[0_2px_12px_rgba(196,115,83,0.3)]">
               前往登录
             </Button>
@@ -107,7 +108,7 @@ function RenewContent() {
   }, [selectedPackage, loading]);
 
   if (paid) {
-    return (<div className="min-h-screen flex items-center justify-center p-4 bg-[#FAF7F2]"><div className="bg-white rounded-xl p-8 max-w-sm w-full text-center"><div className="w-16 h-16 bg-[#C47353]/10 rounded-full flex items-center justify-center mx-auto mb-4"><CheckCircle className="w-8 h-8 text-[#C47353]" /></div><h2 className="text-xl font-serif text-[#3D322D] mb-2">续费成功</h2><p className="text-sm text-[#8C7B6E] mb-6">您的会员已成功续期，页面即将跳转...</p><Link href="/lawyer"><Button className="w-full py-3 bg-[#C47353] hover:bg-[#A85D40] text-white rounded-full font-serif tracking-wide shadow-[0_2px_12px_rgba(196,115,83,0.3)]">返回律师后台</Button></Link></div></div>);
+    return (<div className="min-h-screen flex items-center justify-center p-4 bg-[#FAF7F2]"><div className="bg-white rounded-xl p-8 max-w-sm w-full text-center"><div className="w-16 h-16 bg-[#C47353]/10 rounded-full flex items-center justify-center mx-auto mb-4"><CheckCircle className="w-8 h-8 text-[#C47353]" /></div><h2 className="text-xl font-serif text-[#3D322D] mb-2">续费成功</h2><p className="text-sm text-[#8C7B6E] mb-6">您的会员已成功续期，页面即将跳转...</p><Link href={getLawyerUrl()}><Button className="w-full py-3 bg-[#C47353] hover:bg-[#A85D40] text-white rounded-full font-serif tracking-wide shadow-[0_2px_12px_rgba(196,115,83,0.3)]">返回律师后台</Button></Link></div></div>);
   }
 
   if (qrcodeUrl) {
@@ -119,7 +120,7 @@ function RenewContent() {
       <div className="sticky top-0 z-40 bg-[#FAF7F2]/80 backdrop-blur-md border-b border-[rgba(196,115,83,0.15)]">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <Link href="/lawyer" className="flex items-center gap-1.5 text-[#C47353] hover:text-[#A85D40] transition-colors duration-150"><ArrowLeft className="w-5 h-5" /><span className="text-sm font-medium font-serif">返回</span></Link>
+            <Link href={getLawyerUrl()} className="flex items-center gap-1.5 text-[#C47353] hover:text-[#A85D40] transition-colors duration-150"><ArrowLeft className="w-5 h-5" /><span className="text-sm font-medium font-serif">返回</span></Link>
             <div className="flex items-center gap-2"><span className="text-base font-serif font-normal text-[#C47353]">续费会员</span></div>
             <div className="w-16" />
           </div>

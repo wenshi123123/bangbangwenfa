@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { getVersionedPath } from '@/lib/site';
 import {
   ArrowLeft,
   Clock,
@@ -227,7 +228,7 @@ export default function LawyerPendingPage() {
       <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-[#EBE3D8]/60">
         <div className="px-4 py-3 flex items-center justify-between max-w-2xl mx-auto">
           <Link
-            href="/lawyer"
+            href={getVersionedPath('/lawyer')}
             className="text-sm text-[#8C7B6E] hover:text-[#C47353] transition-colors"
           >
             ← 返回

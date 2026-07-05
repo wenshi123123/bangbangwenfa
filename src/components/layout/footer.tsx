@@ -3,17 +3,24 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { getAdminLoginUrl, getCivilUrl } from "@/lib/site";
+import {
+  getAdminLoginUrl,
+  getCivilUrl,
+  getConsultUrl,
+  getGuardianUrl,
+  getLawyerJoinUrl,
+  getLawyerLoginUrl,
+} from "@/lib/site";
 
 const footerLinks = {
   服务: [
     { label: "民事咨询", href: getCivilUrl() },
-    { label: "刑事咨询", href: "/consult" },
-    { label: "守护者计划", href: "/guardian" },
+    { label: "刑事咨询", href: getConsultUrl() },
+    { label: "守护者计划", href: getGuardianUrl() },
   ],
   律师: [
-    { label: "律师入驻", href: "/lawyer/join" },
-    { label: "律师登录", href: "/lawyer/login" },
+    { label: "律师入驻", href: getLawyerJoinUrl() },
+    { label: "律师登录", href: getLawyerLoginUrl() },
     { label: "入驻承诺书", href: "/lawyer-commitment" },
   ],
   法律信息: [

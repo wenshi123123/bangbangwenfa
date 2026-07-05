@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { getVersionedPath } from '@/lib/site';
 import { Loader2, Shield, Lock, User } from 'lucide-react';
 
 export default function AdminLoginPage() {
@@ -14,7 +15,8 @@ export default function AdminLoginPage() {
   const [error, setError] = useState('');
   const redirectTarget = useMemo(() => {
     const redirect = searchParams.get('redirect');
-    return redirect && redirect.startsWith('/admin') ? redirect : '/admin/dashboard';
+    const normalizedRedirect = redirect && redirect.startsWith('/admin') ? redirect : '/admin/dashboard';
+    return getVersionedPath(normalizedRedirect);
   }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -120,7 +122,7 @@ export default function AdminLoginPage() {
 
           <div className="mt-6 text-center">
             <Link
-              href="/"
+              href={getVersionedPath('/')}
               className="text-sm text-green-600 hover:text-green-700 transition-colors"
             >
               返回首页

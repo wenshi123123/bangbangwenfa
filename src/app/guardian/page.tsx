@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import NextLink from 'next/link';
 import { ArrowLeft, Heart, Shield, MessageCircle, ChevronDown, Sparkles, ChevronRight, Gift, Star, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getGuardianCenterUrl } from '@/lib/site';
 
 const Link = NextLink;
 
@@ -578,7 +579,7 @@ function AnimationStyles() {
 // 主页面
 export default function GuardianPage() {
   const handleStartJoin = () => {
-    window.location.href = '/guardian/center';
+    window.location.href = getGuardianCenterUrl();
   };
   
   return (

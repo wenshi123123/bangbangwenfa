@@ -24,7 +24,13 @@ import {
 } from "lucide-react";
 
 import Link from "next/link";
-import { getCivilUrl } from "@/lib/site";
+import {
+    getAboutUrl,
+    getCivilUrl,
+    getConsultUrl,
+    getGuardianCenterUrl,
+    getLawyerJoinUrl,
+} from "@/lib/site";
 
 function ScrollReveal(
     {
@@ -352,7 +358,7 @@ export default function Home() {
                                         className="bg-[#C47353] hover:bg-[#A85D40] text-white font-sans text-[14px] font-medium rounded-full px-9 py-[14px] tracking-[0.02em] shadow-md transition-all"
                                     >民事咨询 <ArrowRight className="ml-1.5 h-4 w-4" /></Button>
                                 </Link>
-                                <Link href="/consult">
+                                <Link href={getConsultUrl()}>
                                     <Button
                                         variant="outline"
                                         className="border-[#C47353] text-[#C47353] hover:bg-[#C47353] hover:text-white font-sans text-[14px] font-medium rounded-full px-9 py-[14px] tracking-[0.02em]"
@@ -469,7 +475,7 @@ export default function Home() {
                     </div>
                     <ScrollReveal className="text-center mt-12" delay={400}>
                         <Link
-                            href="/consult"
+                            href={getConsultUrl()}
                             className="inline-flex items-center gap-2 font-sans text-[14px] text-[#C47353] no-underline border-b border-[rgba(196,115,83,0.2)] pb-0.5 hover:text-[#A85D40] hover:border-[#C47353] transition-colors">
                             开始咨询 <ArrowRight className="w-4 h-4" />
                         </Link>
@@ -529,8 +535,8 @@ export default function Home() {
                     </div>
 
                     <ScrollReveal className="flex justify-center gap-6 flex-wrap">
-                        <Link href="/about" className="inline-flex items-center gap-1.5 font-sans text-[14px] text-[#C47353] no-underline border-b border-[rgba(196,115,83,0.2)] pb-0.5 hover:text-[#A85D40] hover:border-[#C47353] transition-colors">了解帮帮 →</Link>
-                        <Link href="/lawyer/join" className="inline-flex items-center gap-1.5 font-sans text-[14px] text-[#C47353] no-underline border-b border-[rgba(196,115,83,0.2)] pb-0.5 hover:text-[#A85D40] hover:border-[#C47353] transition-colors">律师入驻 →</Link>
+                        <Link href={getAboutUrl()} className="inline-flex items-center gap-1.5 font-sans text-[14px] text-[#C47353] no-underline border-b border-[rgba(196,115,83,0.2)] pb-0.5 hover:text-[#A85D40] hover:border-[#C47353] transition-colors">了解帮帮 →</Link>
+                        <Link href={getLawyerJoinUrl()} className="inline-flex items-center gap-1.5 font-sans text-[14px] text-[#C47353] no-underline border-b border-[rgba(196,115,83,0.2)] pb-0.5 hover:text-[#A85D40] hover:border-[#C47353] transition-colors">律师入驻 →</Link>
                     </ScrollReveal>
                 </div>
             </section>
@@ -551,7 +557,7 @@ export default function Home() {
                             onClick={() => {
                                 const savedUser = localStorage.getItem("user_info");
                                 if (savedUser) {
-                                    window.location.href = "/guardian/center";
+                                    window.location.href = getGuardianCenterUrl();
                                 } else {
                                     window.dispatchEvent(new CustomEvent("open-login-modal"));
                                 }
@@ -571,7 +577,7 @@ export default function Home() {
                         </div>
 
                         <p className="font-sans text-[12px] text-[#B4A99A] mt-5">
-                            已是守护者？<Link href="/guardian/center" className="text-[#C47353] no-underline border-b border-[rgba(196,115,83,0.2)]">进入守护者中心 →</Link>
+                            已是守护者？<Link href={getGuardianCenterUrl()} className="text-[#C47353] no-underline border-b border-[rgba(196,115,83,0.2)]">进入守护者中心 →</Link>
                         </p>
                     </ScrollReveal>
                 </div>

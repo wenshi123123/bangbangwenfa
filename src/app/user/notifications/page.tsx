@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { getVersionedPath } from '@/lib/site';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -153,12 +154,12 @@ export default function UserNotificationsPage() {
     const { type, data } = n;
 
     if (type === 'commission_approved' || type === 'commission_rejected') {
-      router.push('/guardian/center?tab=commissions');
+      router.push(getVersionedPath('/guardian/center?tab=commissions'));
       return;
     }
 
     if (type === 'withdrawal_processing' || type === 'withdrawal_completed' || type === 'withdrawal_rejected') {
-      router.push('/guardian/center?tab=withdrawals');
+      router.push(getVersionedPath('/guardian/center?tab=withdrawals'));
       return;
     }
 
@@ -169,12 +170,12 @@ export default function UserNotificationsPage() {
     }
 
     if (type === 'lawyer_review_passed') {
-      router.push('/lawyer');
+      router.push(getVersionedPath('/lawyer'));
       return;
     }
 
     if (type === 'lawyer_review_failed') {
-      router.push('/lawyer/join');
+      router.push(getVersionedPath('/lawyer/join'));
       return;
     }
 

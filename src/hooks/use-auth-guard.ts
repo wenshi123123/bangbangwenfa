@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from './use-auth';
+import { getVersionedPath } from '@/lib/site';
 
 interface UseAuthGuardOptions {
   // 是否需要登录
@@ -39,7 +40,10 @@ export function useAuthGuard(options: UseAuthGuardOptions = {}) {
     if (!isLoggedIn) {
       // 保存当前路径，登录后返回
       if (typeof window !== 'undefined' && pathname) {
-        sessionStorage.setItem('auth_guard_redirect', pathname + window.location.search);
+        sessionStorage.setItem(
+          'auth_guard_redirect',
+          getVersionedPath(`${pathname}${window.location.search}`)
+        );
       }
       
       // 打开登录弹窗
@@ -47,7 +51,7 @@ export function useAuthGuard(options: UseAuthGuardOptions = {}) {
       
       // 如果指定了重定向路径
       if (redirectTo) {
-        router.push(redirectTo);
+        router.push(getVersionedPath(redirectTo));
       }
     }
   }, [isLoggedIn, isLoading, requireAuth, pathname, router, redirectTo, excludedPaths]);
@@ -58,9 +62,9 @@ export function useAuthGuard(options: UseAuthGuardOptions = {}) {
     // 获取登录后应跳转的路径
     getRedirectPath: () => {
       if (typeof window !== 'undefined') {
-        return sessionStorage.getItem('auth_guard_redirect') || '/';
+        return sessionStorage.getItem('auth_guard_redirect') || getVersionedPath('/');
       }
-      return '/';
+      return getVersionedPath('/');
     },
     // 清除重定向路径
     clearRedirectPath: () => {

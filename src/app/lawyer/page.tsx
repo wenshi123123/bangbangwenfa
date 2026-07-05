@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useLawyerAuth } from '@/hooks/use-lawyer-auth';
 import { LawyerBottomNav } from '@/components/lawyer/lawyer-bottom-nav';
+import { getVersionedPath } from '@/lib/site';
 
 interface LawyerProfile {
   id: number;
@@ -294,11 +295,11 @@ export default function LawyerPage() {
           await fetchLawyerData();
         } else {
           alert('您还没有律师入驻资格，即将跳转到入驻申请页面');
-          window.location.href = '/lawyer/join';
+          window.location.href = getVersionedPath('/lawyer/join');
         }
       } else {
         alert('请先登录后再访问');
-        window.location.href = '/lawyer/login';
+        window.location.href = getVersionedPath('/lawyer/login');
       }
     } catch {
       alert('加载失败，请刷新页面重试');
@@ -562,7 +563,7 @@ export default function LawyerPage() {
                       </span>
                     )}
                     <Link
-                      href="/lawyer/profile"
+                      href={getVersionedPath('/lawyer/profile')}
                       className="inline-flex items-center gap-1 text-[11px] text-white/50 hover:text-white/80 transition-colors"
                     >
                       编辑 <ChevronRight className="w-3 h-3" />
@@ -741,7 +742,7 @@ export default function LawyerPage() {
                     })}
                   </div>
                 )}
-                <Link href="/lawyer/renew" className="mt-3 inline-block">
+                <Link href={getVersionedPath('/lawyer/renew')} className="mt-3 inline-block">
                   <span
                     className={`text-[11px] px-3 py-1.5 rounded-lg font-medium transition-colors ${
                       remainingDays?.expired
@@ -824,7 +825,7 @@ export default function LawyerPage() {
                         ))}
                       </div>
                       <Link
-                        href="/lawyer/profile"
+                        href={getVersionedPath('/lawyer/profile')}
                         className="inline-flex items-center gap-1.5 text-xs font-medium text-[#C47353] hover:text-[#A85D40] transition-colors"
                       >
                         前往完善资料
@@ -951,7 +952,7 @@ export default function LawyerPage() {
         {/*  快捷入口 + 联系客服（底部功能区）                                */}
         {/* ============================================================ */}
         <div className="grid grid-cols-2 gap-4 animate-slide-up stagger-4">
-          <Link href="/lawyer/orders" className="group">
+          <Link href={getVersionedPath('/lawyer/orders')} className="group">
             <div className="bg-[#FFFBF5] rounded-xl border border-[#E8D5C0] overflow-hidden hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
               <div className="h-[3px] bg-[#5C7A5A]" />
               <div className="p-5 flex items-center gap-4">
@@ -966,7 +967,7 @@ export default function LawyerPage() {
               </div>
             </div>
           </Link>
-          <Link href="/lawyer/profile" className="group">
+          <Link href={getVersionedPath('/lawyer/profile')} className="group">
             <div className="bg-[#FFFBF5] rounded-xl border border-[#E8D5C0] overflow-hidden hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
               <div className="h-[3px] bg-[#C47353]" />
               <div className="p-5 flex items-center gap-4">

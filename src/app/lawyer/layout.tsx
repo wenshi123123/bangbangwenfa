@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { LawyerBottomNav } from '@/components/lawyer/lawyer-bottom-nav';
+import { getVersionedPath } from '@/lib/site';
 
 // 不需要认证的律师相关页面
 const PUBLIC_LAWYER_PATHS = ['/lawyer/login', '/lawyer/join'];
@@ -40,8 +41,9 @@ export default function LawyerLayout({
       const currentRedirectPath = currentQuery
         ? `${pathname || '/lawyer'}?${currentQuery}`
         : (pathname || '/lawyer');
-      sessionStorage.setItem('auth_guard_redirect', currentRedirectPath);
-      router.replace(`/lawyer/login?redirect=${encodeURIComponent(currentRedirectPath)}`);
+      const versionedRedirectPath = getVersionedPath(currentRedirectPath);
+      sessionStorage.setItem('auth_guard_redirect', versionedRedirectPath);
+      router.replace(`${getVersionedPath('/lawyer/login')}?redirect=${encodeURIComponent(versionedRedirectPath)}`);
       return;
     }
 
@@ -63,7 +65,7 @@ export default function LawyerLayout({
           <p className="mt-2 text-sm text-slate-500">请先登录律师账号后再访问后台</p>
           <div className="mt-6">
             <button
-              onClick={() => router.replace('/lawyer/login')}
+              onClick={() => router.replace(getVersionedPath('/lawyer/login'))}
               className="inline-flex items-center justify-center rounded-full bg-green-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-700"
             >
               前往登录

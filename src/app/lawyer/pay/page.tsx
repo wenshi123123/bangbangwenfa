@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Loader2, CheckCircle, ArrowLeft, Smartphone, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
+import { getLawyerUrl } from '@/lib/site';
 
 declare global {
   interface Window {
@@ -45,7 +46,7 @@ function LawyerPayContent() {
       router.back();
       return;
     }
-    router.push('/lawyer');
+    router.push(getLawyerUrl());
   };
 
   const [orderId, setOrderId] = useState<string | null>(null);

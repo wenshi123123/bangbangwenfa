@@ -7,6 +7,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+    getPrivacyPolicyUrl,
+    getRegisterUrl,
+    getUserAgreementUrl,
+    getVersionedPath,
+} from "@/lib/site";
 type LoginStep = "input" | "verifying" | "success" | "error";
 type LoginTab = "code" | "password";
 
@@ -157,6 +163,7 @@ export default function LoginModal() {
                     authGuardRedirect ||
                     modalRedirect ||
                     (userType === "lawyer" ? "/lawyer" : userType === "guardian" ? "/guardian/center" : null);
+                const versionedRedirectPath = redirectPath ? getVersionedPath(redirectPath) : null;
 
                 setTimeout(() => {
                     onClose();
@@ -167,8 +174,8 @@ export default function LoginModal() {
                         sessionStorage.removeItem("login_redirect");
                     }
 
-                    if (redirectPath) {
-                        router.push(redirectPath);
+                    if (versionedRedirectPath) {
+                        router.push(versionedRedirectPath);
                     } else {
                         router.refresh();
                     }
@@ -240,6 +247,7 @@ export default function LoginModal() {
                     authGuardRedirect ||
                     modalRedirect ||
                     (userType === "lawyer" ? "/lawyer" : userType === "guardian" ? "/guardian/center" : null);
+                const versionedRedirectPath = redirectPath ? getVersionedPath(redirectPath) : null;
 
                 setTimeout(() => {
                     onClose();
@@ -250,8 +258,8 @@ export default function LoginModal() {
                         sessionStorage.removeItem("login_redirect");
                     }
 
-                    if (redirectPath) {
-                        router.push(redirectPath);
+                    if (versionedRedirectPath) {
+                        router.push(versionedRedirectPath);
                     } else {
                         router.refresh();
                     }
@@ -469,9 +477,9 @@ export default function LoginModal() {
                             />
                             <label htmlFor="agreement" className="cursor-pointer leading-relaxed">
                                 我已阅读并同意
-                                <Link href="/user-agreement" onClick={onClose} className="text-[#C47353] hover:underline">《用户协议》</Link>
+                                <Link href={getUserAgreementUrl()} onClick={onClose} className="text-[#C47353] hover:underline">《用户协议》</Link>
                                 和
-                                <Link href="/privacy-policy" onClick={onClose} className="text-[#C47353] hover:underline">《隐私政策》</Link>
+                                <Link href={getPrivacyPolicyUrl()} onClick={onClose} className="text-[#C47353] hover:underline">《隐私政策》</Link>
                                 等协议内容
                             </label>
                         </div>
@@ -487,7 +495,7 @@ export default function LoginModal() {
                             }}>
                             <span className="text-muted-foreground">还没有账号？</span>
                             <a
-                                href="/register"
+                                href={getRegisterUrl()}
                                 onClick={onClose}
                                 className="text-[#C47353] hover:underline ml-1">立即注册
                                                 </a>

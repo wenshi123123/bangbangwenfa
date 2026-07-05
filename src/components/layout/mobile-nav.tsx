@@ -26,7 +26,17 @@ import {
     SheetTrigger,
 } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/use-auth";
-import { getCivilUrl } from "@/lib/site";
+import {
+    getAboutUrl,
+    getCivilUrl,
+    getConsultUrl,
+    getGuardianCenterUrl,
+    getGuardianUrl,
+    getHomeUrl,
+    getLawyerJoinUrl,
+    getLawyerLoginUrl,
+    getVersionedPath,
+} from "@/lib/site";
 
 const USER_CENTER_HREF = "/me";
 
@@ -39,7 +49,10 @@ export function MobileNav() {
     const handleLoginClick = () => {
         setOpen(false);
         if (typeof window !== "undefined") {
-            sessionStorage.setItem("login_redirect", pathname || "/");
+            sessionStorage.setItem(
+                "login_redirect",
+                getVersionedPath(`${pathname || "/"}${window.location.search}`)
+            );
         }
         window.dispatchEvent(new CustomEvent("open-login-modal"));
     };
@@ -124,7 +137,7 @@ export function MobileNav() {
                 {/* Navigation */}
                 <nav className="flex flex-col gap-0.5 px-3 py-2 overflow-y-auto">
                     <Link
-                        href="/"
+                        href={getHomeUrl()}
                         onClick={() => setOpen(false)}
                         className={linkClass(isHome)}
                     >
@@ -150,7 +163,7 @@ export function MobileNav() {
                         </div>
                     </Link>
                     <Link
-                        href="/consult"
+                        href={getConsultUrl()}
                         onClick={() => setOpen(false)}
                         className={linkClass(isConsult)}
                     >
@@ -172,7 +185,7 @@ export function MobileNav() {
                         </span>
                     </div>
                     <Link
-                        href="/about"
+                        href={getAboutUrl()}
                         onClick={() => setOpen(false)}
                         className={linkClass(isAbout)}
                     >
@@ -183,7 +196,7 @@ export function MobileNav() {
                         </div>
                     </Link>
                     <Link
-                        href="/guardian"
+                        href={getGuardianUrl()}
                         onClick={() => setOpen(false)}
                         className={linkClass(isGuardian)}
                     >
@@ -200,7 +213,7 @@ export function MobileNav() {
                     </Link>
 
                     <Link
-                        href="/lawyer/join"
+                        href={getLawyerJoinUrl()}
                         onClick={() => setOpen(false)}
                         className={linkClass(isLawyerJoin)}
                     >
@@ -211,7 +224,7 @@ export function MobileNav() {
                         </div>
                     </Link>
                     <Link
-                        href="/lawyer/login"
+                        href={getLawyerLoginUrl()}
                         onClick={() => setOpen(false)}
                         className={linkClass(isLawyerLogin)}
                     >
@@ -233,7 +246,7 @@ export function MobileNav() {
                                         </span>
                                     </div>
                                     <Link
-                                        href="/lawyer"
+                                        href={getVersionedPath('/lawyer')}
                                         onClick={() => setOpen(false)}
                                         className={linkClass(pathname?.startsWith("/lawyer") || false)}
                                     >
@@ -244,7 +257,7 @@ export function MobileNav() {
                             )}
                             {user?.isGuardian && (
                                 <Link
-                                    href="/guardian/center"
+                                    href={getGuardianCenterUrl()}
                                     onClick={() => setOpen(false)}
                                     className={linkClass(pathname?.startsWith("/guardian/center") || false)}
                                 >

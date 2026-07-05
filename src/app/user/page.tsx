@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { getGuardianCenterUrl, getLawyerDashboardUrl, getVersionedPath } from '@/lib/site';
 import { useRouter } from 'next/navigation';
 import { User, Shield, Briefcase, Settings, ChevronRight, LogOut, QrCode, X, ShoppingCart, Clock, CheckCircle, AlertCircle, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -193,7 +194,7 @@ function UserCenterPageContent() {
         {/* 身份入口 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6">
           {/* 守护者入口 */}
-          <Link href="/guardian/center">
+          <Link href={getGuardianCenterUrl()}>
             <Card className="hover:shadow-lg transition-shadow cursor-pointer border-purple-100">
               <CardContent className="py-4">
                 <div className="flex items-center gap-3">
@@ -211,7 +212,7 @@ function UserCenterPageContent() {
 
           {/* 律师后台入口 - 仅律师可见 */}
           {effectiveUser?.isLawyer && (
-            <Link href="/lawyer/dashboard">
+            <Link href={getLawyerDashboardUrl()}>
               <Card className="hover:shadow-[0_8px_24px_rgba(61,50,45,0.06)] transition-shadow cursor-pointer border border-[rgba(196,115,83,0.2)]">
                 <CardContent className="py-4">
                   <div className="flex items-center gap-3">
@@ -270,7 +271,7 @@ function UserCenterPageContent() {
             <div className="p-8 text-center">
               <ShoppingCart className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-500 mb-3">暂无订单</p>
-              <Link href="/">
+          <Link href={getVersionedPath('/')}>
                 <Button variant="outline" size="sm">立即咨询</Button>
               </Link>
             </div>
@@ -534,7 +535,7 @@ function UserCenterPageContent() {
               {/* 律师入驻订单审核通过后显示入口 */}
               {showOrderDetail.type === 'lawyer' && showOrderDetail.reviewStatus === 'approved' && (
                 <div className="pt-2">
-                  <Link href="/lawyer" onClick={() => setShowOrderDetail(null)}>
+                  <Link href={getVersionedPath('/lawyer')} onClick={() => setShowOrderDetail(null)}>
                     <Button className="w-full bg-green-600 hover:bg-green-700">
                       进入律师工作台
                     </Button>

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { getVersionedPath } from '@/lib/site';
 
 export default function UserLoading() {
   return (
@@ -7,7 +8,7 @@ export default function UserLoading() {
         <h2 className="text-xl font-serif text-[#3D322D] font-normal mb-4">请先登录</h2>
         <p className="text-[#8C7B6E] mb-4">登录后可查看您的个人中心</p>
         <Link
-          href="/register?next=/user"
+          href={getVersionedPath('/register?next=/user')}
           className="inline-flex items-center justify-center rounded-full bg-[#C47353] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#A85D40]"
         >
           手机号登录

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useLawyerAuth } from '@/hooks/use-lawyer-auth';
 import { LawyerBottomNav } from '@/components/lawyer/lawyer-bottom-nav';
+import { getVersionedPath } from '@/lib/site';
 import { getLawyerOrderResponseText } from '@/lib/lawyer/order-detail-presenter';
 
 interface Order {
@@ -233,7 +234,7 @@ export default function LawyerOrderDetailPage() {
           <h2 className="text-xl font-bold text-[#3D322D] mb-2 font-serif">订单不存在</h2>
           <p className="text-[#8C7B6E] mb-6">该订单可能已被删除或您无权访问</p>
           <Link
-            href="/lawyer/orders"
+            href={getVersionedPath('/lawyer/orders')}
             className="inline-block px-6 py-3 bg-[#C47353] text-white font-medium rounded-xl hover:bg-[#A85D40] transition-colors"
           >
             返回订单列表
@@ -254,7 +255,7 @@ export default function LawyerOrderDetailPage() {
       <div className="sticky top-0 z-40 bg-[#FDF8F0]/95 backdrop-blur-xl border-b border-[#E8D5C0]/50">
         <div className="px-4 py-3 flex items-center justify-between max-w-2xl lg:max-w-3xl mx-auto">
           <Link
-            href="/lawyer/orders"
+            href={getVersionedPath('/lawyer/orders')}
             className="text-sm text-[#8C7B6E] hover:text-[#C47353] transition-colors flex items-center gap-1"
           >
             <ArrowLeft className="w-4 h-4" />

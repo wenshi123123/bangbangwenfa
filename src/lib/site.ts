@@ -92,3 +92,51 @@ export function getCivilUrl(): string {
 export function getAdminLoginUrl(): string {
   return getVersionedPath('/admin/login');
 }
+
+export function getHomeUrl(): string {
+  return getVersionedPath('/');
+}
+
+export function getConsultUrl(): string {
+  return getVersionedPath('/consult');
+}
+
+export function getAboutUrl(): string {
+  return getVersionedPath('/about');
+}
+
+export function getGuardianUrl(): string {
+  return getVersionedPath('/guardian');
+}
+
+export function getGuardianCenterUrl(): string {
+  return getVersionedPath('/guardian/center');
+}
+
+export function getLawyerJoinUrl(): string {
+  return getVersionedPath('/lawyer/join');
+}
+
+export function getLawyerLoginUrl(): string {
+  return getVersionedPath('/lawyer/login');
+}
+
+export function getLawyerUrl(): string {
+  return getVersionedPath('/lawyer');
+}
+
+export function getLawyerDashboardUrl(): string {
+  return getVersionedPath('/lawyer/dashboard');
+}
+
+export function getRegisterUrl(): string {
+  return getVersionedPath('/register');
+}
+
+export function getUserAgreementUrl(): string {
+  return getVersionedPath('/user-agreement');
+}
+
+export function getPrivacyPolicyUrl(): string {
+  return getVersionedPath('/privacy-policy');
+}
