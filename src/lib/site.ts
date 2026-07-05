@@ -140,3 +140,11 @@ export function getUserAgreementUrl(): string {
 export function getPrivacyPolicyUrl(): string {
   return getVersionedPath('/privacy-policy');
 }
+
+export function getLawyerCommitmentUrl(): string {
+  return getVersionedPath('/lawyer-commitment');
+}
+
+export function getLawyerEntryAgreementUrl(): string {
+  return getVersionedPath('/lawyer-entry-agreement');
+}

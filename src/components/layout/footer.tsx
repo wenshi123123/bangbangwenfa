@@ -10,6 +10,10 @@ import {
   getGuardianUrl,
   getLawyerJoinUrl,
   getLawyerLoginUrl,
+  getLawyerCommitmentUrl,
+  getLawyerEntryAgreementUrl,
+  getPrivacyPolicyUrl,
+  getUserAgreementUrl,
 } from "@/lib/site";
 
 const footerLinks = {
@@ -21,12 +25,12 @@ const footerLinks = {
   律师: [
     { label: "律师入驻", href: getLawyerJoinUrl() },
     { label: "律师登录", href: getLawyerLoginUrl() },
-    { label: "入驻承诺书", href: "/lawyer-commitment" },
+    { label: "入驻承诺书", href: getLawyerCommitmentUrl() },
   ],
   法律信息: [
-    { label: "用户服务协议", href: "/user-agreement" },
-    { label: "隐私政策", href: "/privacy-policy" },
-    { label: "律师入驻服务协议", href: "/lawyer-entry-agreement" },
+    { label: "用户服务协议", href: getUserAgreementUrl() },
+    { label: "隐私政策", href: getPrivacyPolicyUrl() },
+    { label: "律师入驻服务协议", href: getLawyerEntryAgreementUrl() },
   ],
 };
 
