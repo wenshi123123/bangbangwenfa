@@ -24,19 +24,22 @@ async function tryReloadSchema(supabase: ReturnType<typeof getSupabaseAdmin>) {
 }
 
 async function executeBootstrapSql(supabase: ReturnType<typeof getSupabaseAdmin>) {
+  const diagnostics: string[] = [];
   try {
     const { error } = await supabase.rpc('exec_sql', {
       query: SYSTEM_CONFIGS_BOOTSTRAP_SQL,
     });
     if (error) {
+      diagnostics.push(`[supabase.rpc exec_sql] ${error.message || JSON.stringify(error)}`);
       console.error('[admin/configs] 自动初始化 system_configs 失败:', error);
       const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.COZE_SUPABASE_URL || '';
       const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.COZE_SUPABASE_SERVICE_ROLE_KEY || '';
       const ref = projectUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] || '';
 
       if (!ref || !serviceKey) {
+        diagnostics.push('[bootstrap] 缺少 Supabase 管理 API 凭证');
         console.error('[admin/configs] 缺少 Supabase 管理 API 凭证');
-        return false;
+        return { success: false, diagnostics };
       }
 
       const headers = {
@@ -63,11 +66,14 @@ async function executeBootstrapSql(supabase: ReturnType<typeof getSupabaseAdmin>
             });
             if (response.ok) {
               await tryReloadSchema(supabase);
-              return true;
+              diagnostics.push(`[management ${url}] ok`);
+              return { success: true, diagnostics };
             }
             const text = await response.text();
+            diagnostics.push(`[management ${url}] ${response.status} ${text.slice(0, 500)}`);
             console.warn('[admin/configs] 管理 API 执行失败:', response.status, text.slice(0, 200));
           } catch (apiError) {
+            diagnostics.push(`[management ${url}] exception ${apiError instanceof Error ? apiError.message : String(apiError)}`);
             console.warn('[admin/configs] 管理 API 调用异常:', apiError);
           }
         }
@@ -85,22 +91,26 @@ async function executeBootstrapSql(supabase: ReturnType<typeof getSupabaseAdmin>
         });
         if (rpcResponse.ok) {
           await tryReloadSchema(supabase);
-          return true;
+          diagnostics.push('[rpc exec_sql] ok');
+          return { success: true, diagnostics };
         }
         const text = await rpcResponse.text();
+        diagnostics.push(`[rpc exec_sql] ${rpcResponse.status} ${text.slice(0, 500)}`);
         console.warn('[admin/configs] RPC exec_sql 执行失败:', rpcResponse.status, text.slice(0, 200));
       } catch (rpcError) {
+        diagnostics.push(`[rpc exec_sql] exception ${rpcError instanceof Error ? rpcError.message : String(rpcError)}`);
         console.warn('[admin/configs] RPC exec_sql 调用异常:', rpcError);
       }
 
-      return false;
+      return { success: false, diagnostics };
     }
 
     await tryReloadSchema(supabase);
-    return true;
+    return { success: true, diagnostics: ['[supabase.rpc exec_sql] ok'] };
   } catch (error) {
+    diagnostics.push(`[bootstrap exception] ${error instanceof Error ? error.message : String(error)}`);
     console.error('[admin/configs] 自动初始化 system_configs 异常:', error);
-    return false;
+    return { success: false, diagnostics };
   }
 }
 
@@ -210,11 +220,12 @@ export async function PUT(request: NextRequest) {
       .limit(1);
 
     if (tableProbe.error && isMissingSystemConfigsTableError(tableProbe.error)) {
-      const maybeInitialized = await executeBootstrapSql(supabase);
-      if (!maybeInitialized || !(await waitForSystemConfigsTable(supabase))) {
+      const bootstrapResult = await executeBootstrapSql(supabase);
+      if (!bootstrapResult.success || !(await waitForSystemConfigsTable(supabase))) {
         return NextResponse.json({
           success: false,
           error: '系统配置表未就绪，初始化失败，请先执行数据库迁移',
+          debug: bootstrapResult.diagnostics,
         }, { status: 503 });
       }
     }
