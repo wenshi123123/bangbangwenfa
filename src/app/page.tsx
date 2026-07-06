@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { CursorFollower, ScrollProgress, AnimatedNumber } from "@/components/ui/animated-effects";
 import { Footer } from "@/components/layout/footer";
@@ -297,10 +298,36 @@ function FAQSection() {
 
 
 const heroImages = [
-    { name: "王律师", specialty: "民商事争议解决", years: "执业 12 年", color: "#C47353", icon: "⚖️" },
-    { name: "陈律师", specialty: "婚姻家庭", years: "执业 10 年", color: "#D4957A", icon: "🏛️" },
-    { name: "赵律师", specialty: "劳动争议", years: "执业 9 年", color: "#8B5E3C", icon: "📋" },
-    { name: "温律师", specialty: "公司股东权益", years: "执业 5 年", color: "#A0522D", icon: "💼" },
+    {
+        src: "/hero-photo-1.png",
+        alt: "律师在夜晚办公室整理案件材料",
+        title: "深夜案卷整理",
+        subtitle: "一份材料背后，是对事实与证据的反复核对。",
+    },
+    {
+        src: "/hero-photo-2.jpg",
+        alt: "律师在咖啡馆与当事人沟通",
+        title: "面对面沟通",
+        subtitle: "把复杂问题说清楚，把下一步行动讲明白。",
+    },
+    {
+        src: "/hero-photo-3.jpg",
+        alt: "律师在办公室进行法律咨询",
+        title: "专业法律咨询",
+        subtitle: "围绕争议焦点，快速找到可执行的解决路径。",
+    },
+    {
+        src: "/hero-photo-4.png",
+        alt: "律师在会议室与当事人沟通案件",
+        title: "正式会谈",
+        subtitle: "在安静、专业的环境里，逐条梳理问题。",
+    },
+    {
+        src: "/hero-photo-5.png",
+        alt: "法官与当事人沟通的办公场景",
+        title: "权威场景",
+        subtitle: "用更可信赖的场景，呈现法律服务的专业感。",
+    },
 ];
 
 export default function Home() {
@@ -370,7 +397,7 @@ export default function Home() {
                         {/* 右侧轮播图 */}
                         <div className="hero-carousel relative">
                             <div
-                                className="relative overflow-hidden rounded-xl bg-[#F5EDE5] shadow-[0_8px_32px_rgba(61,50,45,0.12)]"
+                                className="relative overflow-hidden rounded-2xl bg-[#F5EDE5] shadow-[0_8px_32px_rgba(61,50,45,0.12)]"
                                 style={{ aspectRatio: "600/750", maxHeight: "650px" }}
                                 onMouseEnter={() => setPaused(true)}
                                 onMouseLeave={() => setPaused(false)}
@@ -382,42 +409,60 @@ export default function Home() {
                                             className={`absolute inset-0 transition-opacity duration-[800ms] ease-in-out flex items-center justify-center ${
                                                 currentImage === i ? "opacity-100 z-10" : "opacity-0 z-0"
                                             }`}
-                                            style={{ background: `linear-gradient(135deg, ${img.color}15 0%, ${img.color}08 50%, #F5EDE5 100%)` }}
                                         >
-                                            {/* 律师卡片 - 纯CSS设计 */}
-                                            <div className="text-center px-8 py-10">
-                                                {/* 图标 */}
-                                                <div
-                                                    className="mx-auto w-20 h-20 rounded-full flex items-center justify-center text-3xl mb-5 shadow-lg"
-                                                    style={{ background: `linear-gradient(135deg, ${img.color}, ${img.color}dd)` }}
-                                                >
-                                                    <span>{img.icon}</span>
+                                            <Image
+                                                src={img.src}
+                                                alt={img.alt}
+                                                fill
+                                                priority={i === 0}
+                                                sizes="(min-width: 768px) 50vw, 100vw"
+                                                className="object-cover"
+                                            />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-[#3D322D]/70 via-[#3D322D]/12 to-transparent" />
+                                            <div className="absolute inset-0 bg-gradient-to-br from-[#C47353]/12 via-transparent to-[#D4957A]/10" />
+                                            <div className="absolute left-5 right-5 bottom-24 sm:bottom-28 text-white">
+                                                <div className="inline-flex items-center rounded-full bg-white/15 backdrop-blur-md border border-white/20 px-3 py-1 text-[11px] sm:text-xs tracking-[0.12em] uppercase">
+                                                    真实图片 {String(i + 1).padStart(2, "0")}
                                                 </div>
-                                                {/* 名字 */}
-                                                <div className="font-serif text-[1.5rem] text-[#3D322D] mb-2 font-medium">{img.name}</div>
-                                                {/* 专长 */}
-                                                <div className="font-sans text-[14px] text-[#8C7B6E] mb-2">{img.specialty}</div>
-                                                {/* 年限 */}
-                                                <div
-                                                    className="inline-block font-sans text-[12px] font-medium rounded-full px-4 py-1"
-                                                    style={{ color: img.color, background: `${img.color}18` }}
-                                                >{img.years}</div>
+                                                <div className="mt-3 font-serif text-[1.6rem] sm:text-[1.9rem] md:text-[2.1rem] leading-tight font-medium drop-shadow-sm">
+                                                    {img.title}
+                                                </div>
+                                                <p className="mt-2 max-w-[26rem] text-sm sm:text-[15px] text-white/88 leading-relaxed drop-shadow-sm">
+                                                    {img.subtitle}
+                                                </p>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
-                                    {heroImages.map((_, i) => (
+                                <div className="absolute top-4 left-4 z-20">
+                                    <div className="inline-flex items-center gap-2 rounded-full bg-white/15 backdrop-blur-md border border-white/20 px-3 py-1.5 text-[11px] sm:text-xs text-white">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
+                                        首页真实场景图集
+                                    </div>
+                                </div>
+                                <div className="absolute bottom-4 left-4 right-4 z-20 flex items-center justify-center gap-2 sm:gap-2.5 overflow-x-auto">
+                                    {heroImages.map((img, i) => (
                                         <button
                                             key={i}
                                             onClick={() => { setCurrentImage(i); setPaused(true); }}
-                                            className={`w-[8px] h-[8px] rounded-full transition-all duration-300 ${
+                                            className={`relative h-14 w-14 sm:h-16 sm:w-16 flex-shrink-0 overflow-hidden rounded-xl border transition-all duration-300 ${
                                                 currentImage === i
-                                                    ? "bg-[#C47353] opacity-100 scale-120"
-                                                    : "bg-[#C47353] opacity-30 hover:opacity-70"
+                                                    ? "border-white shadow-[0_0_0_2px_rgba(196,115,83,0.35)] scale-105"
+                                                    : "border-white/30 opacity-75 hover:opacity-100"
                                             }`}
                                             aria-label={`切换到第 ${i + 1} 张图片`}
-                                        />
+                                        >
+                                            <Image
+                                                src={img.src}
+                                                alt={img.alt}
+                                                fill
+                                                sizes="64px"
+                                                className="object-cover"
+                                            />
+                                            <div className={`absolute inset-0 transition-colors ${
+                                                currentImage === i ? "bg-[#C47353]/15" : "bg-black/15"
+                                            }`} />
+                                        </button>
                                     ))}
                                 </div>
                             </div>
