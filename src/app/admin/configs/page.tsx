@@ -54,10 +54,6 @@ export default function ConfigsPage() {
   }, [fetchConfigs]);
 
   const handleSave = async () => {
-    if (source === 'fallback') {
-      alert('系统配置表尚未就绪，请先完成数据库迁移后再保存');
-      return;
-    }
     setSaving(true);
     try {
       const updates = Object.entries(editValues).map(([key, value]) => ({
@@ -110,16 +106,16 @@ export default function ConfigsPage() {
         <h2 className="text-lg font-semibold text-gray-800">系统配置</h2>
         <button
           onClick={handleSave}
-          disabled={saving || source === 'fallback'}
+          disabled={saving}
           className="px-4 py-2 rounded-xl bg-[#C47353] text-white font-medium hover:bg-[#A85D40] disabled:opacity-50 transition-colors"
         >
-          {saving ? '保存中...' : source === 'fallback' ? '待数据库就绪' : '保存配置'}
+          {saving ? '保存中...' : source === 'fallback' ? '初始化并保存' : '保存配置'}
         </button>
       </div>
 
       {source === 'fallback' && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          {note || '系统配置表尚未就绪，当前显示默认配置。请先完成数据库迁移后再保存。'}
+          {note || '系统配置表尚未就绪，当前显示默认配置。保存时会先尝试初始化并写入数据库。'}
         </div>
       )}
 
