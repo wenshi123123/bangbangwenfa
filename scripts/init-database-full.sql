@@ -374,7 +374,47 @@ CREATE POLICY "Allow service role full access" ON price_configs
     WITH CHECK (true);
 
 -- ============================================
--- 11. 案件类型表
+-- 11. 系统配置表
+-- ============================================
+CREATE TABLE IF NOT EXISTS system_configs (
+    id SERIAL PRIMARY KEY,
+    config_key VARCHAR(100) NOT NULL UNIQUE,
+    config_value TEXT NOT NULL,
+    config_type VARCHAR(20) NOT NULL DEFAULT 'text',
+    config_group VARCHAR(50) NOT NULL DEFAULT 'other',
+    description TEXT,
+    is_public BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_system_configs_group ON system_configs(config_group);
+CREATE INDEX IF NOT EXISTS idx_system_configs_key ON system_configs(config_key);
+
+ALTER TABLE system_configs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow service role full access" ON system_configs
+    FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+INSERT INTO system_configs (config_key, config_value, config_type, config_group, description, is_public) VALUES
+    ('site_name', '帮帮问法', 'text', 'basic', '网站名称', TRUE),
+    ('site_slogan', 'AI千问 不如律师一言', 'text', 'basic', '首页标语', TRUE),
+    ('support_hours', '工作日 9:00-18:00', 'text', 'contact', '客服服务时间', TRUE),
+    ('customer_service_phone', '', 'text', 'contact', '客服电话', TRUE),
+    ('customer_service_wechat', '', 'text', 'contact', '客服微信', TRUE)
+ON CONFLICT (config_key) DO UPDATE SET
+    config_value = EXCLUDED.config_value,
+    config_type = EXCLUDED.config_type,
+    config_group = EXCLUDED.config_group,
+    description = EXCLUDED.description,
+    is_public = EXCLUDED.is_public,
+    updated_at = NOW();
+
+-- ============================================
+-- 12. 案件类型表
 -- ============================================
 CREATE TABLE IF NOT EXISTS case_types (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -25,7 +25,9 @@ interface Withdrawal {
   guardian_id: number;
   amount: number;
   status: 'pending' | 'processing' | 'completed' | 'rejected';
-  wechat_qrcode: string;
+  bank_name: string | null;
+  bank_account: string | null;
+  bank_username: string | null;
   admin_note: string | null;
   created_at: string;
   processed_at: string | null;
@@ -388,21 +390,27 @@ export default function GuardianWithdrawalsPage() {
                 )}
               </div>
 
-              {/* QR Code */}
+              {/* Bank Info */}
               <div>
-                <p className="text-sm text-slate-500 mb-2">收款码</p>
-                {selectedWithdrawal.wechat_qrcode ? (
-                  <div className="bg-slate-50 rounded-xl p-4 text-center">
-                    <img 
-                      src={selectedWithdrawal.wechat_qrcode} 
-                      alt="收款码" 
-                      className="w-48 h-48 mx-auto rounded-lg object-contain"
-                    />
-                    <p className="text-xs text-slate-400 mt-2">长按保存或截图给财务转账</p>
+                <p className="text-sm text-slate-500 mb-2">收款信息</p>
+                {selectedWithdrawal.bank_name || selectedWithdrawal.bank_account || selectedWithdrawal.bank_username ? (
+                  <div className="bg-slate-50 rounded-xl p-4 space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-slate-500">银行</span>
+                      <span className="font-medium text-slate-800">{selectedWithdrawal.bank_name || '未填写'}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-slate-500">户名</span>
+                      <span className="font-medium text-slate-800">{selectedWithdrawal.bank_username || '未填写'}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-slate-500">账号</span>
+                      <span className="font-medium text-slate-800 break-all">{selectedWithdrawal.bank_account || '未填写'}</span>
+                    </div>
                   </div>
                 ) : (
                   <div className="bg-slate-50 rounded-xl p-4 text-center text-slate-400">
-                    无收款码
+                    无收款信息
                   </div>
                 )}
               </div>

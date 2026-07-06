@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { requireAdminAuth, adminUnauthorizedResponse } from '@/lib/auth/admin-middleware';
+import { presentGuardianWithdrawal } from '@/lib/admin/guardian-withdrawal-presenter';
 
 export async function GET(request: NextRequest) {
   // 验证管理员身份
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabaseAdmin();
     let withdrawalQuery = supabase
       .from('guardian_withdrawals')
-      .select('*, guardian_id, amount, status, wechat_qrcode, admin_note, created_at, processed_at', { count: 'exact' })
+      .select('id, guardian_id, amount, status, bank_name, bank_account, bank_username, remark, created_at, processed_at', { count: 'exact' })
       .order('created_at', { ascending: false });
     if (status) withdrawalQuery = withdrawalQuery.eq('status', status);
 
@@ -77,7 +78,7 @@ export async function GET(request: NextRequest) {
     }
 
     const result = withdrawals.map((item) => ({
-      ...item,
+      ...presentGuardianWithdrawal(item),
       guardian: guardianMap.get(String(item.guardian_id)) || null,
     }));
 
@@ -135,7 +136,7 @@ export async function PUT(request: NextRequest) {
     // 先查询提现记录
     const { data: withdrawal, error: fetchError } = await supabase
       .from('guardian_withdrawals')
-      .select('id, guardian_id, amount, status, wechat_qrcode, admin_note, created_at, processed_at')
+      .select('id, guardian_id, amount, status, bank_name, bank_account, bank_username, remark, created_at, processed_at')
       .eq('id', id)
       .single();
     
@@ -192,7 +193,7 @@ export async function PUT(request: NextRequest) {
       status,
       processed_at: new Date().toISOString()
     };
-    if (adminNote) updates.admin_note = adminNote;
+    if (adminNote) updates.remark = adminNote;
     
     const { data, error } = await supabase
       .from('guardian_withdrawals')
@@ -204,7 +205,7 @@ export async function PUT(request: NextRequest) {
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data: presentGuardianWithdrawal(data) });
   } catch (error) {
     console.error('审核提现失败:', error);
     return NextResponse.json({ success: false, error: '服务器错误' }, { status: 500 });

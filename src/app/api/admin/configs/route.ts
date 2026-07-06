@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { requireAdminAuth, adminUnauthorizedResponse } from '@/lib/auth/admin-middleware';
+import {
+  SYSTEM_CONFIGS_BOOTSTRAP_SQL,
+  isMissingSystemConfigsTableError,
+} from '@/lib/admin/system-configs';
+
+async function ensureSystemConfigsTable(supabase: ReturnType<typeof getSupabaseAdmin>) {
+  try {
+    const { error } = await supabase.rpc('exec_sql', {
+      query: SYSTEM_CONFIGS_BOOTSTRAP_SQL,
+    });
+    if (error) {
+      console.error('[admin/configs] 自动初始化 system_configs 失败:', error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('[admin/configs] 自动初始化 system_configs 异常:', error);
+    return false;
+  }
+}
 
 // GET - 获取所有配置
 export async function GET(request: NextRequest) {
@@ -10,14 +30,28 @@ export async function GET(request: NextRequest) {
   }
   try {
     const supabase = getSupabaseAdmin();
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('system_configs')
       .select('*')
       .order('config_group', { ascending: true })
       .order('config_key', { ascending: true });
+
+    if (error && isMissingSystemConfigsTableError(error)) {
+      const initialized = await ensureSystemConfigsTable(supabase);
+      if (initialized) {
+        const retry = await supabase
+          .from('system_configs')
+          .select('*')
+          .order('config_group', { ascending: true })
+          .order('config_key', { ascending: true });
+        data = retry.data;
+        error = retry.error;
+      }
+    }
     
     if (error) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      const status = isMissingSystemConfigsTableError(error) ? 503 : 500;
+      return NextResponse.json({ success: false, error: error.message }, { status });
     }
     
     // 按分类分组
@@ -48,6 +82,20 @@ export async function PUT(request: NextRequest) {
     const { configs, key, value } = body;
     
     const supabase = getSupabaseAdmin();
+    const tableProbe = await supabase
+      .from('system_configs')
+      .select('id')
+      .limit(1);
+
+    if (tableProbe.error && isMissingSystemConfigsTableError(tableProbe.error)) {
+      const maybeInitialized = await ensureSystemConfigsTable(supabase);
+      if (!maybeInitialized) {
+        return NextResponse.json({
+          success: false,
+          error: '系统配置表未就绪，请先执行数据库迁移',
+        }, { status: 503 });
+      }
+    }
     
     // 批量更新
     if (configs && Array.isArray(configs)) {
