@@ -43,6 +43,10 @@ async function executeBootstrapSql(supabase: ReturnType<typeof getSupabaseAdmin>
         'Content-Type': 'application/json',
         Authorization: `Bearer ${serviceKey}`,
       };
+      const headersWithApiKey = {
+        ...headers,
+        apikey: serviceKey,
+      };
 
       const managementEndpoints = [
         `https://api.supabase.com/v1/projects/${ref}/database/query`,
@@ -50,20 +54,22 @@ async function executeBootstrapSql(supabase: ReturnType<typeof getSupabaseAdmin>
       ];
 
       for (const url of managementEndpoints) {
-        try {
-          const response = await fetch(url, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ query: SYSTEM_CONFIGS_BOOTSTRAP_SQL }),
-          });
-          if (response.ok) {
-            await tryReloadSchema(supabase);
-            return true;
+        for (const authHeaders of [headers, headersWithApiKey]) {
+          try {
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: authHeaders,
+              body: JSON.stringify({ query: SYSTEM_CONFIGS_BOOTSTRAP_SQL }),
+            });
+            if (response.ok) {
+              await tryReloadSchema(supabase);
+              return true;
+            }
+            const text = await response.text();
+            console.warn('[admin/configs] 管理 API 执行失败:', response.status, text.slice(0, 200));
+          } catch (apiError) {
+            console.warn('[admin/configs] 管理 API 调用异常:', apiError);
           }
-          const text = await response.text();
-          console.warn('[admin/configs] 管理 API 执行失败:', response.status, text.slice(0, 200));
-        } catch (apiError) {
-          console.warn('[admin/configs] 管理 API 调用异常:', apiError);
         }
       }
 
