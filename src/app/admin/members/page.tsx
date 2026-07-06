@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { adminApiRequest } from '@/lib/api/request';
+import {
+  formatMembershipPackageLabel,
+  normalizeMembershipDisplayPackageType,
+  normalizeMembershipRecordPackageType,
+} from '@/lib/admin/membership-package';
 
 interface MembershipRecord {
   id: string;
@@ -91,7 +96,7 @@ const actionColors: Record<string, string> = {
 };
 
 function getMembershipInfo(status: string, expiresAt: string | null, packageType?: string | null) {
-  const packageLabel = packageType === 'criminal' ? '刑事臻选' : '民事臻选';
+  const packageLabel = formatMembershipPackageLabel(packageType);
   if (!expiresAt) return { label: '未开通', color: 'bg-gray-100 text-gray-500', packageLabel };
   if (status === 'trial') {
     const exp = new Date(expiresAt);
@@ -264,7 +269,8 @@ export default function MembersPage() {
     const activePkgs = (lawyer.records || [])
       .filter(r => r.status === 'active' || r.status === 'trial')
       .map(r => r.package_type);
-    setSelectedPackages(activePkgs.length > 0 ? activePkgs : ['civil']);
+    const fallbackPkg = normalizeMembershipRecordPackageType(lawyer.package_type || 'civil');
+    setSelectedPackages(activePkgs.length > 0 ? activePkgs : [fallbackPkg]);
     setDurationType('months');
     setDurationValue('18');
     setIsTrial(false);
@@ -540,11 +546,15 @@ export default function MembersPage() {
                             // 按 package_type 去重：优先 active，再 trial
                             const seen = new Map<string, string>();
                             activeRecords.forEach(r => {
-                              if (!seen.has(r.package_type)) seen.set(r.package_type, r.status);
+                              const normalized = normalizeMembershipDisplayPackageType(r.package_type);
+                              if (!seen.has(normalized)) seen.set(normalized, r.status);
                             });
                             tags = Array.from(seen.entries()).map(([package_type, status]) => ({ package_type, status }));
                           } else if (lawyer.membership_status && lawyer.member_expires_at) {
-                            tags = [{ package_type: lawyer.package_type || 'civil', status: lawyer.membership_status }];
+                            tags = [{
+                              package_type: normalizeMembershipDisplayPackageType(lawyer.package_type),
+                              status: lawyer.membership_status,
+                            }];
                           }
                           if (tags.length === 0) {
                             return <span className="text-gray-400 text-xs">-</span>;
@@ -553,7 +563,7 @@ export default function MembersPage() {
                             <span key={i} className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
                               r.package_type === 'criminal' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
                             }`}>
-                              {r.package_type === 'criminal' ? '刑事臻选' : '民事臻选'}
+                              {formatMembershipPackageLabel(r.package_type)}
                               {r.status === 'trial' && <span className="ml-0.5 text-[10px] opacity-60">体</span>}
                             </span>
                           ));

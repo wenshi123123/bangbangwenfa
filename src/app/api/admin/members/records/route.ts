@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { requireAdminAuth } from '@/lib/auth/admin-middleware';
+import {
+  normalizeLawyerPackageType,
+  normalizeMembershipRecordPackageType,
+} from '@/lib/admin/membership-package';
 
 // POST /api/admin/members/records - 开通/续费一条套餐记录
 export async function POST(request: NextRequest) {
@@ -21,12 +25,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '无效的套餐类型' }, { status: 400 });
     }
 
-    // membership_records 表使用 civil / criminal 作为记录值；
-    // lawyers 主表才使用 civil_premium / criminal_premium 作为套餐展示值。
-    // 这里统一写入 membership_records 的记录值，避免触发数据库 check constraint。
-    const normalizedType = package_type === 'civil_premium' || package_type === 'civil'
-      ? 'civil'
-      : 'criminal';
+    const recordPackageType = normalizeMembershipRecordPackageType(package_type);
+    const lawyerPackageType = normalizeLawyerPackageType(package_type);
 
     const supabase = getSupabaseAdmin();
 
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       .from('membership_records')
       .insert({
         lawyer_id,
-        package_type: normalizedType,
+        package_type: recordPackageType,
         status: is_trial ? 'trial' : 'active',
         expires_at,
       })
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       const { error: updateLawyerError } = await supabase
         .from('lawyers')
         .update({
-          package_type: normalizedType,
+          package_type: lawyerPackageType,
           membership_status: is_trial ? 'trial' : 'normal',
           member_expires_at: expires_at,
           member_starting_at: lawyer?.member_starting_at || new Date().toISOString(),
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
       const { error: logError } = await supabase.from('membership_logs').insert({
         lawyer_id,
         action: 'activate',
-        package_type: normalizedType,
+        package_type: recordPackageType,
         is_trial: !!is_trial,
         new_expires_at: expires_at,
         note: note || null,
