@@ -15,6 +15,16 @@ async function ensureSystemConfigsTable(supabase: ReturnType<typeof getSupabaseA
       console.error('[admin/configs] 自动初始化 system_configs 失败:', error);
       return false;
     }
+
+    try {
+      await supabase.rpc('pg_notify', {
+        channel: 'pgrst',
+        message: 'reload schema',
+      });
+    } catch (notifyError) {
+      console.warn('[admin/configs] schema reload 通知失败（可忽略）:', notifyError);
+    }
+
     return true;
   } catch (error) {
     console.error('[admin/configs] 自动初始化 system_configs 异常:', error);
