@@ -21,10 +21,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '无效的套餐类型' }, { status: 400 });
     }
 
-    // 标准化套餐 key（向后兼容旧格式）
-    const normalizedType = package_type === 'civil' ? 'civil_premium'
-      : package_type === 'criminal' ? 'criminal_premium'
-      : package_type;
+    // membership_records 表使用 civil / criminal 作为记录值；
+    // lawyers 主表才使用 civil_premium / criminal_premium 作为套餐展示值。
+    // 这里统一写入 membership_records 的记录值，避免触发数据库 check constraint。
+    const normalizedType = package_type === 'civil_premium' || package_type === 'civil'
+      ? 'civil'
+      : 'criminal';
 
     const supabase = getSupabaseAdmin();
 
