@@ -34,11 +34,78 @@ async function executeBootstrapSql(supabase: ReturnType<typeof getSupabaseAdmin>
       console.error('[admin/configs] 自动初始化 system_configs 失败:', error);
       const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.COZE_SUPABASE_URL || '';
       const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.COZE_SUPABASE_SERVICE_ROLE_KEY || '';
+      const dbPassword = process.env.SUPABASE_DB_PASSWORD || process.env.COZE_SUPABASE_DB_PASSWORD || '';
       const ref = projectUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] || '';
 
       if (!ref || !serviceKey) {
         diagnostics.push('[bootstrap] 缺少 Supabase 管理 API 凭证');
         console.error('[admin/configs] 缺少 Supabase 管理 API 凭证');
+      }
+
+      if (ref && dbPassword) {
+        try {
+          const { Pool } = await import('pg');
+          const dbConfigs = [
+            {
+              name: 'Session Pooler',
+              config: {
+                host: 'aws-0-us-west-1.pooler.supabase.com',
+                port: 5432,
+                database: 'postgres',
+                user: `postgres.${ref}`,
+                password: dbPassword,
+                ssl: { rejectUnauthorized: false },
+                connectionTimeoutMillis: 5000,
+              },
+            },
+            {
+              name: 'Transaction Pooler',
+              config: {
+                host: 'aws-0-us-west-1.pooler.supabase.com',
+                port: 6543,
+                database: 'postgres',
+                user: `postgres.${ref}`,
+                password: dbPassword,
+                ssl: { rejectUnauthorized: false },
+                connectionTimeoutMillis: 5000,
+              },
+            },
+            {
+              name: 'Direct Connection',
+              config: {
+                host: `db.${ref}.supabase.co`,
+                port: 5432,
+                database: 'postgres',
+                user: 'postgres',
+                password: dbPassword,
+                ssl: { rejectUnauthorized: false },
+                connectionTimeoutMillis: 5000,
+              },
+            },
+          ];
+
+          for (const { name, config } of dbConfigs) {
+            try {
+              const pool = new Pool(config);
+              const client = await pool.connect();
+              await client.query(SYSTEM_CONFIGS_BOOTSTRAP_SQL);
+              client.release();
+              await pool.end();
+              diagnostics.push(`[pg ${name}] ok`);
+              await tryReloadSchema(supabase);
+              return { success: true, diagnostics };
+            } catch (pgError) {
+              diagnostics.push(`[pg ${name}] ${pgError instanceof Error ? pgError.message : String(pgError)}`);
+            }
+          }
+        } catch (pgImportError) {
+          diagnostics.push(`[pg import] ${pgImportError instanceof Error ? pgImportError.message : String(pgImportError)}`);
+        }
+      } else if (ref) {
+        diagnostics.push('[pg] 缺少 SUPABASE_DB_PASSWORD/COZE_SUPABASE_DB_PASSWORD，跳过 pg 直连');
+      }
+
+      if (!ref || !serviceKey) {
         return { success: false, diagnostics };
       }
 
