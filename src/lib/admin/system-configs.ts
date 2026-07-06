@@ -7,6 +7,10 @@ export interface SystemConfigSeed {
   is_public: boolean;
 }
 
+export interface SystemConfigRecord extends SystemConfigSeed {
+  id: number;
+}
+
 export const DEFAULT_SYSTEM_CONFIGS: SystemConfigSeed[] = [
   {
     config_key: 'site_name',
@@ -49,6 +53,24 @@ export const DEFAULT_SYSTEM_CONFIGS: SystemConfigSeed[] = [
     is_public: true,
   },
 ];
+
+export function buildSystemConfigFallbackRows(): SystemConfigRecord[] {
+  return DEFAULT_SYSTEM_CONFIGS.map((config, index) => ({
+    id: -(index + 1),
+    ...config,
+  }));
+}
+
+export function groupSystemConfigs<T extends { config_group: string }>(configs: T[]): Record<string, T[]> {
+  const grouped: Record<string, T[]> = {};
+  configs.forEach((config) => {
+    if (!grouped[config.config_group]) {
+      grouped[config.config_group] = [];
+    }
+    grouped[config.config_group].push(config);
+  });
+  return grouped;
+}
 
 export const SYSTEM_CONFIGS_BOOTSTRAP_SQL = `
 CREATE TABLE IF NOT EXISTS system_configs (

@@ -19,6 +19,8 @@ export default function ConfigsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
+  const [source, setSource] = useState<'db' | 'fallback'>('db');
+  const [note, setNote] = useState('');
 
   const fetchConfigs = useCallback(async () => {
     try {
@@ -27,6 +29,8 @@ export default function ConfigsPage() {
       if (result.success) {
         setConfigs(result.data.configs);
         setGroupedConfigs(result.data.groupedConfigs);
+        setSource(result.data.source === 'fallback' ? 'fallback' : 'db');
+        setNote(result.data.note || '');
         // 初始化编辑值
         const values: Record<string, string> = {};
         result.data.configs.forEach((c: Config) => {
@@ -50,6 +54,10 @@ export default function ConfigsPage() {
   }, [fetchConfigs]);
 
   const handleSave = async () => {
+    if (source === 'fallback') {
+      alert('系统配置表尚未就绪，请先完成数据库迁移后再保存');
+      return;
+    }
     setSaving(true);
     try {
       const updates = Object.entries(editValues).map(([key, value]) => ({
@@ -102,12 +110,18 @@ export default function ConfigsPage() {
         <h2 className="text-lg font-semibold text-gray-800">系统配置</h2>
         <button
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || source === 'fallback'}
           className="px-4 py-2 rounded-xl bg-[#C47353] text-white font-medium hover:bg-[#A85D40] disabled:opacity-50 transition-colors"
         >
-          {saving ? '保存中...' : '保存配置'}
+          {saving ? '保存中...' : source === 'fallback' ? '待数据库就绪' : '保存配置'}
         </button>
       </div>
+
+      {source === 'fallback' && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {note || '系统配置表尚未就绪，当前显示默认配置。请先完成数据库迁移后再保存。'}
+        </div>
+      )}
 
       {/* Config Groups */}
       {Object.entries(groupedConfigs).map(([group, items]) => (

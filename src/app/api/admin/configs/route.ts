@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { requireAdminAuth, adminUnauthorizedResponse } from '@/lib/auth/admin-middleware';
 import {
+  buildSystemConfigFallbackRows,
+  groupSystemConfigs,
   SYSTEM_CONFIGS_BOOTSTRAP_SQL,
   isMissingSystemConfigsTableError,
 } from '@/lib/admin/system-configs';
@@ -47,16 +49,16 @@ export async function GET(request: NextRequest) {
       .order('config_key', { ascending: true });
 
     if (error && isMissingSystemConfigsTableError(error)) {
-      const initialized = await ensureSystemConfigsTable(supabase);
-      if (initialized) {
-        const retry = await supabase
-          .from('system_configs')
-          .select('*')
-          .order('config_group', { ascending: true })
-          .order('config_key', { ascending: true });
-        data = retry.data;
-        error = retry.error;
-      }
+      const fallbackConfigs = buildSystemConfigFallbackRows();
+      return NextResponse.json({
+        success: true,
+        data: {
+          configs: fallbackConfigs,
+          groupedConfigs: groupSystemConfigs(fallbackConfigs),
+          source: 'fallback',
+          note: '系统配置表尚未就绪，当前展示默认配置；保存时仍需先完成数据库迁移',
+        },
+      });
     }
     
     if (error) {
