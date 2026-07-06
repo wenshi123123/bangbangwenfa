@@ -219,6 +219,7 @@ export default function AdminDashboard() {
     'lawyer_subscription': '律师订阅',
     'consult,litigate': '咨询+诉讼',
     'litigate,consult': '诉讼+咨询',
+    'consult,full': '咨询+全套服务',
   };
 
   const pieData = analytics?.serviceTypes?.slice(0, 5).map((item, index) => ({

@@ -24,6 +24,7 @@ const serviceTypeLabels: Record<string, string> = {
   basic: '基础咨询',
   standard: '标准方案',
   advanced: '深度服务',
+  'consult,full': '咨询+全套服务',
   test: '测试支付'
 };
 

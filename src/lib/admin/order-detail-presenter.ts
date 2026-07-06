@@ -4,6 +4,7 @@ export function getAdminOrderServiceLabel(serviceType: string | null | undefined
     standard: '标准咨询',
     advanced: '深度咨询',
     consult: '咨询服务',
+    'consult,full': '咨询+全套服务',
     lawyer_subscription: '律师订阅',
     civil_premium: '民事律师（臻选）',
     criminal_premium: '刑事律师（臻选）',
