@@ -46,7 +46,6 @@ export async function POST(request: NextRequest) {
       .from('consult_orders')
       .update({ 
         payment_status: 'refunded',
-        refunded_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
       .eq('id', orderId)
@@ -67,7 +66,6 @@ export async function POST(request: NextRequest) {
           status: 'cancelled',
           is_refunded: true,
           refunded_amount: commission.commission_amount,
-          refunded_at: new Date().toISOString(),
           admin_note: `订单 ${orderId} 退款，佣金已回滚`
         })
         .eq('id', commission.id);
