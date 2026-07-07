@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { requireAdminAuth, adminUnauthorizedResponse } from '@/lib/auth/admin-middleware';
+import {
+  buildExpiringMembersFallbackFromLawyers,
+  isMissingMembershipRecordsError,
+} from '@/lib/admin/membership-records';
 
 // GET /api/admin/members/expiring?days=7 - 获取即将到期的套餐记录
 export async function GET(request: NextRequest) {
@@ -32,7 +36,26 @@ export async function GET(request: NextRequest) {
       .order('expires_at', { ascending: true });
 
     if (error) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      if (!isMissingMembershipRecordsError(error)) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      }
+
+      const { data: lawyers, error: lawyerError } = await supabase
+        .from('lawyers')
+        .select('id, name, package_type, membership_status, member_expires_at, member_starting_at')
+        .not('member_expires_at', 'is', null);
+
+      if (lawyerError) {
+        return NextResponse.json({ success: false, error: lawyerError.message }, { status: 500 });
+      }
+
+      const fallback = buildExpiringMembersFallbackFromLawyers(lawyers || [], days);
+      return NextResponse.json({
+        success: true,
+        data: fallback,
+        total: fallback.length,
+        note: 'membership_records 表尚未创建，已切换到 lawyers 表降级读取',
+      });
     }
 
     // 附加倒计时天数

@@ -31,6 +31,7 @@ interface MemberLawyer {
   is_active: boolean;
   orderCount: number;
   records: MembershipRecord[];
+  selected_packages?: string[] | null;
 }
 
 interface MembershipLog {
@@ -187,7 +188,7 @@ export default function MembersPage() {
           is_active: l.is_active !== false,
           orderCount: l.orderCount || 0,
           records: l.records || [],
-          selected_packages: l.selected_packages,
+          selected_packages: Array.isArray(l.selected_packages) ? l.selected_packages : [],
         })));
       }
     } catch (e) {
@@ -221,6 +222,9 @@ export default function MembersPage() {
                 member_starting_at: detail.member_starting_at || l.member_starting_at,
                 package_type: detail.package_type || l.package_type,
                 records: detail.records || l.records || [],
+                selected_packages: Array.isArray(detail.selected_packages)
+                  ? detail.selected_packages
+                  : l.selected_packages || [],
               };
             }
             return l;
@@ -269,8 +273,10 @@ export default function MembersPage() {
     const activePkgs = (lawyer.records || [])
       .filter(r => r.status === 'active' || r.status === 'trial')
       .map(r => r.package_type);
-    const fallbackPkg = normalizeMembershipRecordPackageType(lawyer.package_type || 'civil');
-    setSelectedPackages(activePkgs.length > 0 ? activePkgs : [fallbackPkg]);
+    const fallbackPkgs = Array.isArray(lawyer.selected_packages) && lawyer.selected_packages.length > 0
+      ? lawyer.selected_packages.map((pkg) => normalizeMembershipRecordPackageType(pkg))
+      : [normalizeMembershipRecordPackageType(lawyer.package_type || 'civil')];
+    setSelectedPackages(activePkgs.length > 0 ? activePkgs : fallbackPkgs);
     setDurationType('months');
     setDurationValue('18');
     setIsTrial(false);

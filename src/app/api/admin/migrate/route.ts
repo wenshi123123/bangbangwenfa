@@ -17,7 +17,65 @@ export async function POST(request: NextRequest) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
     const ref = projectUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] || '';
 
-    // Step 1: Check if membership_logs table already exists
+    // Step 1: Check if membership_records table already exists
+    const { error: recordsCheckError } = await supabase
+      .from('membership_records')
+      .select('id')
+      .limit(1);
+
+    if (!recordsCheckError) {
+      results.push('✅ membership_records 表已存在');
+    } else if (recordsCheckError.message?.includes('does not exist') || recordsCheckError.code === '42P01') {
+      results.push('⚠️ membership_records 表不存在，尝试创建...');
+
+      const createRecordsSQL = `
+        CREATE TABLE IF NOT EXISTS membership_records (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            lawyer_id UUID NOT NULL REFERENCES lawyers(id) ON DELETE CASCADE,
+            package_type VARCHAR(20) NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'active',
+            started_at TIMESTAMPTZ DEFAULT NOW(),
+            expires_at TIMESTAMPTZ NOT NULL,
+            remark TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_membership_records_lawyer_id ON membership_records(lawyer_id);
+        CREATE INDEX IF NOT EXISTS idx_membership_records_status ON membership_records(status);
+        CREATE INDEX IF NOT EXISTS idx_membership_records_expires_at ON membership_records(expires_at);
+        CREATE INDEX IF NOT EXISTS idx_membership_records_created_at ON membership_records(created_at DESC);
+        ALTER TABLE membership_records ENABLE ROW LEVEL SECURITY;
+        CREATE POLICY "Allow service role full access" ON membership_records FOR ALL USING (true) WITH CHECK (true);
+      `;
+
+      if (ref && serviceKey) {
+        try {
+          const mgmtRes = await fetch(`https://api.supabase.com/v1/projects/${ref}/sql`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${serviceKey}`,
+            },
+            body: JSON.stringify({ query: createRecordsSQL }),
+          });
+
+          if (mgmtRes.ok) {
+            results.push('✅ 通过 Management API 创建 membership_records 成功');
+          } else {
+            const errBody = await mgmtRes.text();
+            results.push(`⚠️ membership_records 创建失败 (${mgmtRes.status}): ${errBody.substring(0, 200)}`);
+          }
+        } catch (apiErr: any) {
+          results.push(`⚠️ membership_records 管理 API 调用异常: ${apiErr.message}`);
+        }
+      } else {
+        results.push('❌ 缺少 SUPABASE_URL 或 SUPABASE_SERVICE_ROLE_KEY 环境变量');
+      }
+    } else {
+      results.push(`⚠️ 检查 membership_records 时出错: ${recordsCheckError.message}`);
+    }
+
+    // Step 2: Check if membership_logs table already exists
     const { error: checkError } = await supabase
       .from('membership_logs')
       .select('id')
@@ -94,7 +152,7 @@ export async function POST(request: NextRequest) {
       results.push(`⚠️ 检查 membership_logs 时出错: ${checkError.message}`);
     }
 
-    // Step 2: Ensure lawyer_renew_orders exists for lawyer membership renewals
+    // Step 3: Ensure lawyer_renew_orders exists for lawyer membership renewals
     const { error: renewCheckError } = await supabase
       .from('lawyer_renew_orders')
       .select('id')
@@ -157,7 +215,27 @@ export async function POST(request: NextRequest) {
       results.push(`⚠️ 检查 lawyer_renew_orders 时出错: ${renewCheckError.message}`);
     }
 
-    // Step 3: Final verification
+    // Step 4: Final verification
+    const { error: recordsVerifyError } = await supabase
+      .from('membership_records')
+      .select('id')
+      .limit(1);
+
+    if (recordsVerifyError?.message?.includes('does not exist') || recordsVerifyError?.code === '42P01') {
+      return NextResponse.json({
+        success: false,
+        message: '无法自动创建 membership_records 表。请在 Supabase Dashboard > SQL Editor 中执行 scripts/membership-records-migration.sql',
+        results,
+        manualSteps: [
+          '1. 登录 Supabase Dashboard',
+          '2. 打开 SQL Editor',
+          '3. 复制并执行 scripts/membership-records-migration.sql 的内容',
+          '4. 刷新此页面验证',
+        ],
+      });
+    }
+
+    // Step 5: Final verification
     const { error: verifyError } = await supabase
       .from('membership_logs')
       .select('id')
@@ -199,7 +277,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: '迁移检查完成',
-      results: [...results, '✅ membership_logs 表已就绪', '✅ lawyer_renew_orders 表已就绪'],
+      results: [
+        ...results,
+        '✅ membership_records 表已就绪',
+        '✅ membership_logs 表已就绪',
+        '✅ lawyer_renew_orders 表已就绪',
+      ],
     });
   } catch (e: any) {
     console.error('[migrate] 迁移失败:', e);

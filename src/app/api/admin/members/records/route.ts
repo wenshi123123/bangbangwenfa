@@ -5,6 +5,7 @@ import {
   normalizeLawyerPackageType,
   normalizeMembershipRecordPackageType,
 } from '@/lib/admin/membership-package';
+import { isMissingMembershipRecordsError } from '@/lib/admin/membership-records';
 
 // POST /api/admin/members/records - 开通/续费一条套餐记录
 export async function POST(request: NextRequest) {
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
     // 0. 先验证律师是否存在
     const { data: existingLawyer, error: lawyerCheckError } = await supabase
       .from('lawyers')
-      .select('id')
+      .select('id, selected_packages')
       .eq('id', lawyer_id)
       .single();
 
@@ -58,19 +59,22 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError) {
-      console.error('[records] 创建套餐记录失败:', insertError);
-      return NextResponse.json({
-        success: false,
-        error: insertError.message,
-        code: 'INSERT_FAILED',
-        details: insertError.details || null
-      }, { status: 500 });
+      console.warn('[records] 创建套餐记录失败（非致命）:', insertError);
+      if (!isMissingMembershipRecordsError(insertError)) {
+        return NextResponse.json({
+          success: false,
+          error: insertError.message,
+          code: 'INSERT_FAILED',
+          details: insertError.details || null,
+        }, { status: 500 });
+      }
+      console.warn('[records] 套餐记录表缺失，已切换为律师主表降级写入');
     }
 
     // 2. 同步更新 lawyers 表主字段（保持向后兼容）
     const { data: lawyer } = await supabase
       .from('lawyers')
-      .select('package_type, member_expires_at, member_starting_at')
+      .select('package_type, member_expires_at, member_starting_at, selected_packages')
       .eq('id', lawyer_id)
       .single();
 
@@ -97,19 +101,14 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. 同步 selected_packages（用于律师工作台显示套餐标签）
-    const { data: activeRecords, error: activeRecordsError } = await supabase
-      .from('membership_records')
-      .select('package_type')
-      .eq('lawyer_id', lawyer_id)
-      .in('status', ['active', 'trial']);
-
-    if (!activeRecordsError) {
-      const packages = [...new Set((activeRecords || []).map(r => r.package_type))];
-      await supabase
-        .from('lawyers')
-        .update({ selected_packages: packages })
-        .eq('id', lawyer_id);
-    }
+    const existingPackages = Array.isArray(lawyer?.selected_packages)
+      ? lawyer.selected_packages.filter((pkg): pkg is string => typeof pkg === 'string')
+      : [];
+    const packages = [...new Set([...existingPackages, recordPackageType])];
+    await supabase
+      .from('lawyers')
+      .update({ selected_packages: packages })
+      .eq('id', lawyer_id);
 
     // 4. 写操作日志
     try {
@@ -128,7 +127,16 @@ export async function POST(request: NextRequest) {
       console.warn('[records] 写操作日志异常（非致命）:', logErr?.message || logErr);
     }
 
-    return NextResponse.json({ success: true, data: record });
+    return NextResponse.json({
+      success: true,
+      data: record || {
+        id: `fallback-${lawyer_id}-${Date.now()}`,
+        lawyer_id,
+        package_type: recordPackageType,
+        status: is_trial ? 'trial' : 'active',
+        expires_at,
+      },
+    });
   } catch (error: any) {
     console.error('[records] 开通套餐异常:', error);
     return NextResponse.json({
