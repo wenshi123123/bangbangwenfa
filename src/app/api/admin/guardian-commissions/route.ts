@@ -2,6 +2,29 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { requireAdminAuth, adminUnauthorizedResponse } from '@/lib/auth/admin-middleware';
 
+function presentGuardianCommission(item: {
+  id: string | number;
+  guardian_id: string | number;
+  order_id: string | number | null;
+  commission_amount: number;
+  commission_rate: number;
+  status: string;
+  created_at: string;
+  updated_at?: string | null;
+}) {
+  return {
+    id: item.id,
+    guardian_id: item.guardian_id,
+    order_id: item.order_id,
+    commission_amount: item.commission_amount,
+    commission_rate: item.commission_rate,
+    status: item.status,
+    admin_note: null,
+    created_at: item.created_at,
+    processed_at: item.status === 'pending' ? null : (item.updated_at || null),
+  };
+}
+
 export async function GET(request: NextRequest) {
   // 验证管理员身份
   const authResult = await requireAdminAuth(request);
@@ -20,7 +43,7 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabaseAdmin();
     let commissionQuery = supabase
       .from('guardian_commissions')
-      .select('id, guardian_id, order_id, commission_amount, commission_rate, status, admin_note, created_at, processed_at', { count: 'exact' })
+      .select('id, guardian_id, order_id, commission_amount, commission_rate, status, created_at, updated_at', { count: 'exact' })
       .order('created_at', { ascending: false });
     if (status) commissionQuery = commissionQuery.eq('status', status);
 
@@ -97,7 +120,7 @@ export async function GET(request: NextRequest) {
     const orderMap = new Map((orderResult.data || []).map((order) => [String(order.id), order]));
 
     const result = commissions.map((item) => ({
-      ...item,
+      ...presentGuardianCommission(item),
       guardian: guardianMap.get(String(item.guardian_id)) || null,
       order: orderMap.get(String(item.order_id)) || null,
     }));
@@ -151,21 +174,24 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: false, error: '缺少参数' }, { status: 400 });
     }
     const supabase = getSupabaseAdmin();
-    const updates: Record<string, unknown> = { status };
-    if (adminNote) updates.admin_note = adminNote;
-    if (status === 'approved' || status === 'rejected') {
-      updates.processed_at = new Date().toISOString();
-    }
+    const updates: Record<string, unknown> = {
+      status,
+      updated_at: new Date().toISOString(),
+    };
 
     // 先查询分成记录
     const { data: commission, error: queryError } = await supabase
       .from('guardian_commissions')
-      .select('guardian_id, commission_amount, order_id')
+      .select('guardian_id, commission_amount, order_id, status')
       .eq('id', id)
       .single();
 
     if (queryError || !commission) {
       return NextResponse.json({ success: false, error: '查询分成记录失败' }, { status: 500 });
+    }
+
+    if (commission.status !== 'pending') {
+      return NextResponse.json({ success: false, error: '该分成记录已处理，请刷新页面' }, { status: 409 });
     }
 
     // 如果审核通过，更新守护者余额
@@ -226,7 +252,11 @@ export async function PUT(request: NextRequest) {
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({
+      success: true,
+      data: presentGuardianCommission(data),
+      adminNote: adminNote || null,
+    });
   } catch (error) {
     return NextResponse.json({ success: false, error: '服务器错误' }, { status: 500 });
   }
