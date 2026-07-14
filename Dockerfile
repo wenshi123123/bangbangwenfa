@@ -68,7 +68,7 @@ ENV DEPLOY_ENV=PROD
 
 # 健康检查 - 延迟 30 秒给容器充足的启动时间
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD curl -f http://localhost:5000/health || exit 1
+  CMD curl -f "http://localhost:${PORT:-5000}/health" || exit 1
 
 EXPOSE 3000 5000
 
