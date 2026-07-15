@@ -57,7 +57,7 @@
 | `src/app/layout.tsx` | 安装该 guard。 |
 | `src/lib/static-asset-recovery.ts` | 纯函数：判断资源 URL、生成恢复 URL、生成 session key；供客户端和单元测试共享。 |
 | `scripts/static-asset-recovery.test.ts` | 覆盖资源过滤、版本 URL、一次性标记语义。 |
-| `scripts/middleware-cache-policy.test.ts` | 覆盖 canonical redirect 必须包含 no-store，正常 HTML 不含 Clear-Site-Data。 |
+| `scripts/middleware-runtime.test.ts` | 覆盖 canonical redirect 必须包含 no-store，正常 HTML 不含 Clear-Site-Data。 |
 
 ## 验收标准
 

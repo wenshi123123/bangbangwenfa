@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { BUILD_CACHE_BUST_VALUE } from '@/lib/build-meta';
-import { getSiteUrl, shouldRedirectToCanonicalHost } from '@/lib/site';
+import {
+  BUILD_CACHE_BUST_VALUE,
+  STATIC_ASSET_RECOVERY_PARAM,
+} from '@/lib/build-meta';
+import { getCanonicalSiteUrl, shouldRedirectToCanonicalHost } from '@/lib/site';
 
 const CACHE_BUST_PARAM = '__bbwv';
 const CHUNK_MANIFEST_PATH = `/__bbwv-chunks-${BUILD_CACHE_BUST_VALUE}.json`;
@@ -115,6 +118,8 @@ export async function middleware(request: NextRequest) {
   const acceptHeader = request.headers.get('accept') || '';
   const isHtmlNavigation = acceptHeader.includes('text/html');
   const isApiRoute = pathname === '/api' || pathname.startsWith('/api/');
+  const isRecoveryNavigation =
+    request.nextUrl.searchParams.get(STATIC_ASSET_RECOVERY_PARAM) === '1';
   const isStaticChunkRequest =
     pathname.startsWith('/_next/static/chunks/') && pathname.endsWith('.js');
 
@@ -130,11 +135,11 @@ export async function middleware(request: NextRequest) {
 
   if (isProd && shouldRedirectToCanonicalHost(hostname)) {
     const redirectUrl = request.nextUrl.clone();
-    const canonicalUrl = new URL(getSiteUrl());
+    const canonicalUrl = new URL(getCanonicalSiteUrl());
     redirectUrl.protocol = canonicalUrl.protocol;
     redirectUrl.hostname = canonicalUrl.hostname;
     redirectUrl.port = canonicalUrl.port;
-    return NextResponse.redirect(redirectUrl, 308);
+    return applySecurityHeaders(NextResponse.redirect(redirectUrl, 307), isProd);
   }
 
   if (hasBuildCacheBust && isStaticChunkRequest) {
@@ -154,19 +159,21 @@ export async function middleware(request: NextRequest) {
     hasBuildCacheBust &&
     isHtmlNavigation &&
     !isApiRoute &&
-    request.nextUrl.searchParams.get(CACHE_BUST_PARAM) !== BUILD_CACHE_BUST_VALUE
+    (request.nextUrl.searchParams.get(CACHE_BUST_PARAM) !== BUILD_CACHE_BUST_VALUE ||
+      isRecoveryNavigation)
   ) {
     const rewriteUrl = request.nextUrl.clone();
     rewriteUrl.searchParams.set(CACHE_BUST_PARAM, BUILD_CACHE_BUST_VALUE);
+    rewriteUrl.searchParams.delete(STATIC_ASSET_RECOVERY_PARAM);
     return applySecurityHeaders(
       NextResponse.redirect(rewriteUrl, 307),
       isProd,
-      true
+      isRecoveryNavigation
     );
   }
 
   // 添加安全响应头
-  return applySecurityHeaders(NextResponse.next(), isProd, isHtmlNavigation && !isApiRoute);
+  return applySecurityHeaders(NextResponse.next(), isProd);
 }
 
 export const config = {
