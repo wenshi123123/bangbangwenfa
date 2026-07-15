@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { requireAdminAuth, adminUnauthorizedResponse } from '@/lib/auth/admin-middleware';
 
+export function isGuardianCommissionNotFoundError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const maybeError = error as { code?: string; message?: string };
+  return (
+    maybeError.code === 'PGRST116' ||
+    maybeError.message === 'JSON object requested, multiple (or no) rows returned'
+  );
+}
+
 function presentGuardianCommission(item: {
   id: string | number;
   guardian_id: string | number;
@@ -185,6 +197,10 @@ export async function PUT(request: NextRequest) {
       .select('guardian_id, commission_amount, order_id, status')
       .eq('id', id)
       .single();
+
+    if (queryError && isGuardianCommissionNotFoundError(queryError)) {
+      return NextResponse.json({ success: false, error: '分成记录不存在' }, { status: 404 });
+    }
 
     if (queryError || !commission) {
       return NextResponse.json({ success: false, error: '查询分成记录失败' }, { status: 500 });
