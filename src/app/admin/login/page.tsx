@@ -6,6 +6,33 @@ import Link from 'next/link';
 import { getVersionedPath } from '@/lib/site';
 import { Loader2, Shield, Lock, User } from 'lucide-react';
 
+async function postAdminLogin(
+  payload: { username: string; password: string },
+  retries = 2
+) {
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch (error) {
+      lastError = error;
+
+      if (attempt === retries) {
+        throw error;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('登录请求失败');
+}
+
 export default function AdminLoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -25,11 +52,7 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/admin/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
+      const response = await postAdminLogin({ username, password });
 
       const result = await response.json();
 
