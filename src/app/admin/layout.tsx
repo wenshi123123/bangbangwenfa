@@ -203,6 +203,7 @@ export default function AdminLayout({
       }
       try {
         setAdmin(JSON.parse(adminInfo));
+        setUnauthorized(false);
       } catch (e) {
         console.error('解析管理员信息失败', e);
         setUnauthorized(true);
@@ -226,9 +227,11 @@ export default function AdminLayout({
           router.replace(buildAdminLoginHref(versionedRedirectPath));
           return false;
         }
+        setUnauthorized(false);
       } catch (err) {
         console.error('验证 token 失败:', err);
         // 网络错误时不拦截，页面可离线使用
+        setUnauthorized(false);
       }
 
       return true;
