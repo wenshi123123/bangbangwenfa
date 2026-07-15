@@ -1,112 +1,73 @@
-# Next.js 静态资源多版本共存设计
+# Next.js 旧缓存单次自愈设计
 
 ## 目标
 
-部署新版本后，已经缓存旧 HTML 的手机浏览器、微信 WebView 和 `www` 访问者仍能完整加载其引用的 JS、CSS、字体和媒体资源；不再因为新容器替换旧 `.next/static` 而出现 404、`ChunkLoadError` 或页面卡在“加载中”。
+在不增加对象存储、CDN 或新域名的前提下，解决手机浏览器和微信 WebView 因旧 HTML 引用已被新 Zeabur 容器替换的静态资源而出现的异常加载。遇到此类旧资源失败时，页面只自动刷新一次并取得当前 HTML；不能无限刷新，也不能要求用户手工清缓存。
 
 ## 已确认的事实
 
-- `src/middleware.ts` 仅将 `/_next/static/chunks/*.js` 的不存在文件重写到恢复脚本；CSS、字体和图片被 matcher 排除。
-- `src/middleware.ts` 对 `www → bangbangwenfa.com` 的 308 重定向直接返回，未调用 `applySecurityHeaders`，因此没有 `Cache-Control: no-store`。
-- Zeabur 每次部署运行的是新容器。新容器只包含本次构建的 `.next/static`；它不能保存上一个容器中的静态文件。
-- `package.json` 已含 `@aws-sdk/client-s3` 和 `@aws-sdk/lib-storage`，可以对任意 S3 兼容对象存储（R2、COS、TOS、S3 等）上传构建产物，不增加 SDK。
+- `src/middleware.ts` 只对 `/_next/static/chunks/*.js` 做旧 chunk 恢复；CSS、字体、图片不在此路径中。
+- 同文件中的 `www → bangbangwenfa.com` 使用 308 直接返回，没有 `Cache-Control: no-store`。浏览器/WebView 可能分别缓存两个域名的旧 HTML。
+- Zeabur 的新容器只带当前 `.next/static`，因此无法让任意历史 HTML 的每个资源都永久存在；要做到这一点才需要对象存储。
+- 当前页面 HTML 已通过 middleware 设置 `Cache-Control: no-store`，故一次真实的顶层刷新能够取得新版本 HTML。
 
-## 方案比较与选择
+## 方案比较
 
-1. **S3 兼容对象存储保存所有已发布的 `/_next/static` 文件（采用）**：旧 HTML 直接从长期存在的静态域名请求其原始资源。需要配置一个对象存储 bucket 和静态子域名，但跨 Zeabur 部署真正有效。
-2. 在 middleware 扩展 JS 恢复逻辑至 CSS、字体与媒体：只能把旧页面强制刷新到新版本，仍会有一次失败和重载；无法保证旧页面连续可用。
-3. 继续靠 `__bbwv` 参数和 `Clear-Site-Data`：依赖浏览器是否遵守清缓存，无法消除 `www`、微信 WebView 和离线旧 HTML 的不确定性。
+1. **单次自愈 + 统一入口（采用）**：发现静态资源错误时，顶层页面仅刷新一次；刷新后的 HTML 指向当前资源。无需新增服务，少量代码即可上线。
+2. 多版本对象存储：能让旧 HTML 零刷新继续运行，但需要 bucket、静态域名、发布与清理流程；当前不采用。
+3. 只靠 `Clear-Site-Data` / `__bbwv`：会清掉用户缓存并可能造成反复跳转，不能可靠捕获 CSS、字体、媒体失败；不采用为主链路。
 
-本设计实施方案 1。方案 2 的恢复脚本在第一阶段保留为应急兜底，不作为正常访问链路。
+## 设计
 
-## 架构
+### 统一域名
 
-### 1. 不可变静态资产库
+- 主站仅使用 `https://bangbangwenfa.com`。
+- `https://www.bangbangwenfa.com/*` 返回 307 到相同路径的裸域名。
+- 该重定向必须附 `Cache-Control: no-store, no-cache, must-revalidate, max-age=0`、`Pragma: no-cache`、`Expires: 0`，不能被 WebView 固化。
 
-每次构建完成后，把 `.next/static/**` 上传到对象存储的同一逻辑前缀 `/_next/static/**`。文件名含 Next.js 的内容哈希，因此不同构建通常使用不同路径；上传规则是“只新增，不覆盖已有同名对象”。
+### 页面缓存
 
-Next.js 的 `assetPrefix` 设置为 `NEXT_PUBLIC_STATIC_ASSET_ORIGIN`，例如 `https://static.bangbangwenfa.com`。新旧 HTML 因而都从：
+- HTML 导航和 API 保持 no-store。
+- 不再对每次正常 HTML 导航发送 `Clear-Site-Data: "cache"`；它只会在明确的恢复操作中使用。正常访问不应清掉用户其它同域缓存。
+- `__bbwv` 继续作为链接带出的构建标记和恢复后的定位标记，但不再是每次请求都清缓存的机制。
 
-```text
-https://static.bangbangwenfa.com/_next/static/chunks/<hash>.js
-https://static.bangbangwenfa.com/_next/static/css/<hash>.css
-https://static.bangbangwenfa.com/_next/static/media/<hash>.woff2
-```
+### 静态资源错误自愈
 
-请求各自构建时生成的文件。主站容器更新不再删除这些对象。
+新增一个客户端资源错误守卫，使用 capture 阶段监听 `error` 事件，只处理以下同源 `/_next/static/` 请求：
 
-对象响应头必须是：
+- `<script src>`：JS chunk；
+- `<link rel="stylesheet" href>`：CSS；
+- `<img src>`、`<video poster>`、`<source src>`：Next 静态媒体；
+- 由 CSS 加载的字体不会可靠地产生 DOM error，但 CSS 失败本身已会触发一次刷新。
 
-```text
-Cache-Control: public, max-age=31536000, immutable
-Content-Type: 根据对象扩展名正确设置
-```
+首次命中后，守卫在 `sessionStorage` 写入当前构建 token 和一次性标记，随后把顶层 URL 的 `__bbwv` 改为当前 token 并执行 `location.replace()`。同一 tab、同一构建最多执行一次；刷新后再次失败则展示原始失败状态并记录 console error，绝不再触发刷新。
 
-### 2. 发布原子性与保留策略
+守卫忽略第三方资源、业务图片、Supabase/微信请求以及不带 `/_next/static/` 的请求，避免错误刷新。
 
-构建流程分为：构建 Next.js → 生成完整资产清单 → 上传并验证静态资源 → 生成服务器 bundle → 启动新版本。
+### 现有恢复逻辑
 
-资产上传或验证失败必须使部署失败；绝不能启动引用 CDN 资源但资源尚未存在的版本。清理任务读取每个发布清单，只在资产不属于最近 **30 个成功发布** 且对象最后修改时间超过 **30 天** 时删除。失败构建不创建“成功发布”清单，不能触发清理。
+保留现有旧 JS chunk rewrite 和 `ChunkLoadGuard`，但令它们与资源错误守卫使用同一 sessionStorage 标记语义。无论 JS、CSS 或媒体先失败，都只产生一次恢复导航。
 
-每一次成功发布另存 `releases/<build-token>.json`，记录 token、提交号、上传时间与所有资源路径；它既是回滚诊断凭据，也是清理依据。
+## 文件边界
 
-### 3. 单一主域名与 HTML 缓存
-
-- 唯一业务入口是 `https://bangbangwenfa.com`。
-- `https://www.bangbangwenfa.com/*` 返回 **307** 到裸域名，并附 `Cache-Control: no-store, max-age=0`；不再让 WebView 长期缓存一个 308。
-- 主站 HTML、RSC 和 API 继续返回 `Cache-Control: no-store`。这样新的导航总是获取当前 HTML；即便某个客户端拿到历史 HTML，它的静态文件也仍可加载。
-- `static.bangbangwenfa.com` 只服务 `/_next/static/**`，不设置主站 cookie、不提供 HTML 页面。
-
-### 4. 当前应急恢复机制的过渡
-
-保留 `__bbwv` 跳转和 JS `ChunkLoadError` 恢复脚本一个发布周期，作为静态域名误配时的安全网。上线并连续观察 30 天后，可以删除“旧 chunk 重写为刷新脚本”的主逻辑；版本化 URL 不再承担资源可用性的责任。
-
-## 代码边界
-
-| 位置 | 职责 |
+| 文件 | 改动职责 |
 | --- | --- |
-| `next.config.ts` | 只从 `NEXT_PUBLIC_STATIC_ASSET_ORIGIN` 生成 `assetPrefix`；统一唯一的 Next 配置来源。 |
-| `scripts/publish-next-static-assets.mjs` | 扫描 `.next/static`、上传缺失对象、写发布清单、验证 HEAD 请求。 |
-| `scripts/prune-next-static-assets.mjs` | 按 30 个成功发布和 30 天的双条件清理过期对象。只由手动或定时任务调用。 |
-| `scripts/build.sh` 与 `Dockerfile` | 在部署构建中调用发布脚本；上传失败立即退出。 |
-| `src/middleware.ts` | 让 canonical redirect 同样带 no-store；不再尝试把 CSS/字体/媒体重写成本地恢复内容。 |
-| `scripts/*.test.ts` | 覆盖资产路径、上传清单、上传失败阻断发布，以及 canonical redirect 缓存头。 |
-
-## 环境变量
-
-以下变量只配置在 Zeabur，不进入 Git：
-
-```text
-NEXT_PUBLIC_STATIC_ASSET_ORIGIN=https://static.bangbangwenfa.com
-STATIC_ASSET_S3_ENDPOINT=<S3 兼容 API endpoint>
-STATIC_ASSET_S3_REGION=auto
-STATIC_ASSET_S3_BUCKET=bangbangwenfa-next-assets
-STATIC_ASSET_S3_ACCESS_KEY_ID=<secret>
-STATIC_ASSET_S3_SECRET_ACCESS_KEY=<secret>
-STATIC_ASSET_RETENTION_RELEASES=30
-STATIC_ASSET_RETENTION_DAYS=30
-```
-
-`NEXT_PUBLIC_STATIC_ASSET_ORIGIN` 是公开值；其余 `STATIC_ASSET_S3_*` 均为仅构建期/服务端秘密。对象存储必须允许公开读取 `/_next/static/**`，但不得允许匿名写入或列目录。
+| `src/middleware.ts` | 为 canonical redirect 施加 no-store；限制 `Clear-Site-Data` 到恢复跳转。 |
+| `src/components/static-asset-recovery-guard.tsx` | 只负责识别同源 `/_next/static/` DOM 资源失败并触发一次顶层恢复。 |
+| `src/app/layout.tsx` | 安装该 guard。 |
+| `src/lib/static-asset-recovery.ts` | 纯函数：判断资源 URL、生成恢复 URL、生成 session key；供客户端和单元测试共享。 |
+| `scripts/static-asset-recovery.test.ts` | 覆盖资源过滤、版本 URL、一次性标记语义。 |
+| `scripts/middleware-cache-policy.test.ts` | 覆盖 canonical redirect 必须包含 no-store，正常 HTML 不含 Clear-Site-Data。 |
 
 ## 验收标准
 
-1. 裸域名和 www 域名打开首页、`/civil`、`/admin/login` 均无 JS/CSS/font/media 404；www 的最终地址为裸域名。
-2. `www → 裸域名` 响应有 `Cache-Control: no-store`。
-3. 当前 HTML 的所有 `/_next/static` 引用使用 `static.bangbangwenfa.com`，且逐个 HEAD 为 200。
-4. 保存一份部署前 HTML，完成新部署后再请求其中的每一个静态 URL，仍全部为 200。
-5. 断开或故意填错对象存储凭据时，构建在上传阶段失败，Zeabur 不会替换现有运行版本。
-6. 清理脚本不会删除最近 30 个成功发布引用的任何资源。
+1. `www` 打开首页、`/civil`、`/admin/login` 后最终 URL 是裸域名，且 redirect 响应有 no-store。
+2. 访问正常页面不出现 `Clear-Site-Data`。
+3. 人为触发同源旧 JS、CSS 或图片 `/_next/static/` 资源错误时，当前 tab 只调用一次 `location.replace()`，目标 URL 包含当前 `__bbwv` token。
+4. 同一 tab 的第二次资源错误不再自动刷新。
+5. 第三方图片和普通业务图片错误不刷新页面。
+6. 首页、`/civil`、`/admin/login` 的常规加载和支付、后台流程不受此 guard 影响。
 
-## 非目标
+## 明确限制
 
-- 不迁移业务 API、Supabase、微信支付或用户上传图片。
-- 不把 `/_next/image` 迁移到静态资产 bucket。
-- 不以强制清用户浏览器缓存作为正确性前提。
-
-## 上线顺序
-
-1. 创建并配置 bucket、静态子域名和上述 Zeabur 环境变量。
-2. 部署带发布脚本的版本；确认 bucket 清单和静态资源完整。
-3. 用旧 HTML 回放测试和移动端真机测试确认跨部署资源仍为 200。
-4. 30 天观察期后，再评估是否移除旧的 JS recovery rewrite。
+该方案把“旧资源导致的不可用页面”收敛为一次自动刷新，不能保证离线设备上的历史 HTML 永远无需刷新。若未来需要该保证，再采用对象存储多版本资产库。
