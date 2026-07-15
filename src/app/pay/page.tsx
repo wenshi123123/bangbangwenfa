@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  buildWechatOauthRedirectPath,
+  resolveWechatWebPayFlow,
+} from "@/lib/payment/wechat-web";
 
 // 支付页面 - 咨询下单后跳转此页面完成支付
 
@@ -102,6 +106,15 @@ function PayPageInner() {
     return url.toString();
   };
 
+  const buildCurrentPayRedirectPath = useCallback(() => {
+    const params = new URLSearchParams();
+    if (orderIdParam) {
+      params.set('orderId', String(orderIdParam));
+    }
+    const query = params.toString();
+    return query ? `/pay?${query}` : '/pay';
+  }, [orderIdParam]);
+
   const appendWechatRedirectUrl = (h5Url: string, returnUrl: string) => {
     try {
       const url = new URL(h5Url);
@@ -135,6 +148,15 @@ function PayPageInner() {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    if (!deviceReady || !isWechat || oaOpenid || !orderIdParam) {
+      return;
+    }
+
+    const redirectPath = buildCurrentPayRedirectPath();
+    window.location.href = buildWechatOauthRedirectPath(redirectPath);
+  }, [deviceReady, isWechat, oaOpenid, orderIdParam, buildCurrentPayRedirectPath]);
+
   // 加载订单信息
   useEffect(() => {
     if (!orderIdParam) {
@@ -144,6 +166,10 @@ function PayPageInner() {
     }
 
     if (isLoading) {
+      return;
+    }
+
+    if (isWechat && !oaOpenid) {
       return;
     }
 
@@ -206,6 +232,17 @@ function PayPageInner() {
     setError(null);
 
     try {
+      const payFlow = resolveWechatWebPayFlow({
+        isWechat,
+        isMobile,
+        hasOpenid: !!oaOpenid,
+      });
+
+      if (payFlow === 'oauth') {
+        window.location.href = buildWechatOauthRedirectPath(buildCurrentPayRedirectPath());
+        return;
+      }
+
       const data = await apiRequest('/api/pay/create', {
         method: 'POST',
         body: {
