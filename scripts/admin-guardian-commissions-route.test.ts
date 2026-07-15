@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { isGuardianCommissionNotFoundError } from '../src/app/api/admin/guardian-commissions/route';
+import { isGuardianCommissionNotFoundError } from '../src/lib/admin/guardian-commissions';
 
 assert.equal(
   isGuardianCommissionNotFoundError({

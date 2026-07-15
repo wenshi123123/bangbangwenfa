@@ -1,18 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { requireAdminAuth, adminUnauthorizedResponse } from '@/lib/auth/admin-middleware';
-
-export function isGuardianCommissionNotFoundError(error: unknown): boolean {
-  if (!error || typeof error !== 'object') {
-    return false;
-  }
-
-  const maybeError = error as { code?: string; message?: string };
-  return (
-    maybeError.code === 'PGRST116' ||
-    maybeError.message === 'JSON object requested, multiple (or no) rows returned'
-  );
-}
+import { isGuardianCommissionNotFoundError } from '@/lib/admin/guardian-commissions';
 
 function presentGuardianCommission(item: {
   id: string | number;
