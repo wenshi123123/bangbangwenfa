@@ -152,6 +152,7 @@ export function MobileNav() {
                         </span>
                     </div>
                     <Link
+                        prefetch={false}
                         href={getCivilUrl()}
                         onClick={() => setOpen(false)}
                         className={linkClass(isCivil)}
@@ -163,6 +164,7 @@ export function MobileNav() {
                         </div>
                     </Link>
                     <Link
+                        prefetch={false}
                         href={getConsultUrl()}
                         onClick={() => setOpen(false)}
                         className={linkClass(isConsult)}

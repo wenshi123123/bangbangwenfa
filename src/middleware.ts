@@ -16,7 +16,8 @@ function applySecurityHeaders(
   response: NextResponse,
   isProd: boolean,
   clearBrowserCache = false,
-  preserveCacheControl = false
+  preserveCacheControl = false,
+  cacheHomeDocument = false
 ) {
   // 隐藏技术栈信息
   response.headers.delete('X-Powered-By');
@@ -33,7 +34,9 @@ function applySecurityHeaders(
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   // 页面和 API 响应不要长期缓存，避免 CloudBase/CDN 命中旧 HTML 后引用失效的静态资源。
   // 公开价格接口有自己的短时缓存策略，不能被这里的全局 no-store 覆盖。
-  if (!preserveCacheControl) {
+  if (cacheHomeDocument) {
+    response.headers.set('Cache-Control', 'private, max-age=300, stale-while-revalidate=60');
+  } else if (!preserveCacheControl) {
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
     response.headers.set('Pragma', 'no-cache');
     response.headers.set('Expires', '0');
@@ -83,6 +86,13 @@ export async function middleware(request: NextRequest) {
   const preserveCacheControl = pathname === '/api/price';
   const isRecoveryNavigation =
     request.nextUrl.searchParams.get(STATIC_ASSET_RECOVERY_PARAM) === '1';
+  const canCacheHomeDocument =
+    request.method === 'GET' &&
+    pathname === '/' &&
+    isHtmlNavigation &&
+    hasBuildCacheBust &&
+    request.nextUrl.searchParams.get(CACHE_BUST_PARAM) === BUILD_CACHE_BUST_VALUE &&
+    !isRecoveryNavigation;
 
   const tokenCookie = request.cookies.get('token')?.value;
   const authSyncCookie = request.cookies.get('auth_sync')?.value;
@@ -121,7 +131,13 @@ export async function middleware(request: NextRequest) {
   }
 
   // 添加安全响应头
-  return applySecurityHeaders(NextResponse.next(), isProd, false, preserveCacheControl);
+  return applySecurityHeaders(
+    NextResponse.next(),
+    isProd,
+    false,
+    preserveCacheControl,
+    canCacheHomeDocument
+  );
 }
 
 export const config = {
