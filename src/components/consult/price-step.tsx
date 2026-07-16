@@ -93,29 +93,7 @@ export function PriceStep({ formData, inviteCode, onBack }: PriceStepProps) {
     setSubmitError(null);
     
     try {
-      // 再次获取最新价格
-      let priceInCents = getPriceInCents();
-      
-      // 如果有咨询服务，使用选择的套餐价格
-      if (hasConsult && currentPlan) {
-        // 从 API 获取最新价格
-        try {
-          const response = await apiRequest('/api/price', { skipAuth: true });
-          const result = await response.json();
-          if (result.success && result.data) {
-            const category = formData.caseType === 'civil' ? 'civil' : 'criminal';
-            const planData = result.data.find(
-              (p: { category: string; plan_id: string }) => 
-                p.category === category && p.plan_id === currentPlan.id
-            );
-            if (planData) {
-              priceInCents = planData.price;
-            }
-          }
-        } catch {
-          // 使用当前价格
-        }
-      }
+      const priceInCents = getPriceInCents();
       
       const response = await apiRequest('/api/consult/create', {
         method: 'POST',
