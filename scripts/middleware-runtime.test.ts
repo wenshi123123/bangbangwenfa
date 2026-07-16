@@ -36,7 +36,6 @@ async function main() {
     forwardedHostResponse.headers.get('location'),
     'https://bangbangwenfa.com/civil?foo=1',
   );
-
   const recoveryResponse = await middleware(
     new NextRequest('https://bangbangwenfa.com/civil?__bbwv=old&__bbwv_recover=1', {
       headers: { accept: 'text/html' },
