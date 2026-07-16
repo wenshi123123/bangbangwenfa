@@ -299,7 +299,7 @@ function FAQSection() {
 
 const heroImages = [
     {
-        src: "/hero-photo-1.png",
+        src: "/hero-photo-1.jpg",
         alt: "律师在夜晚办公室整理案件材料",
         title: "深夜案卷整理",
         subtitle: "一份材料背后，是对事实与证据的反复核对。",
@@ -317,13 +317,13 @@ const heroImages = [
         subtitle: "围绕争议焦点，快速找到可执行的解决路径。",
     },
     {
-        src: "/hero-photo-4.png",
+        src: "/hero-photo-4.jpg",
         alt: "律师在会议室与当事人沟通案件",
         title: "正式会谈",
         subtitle: "在安静、专业的环境里，逐条梳理问题。",
     },
     {
-        src: "/hero-photo-5.png",
+        src: "/hero-photo-5.jpg",
         alt: "法官与当事人沟通的办公场景",
         title: "权威场景",
         subtitle: "用更可信赖的场景，呈现法律服务的专业感。",
@@ -334,6 +334,7 @@ export default function Home() {
     const [mounted, setMounted] = useState(false);
     const [currentImage, setCurrentImage] = useState(0);
     const [paused, setPaused] = useState(false);
+    const activeHeroImage = heroImages[currentImage] ?? heroImages[0];
 
     useEffect(() => {
         setMounted(true);
@@ -403,36 +404,33 @@ export default function Home() {
                                 onMouseLeave={() => setPaused(false)}
                             >
                                 <div className="relative w-full h-full">
-                                    {heroImages.map((img, i) => (
-                                        <div
-                                            key={i}
-                                            className={`absolute inset-0 transition-opacity duration-[800ms] ease-in-out flex items-center justify-center ${
-                                                currentImage === i ? "opacity-100 z-10" : "opacity-0 z-0"
-                                            }`}
-                                        >
-                                            <Image
-                                                src={img.src}
-                                                alt={img.alt}
-                                                fill
-                                                priority={i === 0}
-                                                sizes="(min-width: 768px) 50vw, 100vw"
-                                                className="object-cover"
-                                            />
-                                            <div className="absolute inset-0 bg-gradient-to-t from-[#3D322D]/70 via-[#3D322D]/12 to-transparent" />
-                                            <div className="absolute inset-0 bg-gradient-to-br from-[#C47353]/12 via-transparent to-[#D4957A]/10" />
-                                            <div className="absolute left-5 right-5 bottom-24 sm:bottom-28 text-white">
-                                                <div className="inline-flex items-center rounded-full bg-white/15 backdrop-blur-md border border-white/20 px-3 py-1 text-[11px] sm:text-xs tracking-[0.12em] uppercase">
-                                                    真实图片 {String(i + 1).padStart(2, "0")}
-                                                </div>
-                                                <div className="mt-3 font-serif text-[1.6rem] sm:text-[1.9rem] md:text-[2.1rem] leading-tight font-medium drop-shadow-sm">
-                                                    {img.title}
-                                                </div>
-                                                <p className="mt-2 max-w-[26rem] text-sm sm:text-[15px] text-white/88 leading-relaxed drop-shadow-sm">
-                                                    {img.subtitle}
-                                                </p>
+                                    <div
+                                        key={activeHeroImage.src}
+                                        className="absolute inset-0 flex items-center justify-center transition-opacity duration-[800ms] ease-in-out opacity-100 z-10"
+                                    >
+                                        <Image
+                                            src={activeHeroImage.src}
+                                            alt={activeHeroImage.alt}
+                                            fill
+                                            priority={currentImage === 0}
+                                            quality={72}
+                                            sizes="(min-width: 768px) 50vw, 100vw"
+                                            className="object-cover"
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-[#3D322D]/70 via-[#3D322D]/12 to-transparent" />
+                                        <div className="absolute inset-0 bg-gradient-to-br from-[#C47353]/12 via-transparent to-[#D4957A]/10" />
+                                        <div className="absolute left-5 right-5 bottom-24 sm:bottom-28 text-white">
+                                            <div className="inline-flex items-center rounded-full bg-white/15 backdrop-blur-md border border-white/20 px-3 py-1 text-[11px] sm:text-xs tracking-[0.12em] uppercase">
+                                                真实图片 {String(currentImage + 1).padStart(2, "0")}
                                             </div>
+                                            <div className="mt-3 font-serif text-[1.6rem] sm:text-[1.9rem] md:text-[2.1rem] leading-tight font-medium drop-shadow-sm">
+                                                {activeHeroImage.title}
+                                            </div>
+                                            <p className="mt-2 max-w-[26rem] text-sm sm:text-[15px] text-white/88 leading-relaxed drop-shadow-sm">
+                                                {activeHeroImage.subtitle}
+                                            </p>
                                         </div>
-                                    ))}
+                                    </div>
                                 </div>
                                 <div className="absolute top-4 left-4 z-20">
                                     <div className="inline-flex items-center gap-2 rounded-full bg-white/15 backdrop-blur-md border border-white/20 px-3 py-1.5 text-[11px] sm:text-xs text-white">
@@ -456,6 +454,7 @@ export default function Home() {
                                                 src={img.src}
                                                 alt={img.alt}
                                                 fill
+                                                quality={50}
                                                 sizes="64px"
                                                 className="object-cover"
                                             />

@@ -28,7 +28,6 @@ const nextConfig: NextConfig = {
   },
   allowedDevOrigins: ['localhost:5000', 'localhost:3000', 'localhost', 'localhost:3007'],
   images: {
-    unoptimized: true,
     remotePatterns: [
       { protocol: 'https', hostname: 'www.bangbangwenfa.com' },
       { protocol: 'https', hostname: 'bangbangwenfa.com' },
