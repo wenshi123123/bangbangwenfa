@@ -381,17 +381,19 @@ export default function Home() {
                                 超<span className="font-medium">3小时</span>费用全免
                             </p>
                             <div className="flex gap-3.5 flex-wrap justify-center md:justify-start">
-                                <Link href={getCivilUrl()}>
-                                    <Button
-                                        className="bg-[#C47353] hover:bg-[#A85D40] text-white font-sans text-[14px] font-medium rounded-full px-9 py-[14px] tracking-[0.02em] shadow-md transition-all"
-                                    >民事咨询 <ArrowRight className="ml-1.5 h-4 w-4" /></Button>
-                                </Link>
-                                <Link href={getConsultUrl()}>
-                                    <Button
-                                        variant="outline"
-                                        className="border-[#C47353] text-[#C47353] hover:bg-[#C47353] hover:text-white font-sans text-[14px] font-medium rounded-full px-9 py-[14px] tracking-[0.02em]"
-                                    >刑事咨询 <ArrowRight className="ml-1.5 h-4 w-4" /></Button>
-                                </Link>
+                                <Button
+                                    asChild
+                                    className="h-12 bg-[#C47353] hover:bg-[#A85D40] text-white font-sans text-[14px] font-medium rounded-full px-9 tracking-[0.02em] shadow-md transition-all"
+                                >
+                                    <Link href={getCivilUrl()}>民事咨询 <ArrowRight className="ml-1.5 h-4 w-4" /></Link>
+                                </Button>
+                                <Button
+                                    asChild
+                                    variant="outline"
+                                    className="h-12 border-[#C47353] text-[#C47353] hover:bg-[#C47353] hover:text-white font-sans text-[14px] font-medium rounded-full px-9 tracking-[0.02em]"
+                                >
+                                    <Link href={getConsultUrl()}>刑事咨询 <ArrowRight className="ml-1.5 h-4 w-4" /></Link>
+                                </Button>
                             </div>
                         </div>
 
