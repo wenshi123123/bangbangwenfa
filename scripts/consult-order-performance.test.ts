@@ -5,11 +5,13 @@ import path from 'node:path';
 const ROOT = process.cwd();
 const PRICE_STEP_FILE = path.join(ROOT, 'src/components/consult/price-step.tsx');
 const PRICE_ROUTE_FILE = path.join(ROOT, 'src/app/api/price/route.ts');
+const MIDDLEWARE_FILE = path.join(ROOT, 'src/middleware.ts');
 
 async function main() {
-  const [priceStepSource, priceRouteSource] = await Promise.all([
+  const [priceStepSource, priceRouteSource, middlewareSource] = await Promise.all([
     fs.readFile(PRICE_STEP_FILE, 'utf8'),
     fs.readFile(PRICE_ROUTE_FILE, 'utf8'),
+    fs.readFile(MIDDLEWARE_FILE, 'utf8'),
   ]);
 
   const priceRequestCount = (
@@ -30,6 +32,11 @@ async function main() {
     priceRouteSource,
     /export const dynamic = 'force-dynamic';/,
     'force-dynamic overrides the price endpoint cache policy in production',
+  );
+  assert.match(
+    middlewareSource,
+    /const preserveCacheControl = pathname === '\/api\/price';/,
+    'the global middleware must preserve the public price endpoint cache policy',
   );
 
   console.log('consult order performance test passed');
