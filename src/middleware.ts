@@ -4,7 +4,11 @@ import {
   BUILD_CACHE_BUST_VALUE,
   STATIC_ASSET_RECOVERY_PARAM,
 } from '@/lib/build-meta';
-import { getCanonicalSiteUrl, shouldRedirectToCanonicalHost } from '@/lib/site';
+import {
+  getCanonicalSiteUrl,
+  getRequestHostname,
+  shouldRedirectToCanonicalHost,
+} from '@/lib/site';
 
 const CACHE_BUST_PARAM = '__bbwv';
 const CHUNK_MANIFEST_PATH = `/__bbwv-chunks-${BUILD_CACHE_BUST_VALUE}.json`;
@@ -113,7 +117,7 @@ async function loadCurrentChunkNames(request: NextRequest): Promise<Set<string> 
 export async function middleware(request: NextRequest) {
   const isProd = process.env.DEPLOY_ENV === 'PROD' || process.env.NODE_ENV === 'production';
   const hasBuildCacheBust = BUILD_CACHE_BUST_VALUE !== 'dev';
-  const hostname = request.nextUrl.hostname?.toLowerCase();
+  const hostname = getRequestHostname(request.headers, request.nextUrl.hostname);
   const { pathname, search } = request.nextUrl;
   const acceptHeader = request.headers.get('accept') || '';
   const isHtmlNavigation = acceptHeader.includes('text/html');

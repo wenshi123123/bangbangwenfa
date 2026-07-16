@@ -22,6 +22,20 @@ async function main() {
   assert.match(wwwResponse.headers.get('cache-control') ?? '', /no-store/);
   assert.equal(wwwResponse.headers.get('clear-site-data'), null);
 
+  const forwardedHostResponse = await middleware(
+    new NextRequest('https://bangbangwenfa.com/civil?foo=1', {
+      headers: {
+        accept: 'text/html',
+        'x-forwarded-host': 'www.bangbangwenfa.com',
+      },
+    }),
+  );
+
+  assert.equal(forwardedHostResponse.status, 307);
+  assert.equal(
+    forwardedHostResponse.headers.get('location'),
+    'https://bangbangwenfa.com/civil?foo=1',
+  );
   const recoveryResponse = await middleware(
     new NextRequest('https://bangbangwenfa.com/civil?__bbwv=old&__bbwv_recover=1', {
       headers: { accept: 'text/html' },

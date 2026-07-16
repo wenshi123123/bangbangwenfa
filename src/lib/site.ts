@@ -5,6 +5,15 @@ const BUILD_CACHE_BUST_VALUE =
   process.env.NEXT_PUBLIC_BUILD_CACHE_BUST_VALUE ||
   'dev';
 
+function normalizeHostnameValue(value: string | null | undefined): string | null {
+  if (!value) return null;
+
+  const firstValue = value.split(',')[0]?.trim().toLowerCase();
+  if (!firstValue) return null;
+
+  return firstValue.replace(/:\d+$/, '');
+}
+
 function normalizeUrl(input: string): URL | null {
   if (!input) return null;
 
@@ -67,8 +76,15 @@ export function isCanonicalHost(hostname: string | null | undefined): boolean {
 }
 
 export function shouldRedirectToCanonicalHost(hostname: string | null | undefined): boolean {
-  if (!hostname) return false;
-  return hostname.toLowerCase() === WWW_CANONICAL_HOST;
+  return normalizeHostnameValue(hostname) === WWW_CANONICAL_HOST;
+}
+
+export function getRequestHostname(headers: Headers, fallbackHostname?: string | null): string | null {
+  return (
+    normalizeHostnameValue(headers.get('x-forwarded-host')) ||
+    normalizeHostnameValue(headers.get('host')) ||
+    normalizeHostnameValue(fallbackHostname)
+  );
 }
 
 export function getVersionedPath(pathname: string): string {
