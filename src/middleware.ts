@@ -15,7 +15,8 @@ const CACHE_BUST_PARAM = '__bbwv';
 function applySecurityHeaders(
   response: NextResponse,
   isProd: boolean,
-  clearBrowserCache = false
+  clearBrowserCache = false,
+  preserveCacheControl = false
 ) {
   // 隐藏技术栈信息
   response.headers.delete('X-Powered-By');
@@ -30,10 +31,13 @@ function applySecurityHeaders(
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   // 权限策略
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  // 页面和 API 响应不要长期缓存，避免 CloudBase/CDN 命中旧 HTML 后引用失效的静态资源
-  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
-  response.headers.set('Pragma', 'no-cache');
-  response.headers.set('Expires', '0');
+  // 页面和 API 响应不要长期缓存，避免 CloudBase/CDN 命中旧 HTML 后引用失效的静态资源。
+  // 公开价格接口有自己的短时缓存策略，不能被这里的全局 no-store 覆盖。
+  if (!preserveCacheControl) {
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+  }
   if (clearBrowserCache) {
     response.headers.set('Clear-Site-Data', '"cache"');
   }
@@ -76,6 +80,7 @@ export async function middleware(request: NextRequest) {
   const acceptHeader = request.headers.get('accept') || '';
   const isHtmlNavigation = acceptHeader.includes('text/html');
   const isApiRoute = pathname === '/api' || pathname.startsWith('/api/');
+  const preserveCacheControl = pathname === '/api/price';
   const isRecoveryNavigation =
     request.nextUrl.searchParams.get(STATIC_ASSET_RECOVERY_PARAM) === '1';
 
@@ -116,7 +121,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // 添加安全响应头
-  return applySecurityHeaders(NextResponse.next(), isProd);
+  return applySecurityHeaders(NextResponse.next(), isProd, false, preserveCacheControl);
 }
 
 export const config = {
