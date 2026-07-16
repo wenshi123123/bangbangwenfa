@@ -4,6 +4,10 @@ import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 export const dynamic = 'force-dynamic';
 
+const cacheHeaders = {
+  'Cache-Control': 'public, max-age=60, s-maxage=60, stale-while-revalidate=300',
+};
+
 const defaultPrices = [
   { category: 'civil', plan_id: 'basic', plan_name: '基础咨询', price: 6900 },
   { category: 'civil', plan_id: 'standard', plan_name: '标准方案', price: 19900 },
@@ -38,23 +42,32 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Error fetching price configs:', error);
-      return NextResponse.json({
+      return NextResponse.json(
+        {
+          success: true,
+          data: category ? defaultPrices.filter(item => item.category === category) : defaultPrices,
+          fallback: true,
+        },
+        { headers: cacheHeaders },
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        data,
+      },
+      { headers: cacheHeaders },
+    );
+  } catch (error) {
+    console.error('Error fetching price configs:', error);
+    return NextResponse.json(
+      {
         success: true,
         data: category ? defaultPrices.filter(item => item.category === category) : defaultPrices,
         fallback: true,
-      });
-    }
-
-    return NextResponse.json({
-      success: true,
-      data
-    });
-  } catch (error) {
-    console.error('Error fetching price configs:', error);
-    return NextResponse.json({
-      success: true,
-      data: category ? defaultPrices.filter(item => item.category === category) : defaultPrices,
-      fallback: true,
-    });
+      },
+      { headers: cacheHeaders },
+    );
   }
 }
