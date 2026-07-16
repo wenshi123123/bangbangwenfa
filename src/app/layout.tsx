@@ -4,6 +4,7 @@ import { AuthProvider } from '@/hooks/use-auth';
 import { Header } from '@/components/layout/header';
 import LoginModal from '@/components/auth/login-modal';
 import SearchModal from '@/components/search/search-modal';
+import { CanonicalHostGuard } from '@/components/canonical-host-guard';
 import { ChunkLoadGuard } from '@/components/chunk-load-guard';
 import { StaticAssetRecoveryGuard } from '@/components/static-asset-recovery-guard';
 import { getSiteUrl } from '@/lib/site';
@@ -51,6 +52,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className="font-sans antialiased">
+        <CanonicalHostGuard />
         <StaticAssetRecoveryGuard />
         <ChunkLoadGuard />
         <AuthProvider>

@@ -33,6 +33,21 @@ export function getCanonicalSiteUrl(): string {
   return `https://${PREFERRED_CANONICAL_HOST}`;
 }
 
+export function getCanonicalBrowserRedirectUrl(currentUrl: string): string | null {
+  const current = normalizeUrl(currentUrl);
+  if (!current) {
+    return null;
+  }
+
+  if (current.hostname.toLowerCase() !== WWW_CANONICAL_HOST) {
+    return null;
+  }
+
+  current.hostname = PREFERRED_CANONICAL_HOST;
+  current.protocol = 'https:';
+  return current.toString();
+}
+
 export function getSiteUrl(): string {
   return (
     normalizeCanonicalUrl(process.env.NEXT_PUBLIC_SITE_URL || '')?.toString().replace(/\/$/, '') ||
