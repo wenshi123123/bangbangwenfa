@@ -342,6 +342,7 @@ export function Header() {
                                     </Link>
                                 )}
                                 <Link
+                                    prefetch={false}
                                     href={USER_CENTER_HREF}
                                     className="flex items-center gap-1.5 px-2 py-1 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors font-serif"
                                 >
