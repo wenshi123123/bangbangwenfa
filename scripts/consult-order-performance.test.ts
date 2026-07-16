@@ -26,6 +26,11 @@ async function main() {
     /Cache-Control['"]:\s*['"]public, max-age=60, s-maxage=60, stale-while-revalidate=300['"]/,
     'the public price endpoint must allow a short browser/proxy cache to avoid a database round-trip on every visit',
   );
+  assert.doesNotMatch(
+    priceRouteSource,
+    /export const dynamic = 'force-dynamic';/,
+    'force-dynamic overrides the price endpoint cache policy in production',
+  );
 
   console.log('consult order performance test passed');
 }
