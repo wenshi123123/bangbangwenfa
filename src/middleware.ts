@@ -11,11 +11,6 @@ import {
 } from '@/lib/site';
 
 const CACHE_BUST_PARAM = '__bbwv';
-const CHUNK_MANIFEST_PATH = `/__bbwv-chunks-${BUILD_CACHE_BUST_VALUE}.json`;
-const RECOVERY_SCRIPT_PATH = `/__bbwv-recover-${BUILD_CACHE_BUST_VALUE}.js`;
-
-let currentChunkNames: Set<string> | null = null;
-let currentChunkNamesPromise: Promise<Set<string> | null> | null = null;
 
 function applySecurityHeaders(
   response: NextResponse,
@@ -67,47 +62,6 @@ function applySecurityHeaders(
   return response;
 }
 
-async function loadCurrentChunkNames(request: NextRequest): Promise<Set<string> | null> {
-  if (currentChunkNames) {
-    return currentChunkNames;
-  }
-
-  if (!currentChunkNamesPromise) {
-    const manifestUrl = new URL(CHUNK_MANIFEST_PATH, request.url);
-    currentChunkNamesPromise = fetch(manifestUrl.toString(), { cache: 'no-store' })
-      .then(async response => {
-        if (!response.ok) {
-          return null;
-        }
-
-        const payload = (await response.json()) as
-          | { chunks?: string[] }
-          | string[]
-          | null;
-
-        const chunkList = Array.isArray(payload)
-          ? payload
-          : Array.isArray(payload?.chunks)
-            ? payload.chunks
-            : [];
-
-        return new Set(chunkList);
-      })
-      .catch(() => null)
-      .finally(() => {
-        currentChunkNamesPromise = null;
-      });
-  }
-
-  const resolvedChunkNames = await currentChunkNamesPromise;
-
-  if (resolvedChunkNames && resolvedChunkNames.size > 0) {
-    currentChunkNames = resolvedChunkNames;
-  }
-
-  return resolvedChunkNames;
-}
-
 /**
  * 全局中间件
  * 1. 添加安全响应头
@@ -124,8 +78,6 @@ export async function middleware(request: NextRequest) {
   const isApiRoute = pathname === '/api' || pathname.startsWith('/api/');
   const isRecoveryNavigation =
     request.nextUrl.searchParams.get(STATIC_ASSET_RECOVERY_PARAM) === '1';
-  const isStaticChunkRequest =
-    pathname.startsWith('/_next/static/chunks/') && pathname.endsWith('.js');
 
   const tokenCookie = request.cookies.get('token')?.value;
   const authSyncCookie = request.cookies.get('auth_sync')?.value;
@@ -144,19 +96,6 @@ export async function middleware(request: NextRequest) {
     redirectUrl.hostname = canonicalUrl.hostname;
     redirectUrl.port = canonicalUrl.port;
     return applySecurityHeaders(NextResponse.redirect(redirectUrl, 307), isProd);
-  }
-
-  if (hasBuildCacheBust && isStaticChunkRequest) {
-    const requestedChunk = pathname.slice('/_next/static/chunks/'.length);
-    const currentChunkNames = await loadCurrentChunkNames(request);
-
-    if (currentChunkNames && !currentChunkNames.has(requestedChunk)) {
-      const recoveryUrl = request.nextUrl.clone();
-      recoveryUrl.pathname = RECOVERY_SCRIPT_PATH;
-      recoveryUrl.search = '';
-      recoveryUrl.hash = '';
-      return applySecurityHeaders(NextResponse.rewrite(recoveryUrl), isProd);
-    }
   }
 
   if (
@@ -182,7 +121,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // 匹配所有路径（保留静态 chunk 以便旧 HTML 可自动跳转到当前构建）
-    '/((?!_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|woff2?|ttf|map)$).*)',
+    // HTML/API 仍由中间件防旧缓存；带内容哈希的 Next 静态资源交给 Next 默认的长期缓存策略。
+    '/((?!_next/static/|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|woff2?|ttf|map)$).*)',
   ],
 };
