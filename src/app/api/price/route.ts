@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 
-export const dynamic = 'force-dynamic';
-
 const cacheHeaders = {
   'Cache-Control': 'public, max-age=60, s-maxage=60, stale-while-revalidate=300',
 };
