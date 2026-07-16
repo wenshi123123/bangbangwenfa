@@ -4,3 +4,5 @@ export const BUILD_CACHE_BUST_VALUE: string =
   process.env.BUILD_CACHE_BUST_VALUE ||
   process.env.NEXT_PUBLIC_BUILD_CACHE_BUST_VALUE ||
   'dev';
+
+export const STATIC_ASSET_RECOVERY_PARAM = '__bbwv_recover';

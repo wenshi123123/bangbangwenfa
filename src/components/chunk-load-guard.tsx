@@ -1,8 +1,11 @@
 'use client';
 
 import { useEffect } from 'react';
-
-const RELOAD_KEY = '__bbwv_chunk_reload_once';
+import { BUILD_CACHE_BUST_VALUE } from '@/lib/build-meta';
+import {
+  buildStaticAssetRecoveryUrl,
+  claimStaticAssetRecoveryFromSession,
+} from '@/lib/static-asset-recovery';
 
 function isChunkLoadError(reason: unknown) {
   const text =
@@ -16,9 +19,10 @@ function isChunkLoadError(reason: unknown) {
 export function ChunkLoadGuard() {
   useEffect(() => {
     const reloadOnce = () => {
-      if (sessionStorage.getItem(RELOAD_KEY) === '1') return;
-      sessionStorage.setItem(RELOAD_KEY, '1');
-      window.location.reload();
+      if (!claimStaticAssetRecoveryFromSession()) return;
+      window.location.replace(
+        buildStaticAssetRecoveryUrl(window.location.href, BUILD_CACHE_BUST_VALUE),
+      );
     };
 
     const onUnhandledRejection = (event: PromiseRejectionEvent) => {
