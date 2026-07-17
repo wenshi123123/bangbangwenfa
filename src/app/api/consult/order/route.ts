@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
+import { getWechatPaymentSession } from '@/lib/payment/payment-context';
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const orderId = searchParams.get('orderId');
     const orderNo = searchParams.get('orderNo');
-    const requestOpenid = searchParams.get('oa_openid') || searchParams.get('openid');
+    const requestOpenid = getWechatPaymentSession(request)?.openid;
 
     const orderRef = orderId || orderNo;
 

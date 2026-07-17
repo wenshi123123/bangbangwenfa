@@ -56,7 +56,6 @@ function LawyerPayContent() {
   const [paid, setPaid] = useState(false);
   const [isWechat, setIsWechat] = useState(false);
   const [deviceReady, setDeviceReady] = useState(false);
-  const [oaOpenid, setOaOpenid] = useState<string | null>(null);
   const [qrCodeValue, setQrCodeValue] = useState<string | null>(null);
 
   const buildH5ReturnUrl = (targetOrderId: string) => {
@@ -84,18 +83,6 @@ function LawyerPayContent() {
     setDeviceReady(true);
   }, []);
 
-  // 从 URL 参数中获取 openid 并写入 localStorage（小程序 webview 传参场景）
-  useEffect(() => {
-    const urlOpenid = searchParams.get('oa_openid') || searchParams.get('openid');
-    if (urlOpenid && urlOpenid.length > 10) {
-      localStorage.setItem('oa_openid', urlOpenid);
-      setOaOpenid(urlOpenid);
-    } else {
-      const savedOpenid = localStorage.getItem('oa_openid');
-      if (savedOpenid) setOaOpenid(savedOpenid);
-    }
-  }, [searchParams]);
-
   useEffect(() => {
     if (!applicationId) {
       setError('缺少申请ID');
@@ -115,7 +102,6 @@ function LawyerPayContent() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             applicationId,
-            openid: oaOpenid || undefined,
           }),
         });
 
@@ -145,6 +131,10 @@ function LawyerPayContent() {
             setError('未获取到支付二维码，请稍后重试');
           }
         } else {
+          if (isWechat && result.code === 'WECHAT_OAUTH_REQUIRED') {
+            window.location.replace(`/api/wechat/oauth/authorize?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+            return;
+          }
           console.error('支付创建失败:', result.error);
           setError(result.error || '支付创建失败，请稍后重试');
         }
@@ -157,7 +147,7 @@ function LawyerPayContent() {
     };
 
     createPayment();
-  }, [applicationId, oaOpenid, isWechat, deviceReady]);
+  }, [applicationId, isWechat, deviceReady]);
 
   // 微信内调起 JSAPI 支付
   const invokeWechatPay = (params: JsapiPayParams) => {

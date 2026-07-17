@@ -7,10 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  buildWechatOauthRedirectPath,
-  resolveWechatWebPayFlow,
-} from "@/lib/payment/wechat-web";
 
 // 支付页面 - 咨询下单后跳转此页面完成支付
 
@@ -63,7 +59,9 @@ async function apiRequest(path: string, options?: { method?: string; body?: any;
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || `请求失败 (${res.status})`);
+    const error = new Error(err.error || `请求失败 (${res.status})`) as Error & { code?: string };
+    error.code = err.code;
+    throw error;
   }
 
   return res.json();
@@ -97,7 +95,6 @@ function PayPageInner() {
   const [isMobile, setIsMobile] = useState(false);
   const [isWechat, setIsWechat] = useState(false);
   const [deviceReady, setDeviceReady] = useState(false);
-  const [oaOpenid, setOaOpenid] = useState<string | null>(null);
   const [autoJsapiStarted, setAutoJsapiStarted] = useState(false);
 
   const buildH5ReturnUrl = (targetOrderId: number | string) => {
@@ -105,15 +102,6 @@ function PayPageInner() {
     url.searchParams.set('orderId', String(targetOrderId));
     return url.toString();
   };
-
-  const buildCurrentPayRedirectPath = useCallback(() => {
-    const params = new URLSearchParams();
-    if (orderIdParam) {
-      params.set('orderId', String(orderIdParam));
-    }
-    const query = params.toString();
-    return query ? `/pay?${query}` : '/pay';
-  }, [orderIdParam]);
 
   const appendWechatRedirectUrl = (h5Url: string, returnUrl: string) => {
     try {
@@ -134,29 +122,6 @@ function PayPageInner() {
     setDeviceReady(true);
   }, []);
 
-  useEffect(() => {
-    const urlOpenid = searchParams.get('oa_openid');
-    if (urlOpenid) {
-      setOaOpenid(urlOpenid);
-      localStorage.setItem('oa_openid', urlOpenid);
-      return;
-    }
-
-    const savedOpenid = localStorage.getItem('oa_openid');
-    if (savedOpenid) {
-      setOaOpenid(savedOpenid);
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    if (!deviceReady || !isWechat || oaOpenid || !orderIdParam) {
-      return;
-    }
-
-    const redirectPath = buildCurrentPayRedirectPath();
-    window.location.href = buildWechatOauthRedirectPath(redirectPath);
-  }, [deviceReady, isWechat, oaOpenid, orderIdParam, buildCurrentPayRedirectPath]);
-
   // 加载订单信息
   useEffect(() => {
     if (!orderIdParam) {
@@ -169,10 +134,6 @@ function PayPageInner() {
       return;
     }
 
-    if (isWechat && !oaOpenid) {
-      return;
-    }
-
     if (!isLoggedIn && !isWechat) {
       setError('未登录或登录已过期');
       setLoading(false);
@@ -182,16 +143,13 @@ function PayPageInner() {
     // 订单号有效后，清掉可能残留的旧错误态，再重新加载订单
     setError(null);
     loadOrder();
-  }, [orderIdParam, isLoggedIn, isLoading, isWechat, oaOpenid]);
+  }, [orderIdParam, isLoggedIn, isLoading, isWechat]);
 
   const loadOrder = async () => {
     try {
       // 修复：API 期望的参数是 orderId（不是 orderNo）
       setError(null);
-      const orderUrl = oaOpenid
-        ? `/api/consult/order?orderId=${orderIdParam}&oa_openid=${encodeURIComponent(oaOpenid)}`
-        : `/api/consult/order?orderId=${orderIdParam}`;
-      const data = await apiRequest(orderUrl, { skipAuth: !isLoggedIn && !!oaOpenid });
+      const data = await apiRequest(`/api/consult/order?orderId=${orderIdParam}`);
       if (data.success && data.order) {  // 修复：API 返回的是 data.order（不是 data.data）
         setOrder(data.order);
       } else {
@@ -232,26 +190,13 @@ function PayPageInner() {
     setError(null);
 
     try {
-      const payFlow = resolveWechatWebPayFlow({
-        isWechat,
-        isMobile,
-        hasOpenid: !!oaOpenid,
-      });
-
-      if (payFlow === 'oauth') {
-        window.location.href = buildWechatOauthRedirectPath(buildCurrentPayRedirectPath());
-        return;
-      }
-
       const data = await apiRequest('/api/pay/create', {
         method: 'POST',
         body: {
           orderId: order.id,  // 使用数据库主键作为支付订单ID
           amount: order.servicePrice, // 订单金额已是分，直接传给支付接口
           description: order.caseTitle || order.serviceName || '法律咨询服务',
-          openid: oaOpenid || undefined,
         },
-        skipAuth: !isLoggedIn && !!oaOpenid,
       });
 
       if (data.success) {
@@ -301,6 +246,10 @@ function PayPageInner() {
         setError(data.error || '创建支付失败');
       }
     } catch (err: any) {
+      if (isWechat && err.code === 'WECHAT_OAUTH_REQUIRED') {
+        window.location.replace(`/api/wechat/oauth/authorize?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+        return;
+      }
       console.error('创建支付失败:', err);
       setError(err.message || '创建支付失败，请稍后重试');
     } finally {
@@ -396,17 +345,9 @@ function PayPageInner() {
   useEffect(() => {
     if (!deviceReady || !order || !isWechat || autoJsapiStarted) return;
 
-    const pendingOrder = localStorage.getItem('pending_jsapi_pay_order');
-    const currentOrderId = String(order.id);
-    if (pendingOrder && pendingOrder !== currentOrderId) return;
-
-    localStorage.setItem('pending_jsapi_pay_order', currentOrderId);
-
-    if (oaOpenid) {
-      setAutoJsapiStarted(true);
-      handlePay();
-    }
-  }, [deviceReady, order, isWechat, oaOpenid, autoJsapiStarted, orderIdParam]);
+    setAutoJsapiStarted(true);
+    handlePay();
+  }, [deviceReady, order, isWechat, autoJsapiStarted, orderIdParam]);
 
   // 加载中
   if (loading) {
