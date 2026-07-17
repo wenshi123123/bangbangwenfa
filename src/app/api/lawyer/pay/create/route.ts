@@ -8,6 +8,12 @@ import { getPaymentClientContext, getWechatPaymentSession } from '@/lib/payment/
 const SITE_URL = getSiteUrl();
 const H5_SITE_URL = getWechatH5SiteUrl();
 
+function withH5ReturnUrl(h5Url: string, returnUrl: string): string {
+  const url = new URL(h5Url);
+  url.searchParams.set('redirect_url', returnUrl);
+  return url.toString();
+}
+
 // 生成订单号
 function generateOrderNo(): string {
   const timestamp = Date.now();
@@ -141,7 +147,10 @@ export async function POST(request: NextRequest) {
         clientIp,
         appUrl: H5_SITE_URL,
       });
-      payData.h5Url = result.h5Url;
+      const returnUrl = new URL('/success', H5_SITE_URL);
+      returnUrl.searchParams.set('type', 'lawyer');
+      returnUrl.searchParams.set('orderId', orderNo);
+      payData.h5Url = withH5ReturnUrl(result.h5Url, returnUrl.toString());
     } else {
       // PC：Native 扫码支付
       const result = await wechatPay.createNativeOrder({

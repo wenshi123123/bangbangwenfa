@@ -6,6 +6,12 @@ import { getSiteUrl, getWechatH5SiteUrl, normalizeCanonicalUrl } from '@/lib/sit
 import { getPaymentClientContext, getWechatPaymentSession } from '@/lib/payment/payment-context';
 import crypto from 'crypto';
 
+function withH5ReturnUrl(h5Url: string, returnUrl: string): string {
+  const url = new URL(h5Url);
+  url.searchParams.set('redirect_url', returnUrl);
+  return url.toString();
+}
+
 /**
  * 创建微信支付订单
  * POST /api/pay/create
@@ -131,7 +137,14 @@ export async function POST(request: NextRequest) {
         clientIp,
         appUrl: h5SiteUrl,
       });
-      payData = { orderId, payTradeNo, prepayId: result.prepayId, h5Url: result.h5Url };
+      const returnUrl = new URL('/success', h5SiteUrl);
+      returnUrl.searchParams.set('orderId', String(orderId));
+      payData = {
+        orderId,
+        payTradeNo,
+        prepayId: result.prepayId,
+        h5Url: withH5ReturnUrl(result.h5Url, returnUrl.toString()),
+      };
     } else {
       // PC：Native 扫码支付（原有逻辑）
       const result = await wechatPay.createNativeOrder({

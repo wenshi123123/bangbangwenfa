@@ -97,23 +97,6 @@ function PayPageInner() {
   const [deviceReady, setDeviceReady] = useState(false);
   const [autoJsapiStarted, setAutoJsapiStarted] = useState(false);
 
-  const buildH5ReturnUrl = (targetOrderId: number | string) => {
-    const url = new URL('/success', window.location.origin);
-    url.searchParams.set('orderId', String(targetOrderId));
-    return url.toString();
-  };
-
-  const appendWechatRedirectUrl = (h5Url: string, returnUrl: string) => {
-    try {
-      const url = new URL(h5Url);
-      url.searchParams.set('redirect_url', returnUrl);
-      return url.toString();
-    } catch {
-      const separator = h5Url.includes('?') ? '&' : '?';
-      return `${h5Url}${separator}redirect_url=${encodeURIComponent(returnUrl)}`;
-    }
-  };
-
   // 检测设备类型
   useEffect(() => {
     const ua = navigator.userAgent || '';
@@ -218,8 +201,7 @@ function PayPageInner() {
 
         // 手机浏览器：H5 支付跳转
         if (isMobile && result.h5Url) {
-          const returnUrl = buildH5ReturnUrl(order.id);
-          window.location.href = appendWechatRedirectUrl(result.h5Url, returnUrl);
+          window.location.href = result.h5Url;
           return;
         }
 
@@ -408,7 +390,7 @@ function PayPageInner() {
                       return (
                     <Button onClick={() => {
                       if (payResult.h5Url) {
-                        window.location.href = appendWechatRedirectUrl(payResult.h5Url, buildH5ReturnUrl(targetOrderId));
+                        window.location.href = payResult.h5Url;
                       }
                     }} className="w-full h-14 text-lg font-medium bg-[#07c160] hover:bg-[#06ad56] text-white rounded-xl" disabled={!payResult.h5Url}>
                       <Smartphone className="h-5 w-5 mr-2" />确认支付

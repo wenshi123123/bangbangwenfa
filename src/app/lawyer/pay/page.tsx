@@ -58,24 +58,6 @@ function LawyerPayContent() {
   const [deviceReady, setDeviceReady] = useState(false);
   const [qrCodeValue, setQrCodeValue] = useState<string | null>(null);
 
-  const buildH5ReturnUrl = (targetOrderId: string) => {
-    const url = new URL('/success', window.location.origin);
-    url.searchParams.set('type', 'lawyer');
-    url.searchParams.set('orderId', targetOrderId);
-    return url.toString();
-  };
-
-  const appendWechatRedirectUrl = (h5Url: string, returnUrl: string) => {
-    try {
-      const url = new URL(h5Url);
-      url.searchParams.set('redirect_url', returnUrl);
-      return url.toString();
-    } catch {
-      const separator = h5Url.includes('?') ? '&' : '?';
-      return `${h5Url}${separator}redirect_url=${encodeURIComponent(returnUrl)}`;
-    }
-  };
-
   // 检测微信环境
   useEffect(() => {
     const ua = navigator.userAgent || '';
@@ -118,7 +100,7 @@ function LawyerPayContent() {
           
           if (h5Url) {
             // H5 支付：直接跳转
-            window.location.href = appendWechatRedirectUrl(h5Url, buildH5ReturnUrl(orderIdFromServer));
+            window.location.href = h5Url;
           } else if (isWechat && jsapiPayParams) {
             setOrderId(orderIdFromServer);
             setPayParams(jsapiPayParams);
