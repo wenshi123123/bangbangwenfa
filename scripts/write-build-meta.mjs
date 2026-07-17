@@ -1,4 +1,5 @@
 import { writeFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
 
 const BUILD_CACHE_BUST_VALUE =
   process.env.BUILD_CACHE_BUST_VALUE ||
@@ -16,6 +17,6 @@ export async function writeBuildMetaFile(outputFile) {
   await writeFile(outputFile, FILE_CONTENT, 'utf8');
 }
 
-if (import.meta.url === `file://${process.argv[1]}` && process.argv[2]) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href && process.argv[2]) {
   await writeBuildMetaFile(process.argv[2]);
 }
