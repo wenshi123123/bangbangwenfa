@@ -10,6 +10,10 @@ import { StaticAssetRecoveryGuard } from '@/components/static-asset-recovery-gua
 import { getSiteUrl } from '@/lib/site';
 import { buildInlineStaticAssetRecoveryScript } from '@/lib/static-asset-recovery';
 import { BUILD_CACHE_BUST_VALUE } from '@/lib/build-meta';
+import {
+  LEGACY_BROWSER_FALLBACK_CSS,
+  buildLegacyBrowserDetectionScript,
+} from '@/lib/legacy-browser-fallback';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -54,6 +58,12 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: buildLegacyBrowserDetectionScript(),
+          }}
+        />
+        <style dangerouslySetInnerHTML={{ __html: LEGACY_BROWSER_FALLBACK_CSS }} />
         <script
           dangerouslySetInnerHTML={{
             __html: buildInlineStaticAssetRecoveryScript(BUILD_CACHE_BUST_VALUE),
