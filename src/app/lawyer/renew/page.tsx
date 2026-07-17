@@ -52,6 +52,29 @@ function RenewContent() {
 
   const handleSelectPackage = (pkgId: string) => { setSelectedPackage(pkgId); setError(null); };
 
+  const handlePay = useCallback(async () => {
+    if (!selectedPackage || loading) return;
+    setLoading(true); setError(null);
+    const pkg = renewalPackages.find(p => p.id === selectedPackage);
+    if (!pkg) { setError('套餐信息异常'); setLoading(false); return; }
+    try {
+      const token = localStorage.getItem('token');
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const response = await fetch('/api/lawyer/renew', { method: 'POST', headers, body: JSON.stringify({ package_id: pkg.id }) });
+      const result = await response.json();
+      if (result.success && result.data?.code_url) {
+        setOrderId(result.data.order_id);
+        setQrcodeUrl(result.data.code_url);
+      } else {
+        setError(result.error || '创建支付订单失败，请稍后重试');
+      }
+    } catch (err: any) {
+      console.error('创建支付订单失败:', err);
+      setError(err?.message || (typeof err === 'string' ? err : '网络错误，请检查连接后重试'));
+    } finally { setLoading(false); }
+  }, [selectedPackage, loading]);
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-[#FAF7F2]">
@@ -81,31 +104,6 @@ function RenewContent() {
       </div>
     );
   }
-
-  const handlePay = useCallback(async () => {
-    if (!selectedPackage || loading) return;
-    setLoading(true); setError(null);
-    const pkg = renewalPackages.find(p => p.id === selectedPackage);
-    if (!pkg) { setError('套餐信息异常'); setLoading(false); return; }
-    try {
-      const token = localStorage.getItem('token');
-      const headers: HeadersInit = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      const response = await fetch('/api/lawyer/renew', { method: 'POST', headers, body: JSON.stringify({ package_id: pkg.id }) });
-      const result = await response.json();
-      if (result.success && result.data?.code_url) {
-        setOrderId(result.data.order_id);
-        setQrcodeUrl(result.data.code_url);
-      } else {
-        setError(result.error || '创建支付订单失败，请稍后重试');
-      }
-    } catch (err: any) {
-      console.error('创建支付订单失败:', err);
-      let errMsg = '网络错误，请检查连接后重试';
-      if (err?.message) { errMsg = err.message; } else if (typeof err === 'string') { errMsg = err; }
-      setError(errMsg);
-    } finally { setLoading(false); }
-  }, [selectedPackage, loading]);
 
   if (paid) {
     return (<div className="min-h-screen flex items-center justify-center p-4 bg-[#FAF7F2]"><div className="bg-white rounded-xl p-8 max-w-sm w-full text-center"><div className="w-16 h-16 bg-[#C47353]/10 rounded-full flex items-center justify-center mx-auto mb-4"><CheckCircle className="w-8 h-8 text-[#C47353]" /></div><h2 className="text-xl font-serif text-[#3D322D] mb-2">续费成功</h2><p className="text-sm text-[#8C7B6E] mb-6">您的会员已成功续期，页面即将跳转...</p><Link href={getLawyerUrl()}><Button className="w-full py-3 bg-[#C47353] hover:bg-[#A85D40] text-white rounded-full font-serif tracking-wide shadow-[0_2px_12px_rgba(196,115,83,0.3)]">返回律师后台</Button></Link></div></div>);
