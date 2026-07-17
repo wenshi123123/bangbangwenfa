@@ -8,6 +8,8 @@ import { CanonicalHostGuard } from '@/components/canonical-host-guard';
 import { ChunkLoadGuard } from '@/components/chunk-load-guard';
 import { StaticAssetRecoveryGuard } from '@/components/static-asset-recovery-guard';
 import { getSiteUrl } from '@/lib/site';
+import { buildInlineStaticAssetRecoveryScript } from '@/lib/static-asset-recovery';
+import { BUILD_CACHE_BUST_VALUE } from '@/lib/build-meta';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -51,6 +53,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" data-scroll-behavior="smooth" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: buildInlineStaticAssetRecoveryScript(BUILD_CACHE_BUST_VALUE),
+          }}
+        />
+      </head>
       <body className="font-sans antialiased">
         <CanonicalHostGuard />
         <StaticAssetRecoveryGuard />

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import vm from 'node:vm';
 import {
   STATIC_ASSET_RECOVERY_KEY,
+  buildInlineStaticAssetRecoveryScript,
   buildStaticAssetRecoveryUrl,
   claimStaticAssetRecovery,
   getStaticResourceUrl,
@@ -82,5 +84,64 @@ assert.equal(
   }),
   null,
 );
+
+const inlineRecoveryScript = buildInlineStaticAssetRecoveryScript('20260718');
+assert.match(inlineRecoveryScript, /addEventListener\('error'/);
+assert.match(inlineRecoveryScript, /_next\/static\//);
+assert.match(inlineRecoveryScript, /__bbwv_recover/);
+assert.match(inlineRecoveryScript, /maxRecoveryAttempts = 3/);
+assert.match(inlineRecoveryScript, /20260718/);
+
+class FakeLinkElement {
+  readonly tagName = 'LINK';
+
+  constructor(readonly href: string) {}
+}
+
+class FakeScriptElement {
+  readonly tagName = 'SCRIPT';
+
+  constructor(readonly src: string) {}
+}
+
+const recoveryListeners = new Map<string, (event: { target: unknown }) => void>();
+const inlineStorage = new Map<string, string>();
+let replacementUrl = '';
+const inlineWindow = {
+  location: {
+    href: 'https://www.bangbangwenfa.com/civil?foo=1',
+    origin: 'https://www.bangbangwenfa.com',
+    replace: (url: string) => {
+      replacementUrl = url;
+    },
+  },
+  sessionStorage: {
+    getItem: (key: string) => inlineStorage.get(key) ?? null,
+    setItem: (key: string, value: string) => void inlineStorage.set(key, value),
+  },
+  addEventListener: (name: string, listener: (event: { target: unknown }) => void) => {
+    recoveryListeners.set(name, listener);
+  },
+};
+
+vm.runInNewContext(inlineRecoveryScript, {
+  Date,
+  Number,
+  String,
+  URL,
+  window: inlineWindow,
+});
+
+const inlineErrorListener = recoveryListeners.get('error');
+assert.ok(inlineErrorListener, 'the inline guard should subscribe before the Next runtime starts');
+inlineErrorListener({
+  target: new FakeLinkElement('https://www.bangbangwenfa.com/_next/static/chunks/missing.css'),
+});
+
+const inlineRecoveryTarget = new URL(replacementUrl);
+assert.equal(inlineRecoveryTarget.searchParams.get('__bbwv'), '20260718');
+assert.equal(inlineRecoveryTarget.searchParams.get('__bbwv_recover'), '1');
+assert.equal(inlineRecoveryTarget.searchParams.get('__bbwv_attempt'), '1');
+assert.equal(inlineRecoveryTarget.searchParams.get('foo'), '1');
 
 console.log('static asset recovery test passed');
