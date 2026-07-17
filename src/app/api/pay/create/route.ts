@@ -3,7 +3,7 @@ import { getWechatPayClient } from '@/lib/payment/wechat-pay';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
 import { getSiteUrl, normalizeCanonicalUrl } from '@/lib/site';
-import { resolveWechatWebPayFlow } from '@/lib/payment/wechat-web';
+import { getPaymentClientContext, getWechatPaymentSession } from '@/lib/payment/payment-context';
 import crypto from 'crypto';
 
 /**
@@ -15,7 +15,7 @@ import crypto from 'crypto';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => null);
-    const { orderId, openid } = body ?? {};
+    const { orderId } = body ?? {};
 
     if (!orderId) {
       return NextResponse.json(
@@ -32,17 +32,19 @@ export async function POST(request: NextRequest) {
       .eq('id', orderId)
       .single();
 
-    const userAgent = (request.headers.get('x-user-agent') || request.headers.get('user-agent') || '').toLowerCase();
-    const isMobile = request.headers.get('x-client-device') === 'mobile' || /android|iphone|ipad|ipod|webos|blackberry|iemobile|opera mini/.test(userAgent);
-    const isWechat = userAgent.includes('micromessenger');
+    const { channel } = getPaymentClientContext(request);
+    const wechatSession = getWechatPaymentSession(request);
     const auth = authenticateRequest(request);
 
-    if (!auth.success) {
-      const requestOpenid = typeof openid === 'string' && openid ? openid : null;
-      const orderOpenid = order?.openid ? String(order.openid) : null;
-      const openidMatched = !!requestOpenid && !!orderOpenid && requestOpenid === orderOpenid;
+    if (channel === 'jsapi' && !wechatSession) {
+      return NextResponse.json({ success: false, code: 'WECHAT_OAUTH_REQUIRED', error: '需要微信授权' }, { status: 401 });
+    }
 
-      if (!(isWechat && requestOpenid && openidMatched)) {
+    if (!auth.success) {
+      const orderOpenid = order?.openid ? String(order.openid) : null;
+      const openidMatched = !!wechatSession && !!orderOpenid && wechatSession.openid === orderOpenid;
+
+      if (!(channel === 'jsapi' && openidMatched)) {
         return unauthorizedResponse(auth.error);
       }
     }
@@ -107,67 +109,27 @@ export async function POST(request: NextRequest) {
       };
     };
 
-    const payFlow = resolveWechatWebPayFlow({
-      isWechat,
-      isMobile,
-      hasOpenid: !!(openid || order.openid),
-    });
-
-    if (payFlow === 'oauth') {
-      return NextResponse.json(
-        { success: false, error: '微信内支付缺少 openid，请先完成公众号授权' },
-        { status: 400 }
-      );
-    }
-
-    if (payFlow === 'jsapi') {
-      const payerOpenid = String(openid || order.openid || '');
+    if (channel === 'jsapi') {
+      if (!wechatSession) {
+        return NextResponse.json({ success: false, code: 'WECHAT_OAUTH_REQUIRED', error: '需要微信授权' }, { status: 401 });
+      }
       const result = await wechatPay.createJsapiOrder({
         outTradeNo: payTradeNo,
         description: `法律咨询服务 - ${order.case_title || '咨询订单'}`,
         amount: order.service_price,
         notifyUrl: callbackUrl,
-        payerOpenid,
+        payerOpenid: wechatSession.openid,
       });
-      payData = {
-        orderId,
-        payTradeNo,
-        prepayId: result.prepayId,
-        jsapiPayParams: result.payParams,
-      };
-      console.log('[Pay/Create] 微信内 JSAPI 订单创建成功');
-    } else if (payFlow === 'h5') {
-      // 手机浏览器：H5 下单
-      try {
-        const result = await wechatPay.createH5Order({
-          outTradeNo: payTradeNo,
-          description: `法律咨询服务 - ${order.case_title || '咨询订单'}`,
-          amount: order.service_price,
-          notifyUrl: callbackUrl,
-          clientIp,
-        });
-        payData = {
-          orderId,
-          payTradeNo,
-          prepayId: result.prepayId,
-          h5Url: result.h5Url,
-        };
-        console.log('[Pay/Create] H5订单创建成功:', { h5Url: result.h5Url.substring(0, 60) + '...' });
-      } catch (h5Error) {
-        console.warn('[Pay/Create] H5下单失败，降级为 Native 扫码:', h5Error instanceof Error ? h5Error.message : h5Error);
-        const fallback = await wechatPay.createNativeOrder({
-          outTradeNo: payTradeNo,
-          description: `法律咨询服务 - ${order.case_title || '咨询订单'}`,
-          amount: order.service_price,
-          notifyUrl: callbackUrl,
-        });
-        payData = {
-          orderId,
-          payTradeNo,
-          prepayId: fallback.prepayId,
-          codeUrl: fallback.codeUrl,
-        };
-      }
+      payData = { orderId, payTradeNo, prepayId: result.prepayId, jsapiPayParams: result.payParams };
+    } else if (channel === 'h5') {
+      const result = await wechatPay.createH5Order({
+        outTradeNo: payTradeNo,
+        description: `法律咨询服务 - ${order.case_title || '咨询订单'}`,
+        amount: order.service_price,
+        notifyUrl: callbackUrl,
+        clientIp,
+      });
+      payData = { orderId, payTradeNo, prepayId: result.prepayId, h5Url: result.h5Url };
     } else {
       // PC：Native 扫码支付（原有逻辑）
       const result = await wechatPay.createNativeOrder({
