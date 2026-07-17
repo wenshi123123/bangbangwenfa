@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getWechatPayClient } from '@/lib/payment/wechat-pay';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
-import { getSiteUrl, normalizeCanonicalUrl } from '@/lib/site';
+import { getSiteUrl, getWechatH5SiteUrl, normalizeCanonicalUrl } from '@/lib/site';
 import { getPaymentClientContext, getWechatPaymentSession } from '@/lib/payment/payment-context';
 import crypto from 'crypto';
 
@@ -81,6 +81,7 @@ export async function POST(request: NextRequest) {
     // 正式模式：使用真实微信支付
     const wechatPay = getWechatPayClient();
     const siteUrl = getSiteUrl();
+    const h5SiteUrl = getWechatH5SiteUrl();
     const callbackUrl =
       normalizeCanonicalUrl(process.env.WEIXIN_CALLBACK_URL || '')?.toString().replace(/\/$/, '') ||
       `${siteUrl}/api/pay/callback`;
@@ -128,6 +129,7 @@ export async function POST(request: NextRequest) {
         amount: order.service_price,
         notifyUrl: callbackUrl,
         clientIp,
+        appUrl: h5SiteUrl,
       });
       payData = { orderId, payTradeNo, prepayId: result.prepayId, h5Url: result.h5Url };
     } else {

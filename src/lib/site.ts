@@ -55,6 +55,21 @@ export function getSiteUrl(): string {
   );
 }
 
+/**
+ * 微信 H5 支付专用应用地址。
+ * H5 支付域名当前审核使用 www 子域名，不能跟随站点裸域名规范化。
+ */
+export function getWechatH5SiteUrl(): string {
+  const configured = process.env.WEIXIN_H5_SITE_URL || 'https://www.bangbangwenfa.com';
+  const normalized = normalizeUrl(configured);
+  if (!normalized) return 'https://www.bangbangwenfa.com';
+  normalized.protocol = 'https:';
+  normalized.pathname = '/';
+  normalized.search = '';
+  normalized.hash = '';
+  return normalized.toString().replace(/\/$/, '');
+}
+
 export function normalizeCanonicalUrl(input: string | URL | null | undefined): URL | null {
   const normalized =
     typeof input === 'string'

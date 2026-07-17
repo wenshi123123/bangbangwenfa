@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { getWechatPayClient } from '@/lib/payment/wechat-pay';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
-import { getSiteUrl } from '@/lib/site';
+import { getSiteUrl, getWechatH5SiteUrl } from '@/lib/site';
 import { getPaymentClientContext, getWechatPaymentSession } from '@/lib/payment/payment-context';
 
 const SITE_URL = getSiteUrl();
+const H5_SITE_URL = getWechatH5SiteUrl();
 
 // 生成订单号
 function generateOrderNo(): string {
@@ -138,6 +139,7 @@ export async function POST(request: NextRequest) {
         amount: application.package_price,
         notifyUrl: `${SITE_URL}/api/lawyer/pay/callback`,
         clientIp,
+        appUrl: H5_SITE_URL,
       });
       payData.h5Url = result.h5Url;
     } else {

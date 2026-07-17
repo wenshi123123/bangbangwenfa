@@ -41,6 +41,8 @@ interface CreateH5OrderParams {
   notifyUrl: string;
   /** 客户端 IP 地址 */
   clientIp: string;
+  /** 微信商户平台已审核的 H5 应用域名 */
+  appUrl?: string;
   /** 商品描述（可选） */
   goodsDescription?: string;
 }
@@ -559,7 +561,7 @@ export class WechatPayClient {
    * 文档: https://pay.weixin.qq.com/doc/v3/apis/chapter3_4_3.shtml
    */
   async createH5Order(params: CreateH5OrderParams): Promise<CreateH5OrderResult> {
-    const { outTradeNo, description, amount, notifyUrl, clientIp } = params;
+    const { outTradeNo, description, amount, notifyUrl, clientIp, appUrl } = params;
     const privateKey = this.getPrivateKey();
     const siteUrl = getSiteUrl();
 
@@ -580,7 +582,7 @@ export class WechatPayClient {
           type: 'Wap',
           // 补充来源信息，提升 H5 场景兼容性
           app_name: '帮帮问法',
-          app_url: siteUrl,
+          app_url: appUrl || siteUrl,
         },
       },
     };
