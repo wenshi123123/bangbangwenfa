@@ -1,5 +1,5 @@
-const PREFERRED_CANONICAL_HOST = 'bangbangwenfa.com';
-const WWW_CANONICAL_HOST = `www.${PREFERRED_CANONICAL_HOST}`;
+const BARE_CANONICAL_HOST = 'bangbangwenfa.com';
+const PREFERRED_CANONICAL_HOST = `www.${BARE_CANONICAL_HOST}`;
 const BUILD_CACHE_BUST_VALUE =
   process.env.BUILD_CACHE_BUST_VALUE ||
   process.env.NEXT_PUBLIC_BUILD_CACHE_BUST_VALUE ||
@@ -39,7 +39,7 @@ export function getCanonicalBrowserRedirectUrl(currentUrl: string): string | nul
     return null;
   }
 
-  if (current.hostname.toLowerCase() !== WWW_CANONICAL_HOST) {
+  if (current.hostname.toLowerCase() !== BARE_CANONICAL_HOST) {
     return null;
   }
 
@@ -82,7 +82,7 @@ export function normalizeCanonicalUrl(input: string | URL | null | undefined): U
     return null;
   }
 
-  if (normalized.hostname.toLowerCase() === WWW_CANONICAL_HOST) {
+  if (normalized.hostname.toLowerCase() === BARE_CANONICAL_HOST) {
     normalized.hostname = PREFERRED_CANONICAL_HOST;
   }
 
@@ -106,7 +106,7 @@ export function isCanonicalHost(hostname: string | null | undefined): boolean {
 }
 
 export function shouldRedirectToCanonicalHost(hostname: string | null | undefined): boolean {
-  return normalizeHostnameValue(hostname) === WWW_CANONICAL_HOST;
+  return normalizeHostnameValue(hostname) === BARE_CANONICAL_HOST;
 }
 
 export function getRequestHostname(headers: Headers, fallbackHostname?: string | null): string | null {

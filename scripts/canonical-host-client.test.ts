@@ -4,12 +4,12 @@ async function main() {
   const { getCanonicalBrowserRedirectUrl } = await import('../src/lib/site');
 
   assert.equal(
-    getCanonicalBrowserRedirectUrl('https://www.bangbangwenfa.com/civil?foo=1#bar'),
-    'https://bangbangwenfa.com/civil?foo=1#bar',
+    getCanonicalBrowserRedirectUrl('https://bangbangwenfa.com/civil?foo=1#bar'),
+    'https://www.bangbangwenfa.com/civil?foo=1#bar',
   );
 
   assert.equal(
-    getCanonicalBrowserRedirectUrl('https://bangbangwenfa.com/civil?foo=1#bar'),
+    getCanonicalBrowserRedirectUrl('https://www.bangbangwenfa.com/civil?foo=1#bar'),
     null,
   );
 

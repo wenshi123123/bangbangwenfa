@@ -8,25 +8,25 @@ async function main() {
   const { NextRequest } = await import('next/server');
   const { middleware } = await import('../src/middleware');
 
-  const wwwResponse = await middleware(
-    new NextRequest('https://www.bangbangwenfa.com/civil?foo=1', {
+  const bareResponse = await middleware(
+    new NextRequest('https://bangbangwenfa.com/civil?foo=1', {
       headers: { accept: 'text/html' },
     }),
   );
 
-  assert.equal(wwwResponse.status, 307);
+  assert.equal(bareResponse.status, 307);
   assert.equal(
-    wwwResponse.headers.get('location'),
-    'https://bangbangwenfa.com/civil?foo=1',
+    bareResponse.headers.get('location'),
+    'https://www.bangbangwenfa.com/civil?foo=1',
   );
-  assert.match(wwwResponse.headers.get('cache-control') ?? '', /no-store/);
-  assert.equal(wwwResponse.headers.get('clear-site-data'), null);
+  assert.match(bareResponse.headers.get('cache-control') ?? '', /no-store/);
+  assert.equal(bareResponse.headers.get('clear-site-data'), null);
 
   const forwardedHostResponse = await middleware(
-    new NextRequest('https://bangbangwenfa.com/civil?foo=1', {
+    new NextRequest('https://www.bangbangwenfa.com/civil?foo=1', {
       headers: {
         accept: 'text/html',
-        'x-forwarded-host': 'www.bangbangwenfa.com',
+        'x-forwarded-host': 'bangbangwenfa.com',
       },
     }),
   );
@@ -34,10 +34,10 @@ async function main() {
   assert.equal(forwardedHostResponse.status, 307);
   assert.equal(
     forwardedHostResponse.headers.get('location'),
-    'https://bangbangwenfa.com/civil?foo=1',
+    'https://www.bangbangwenfa.com/civil?foo=1',
   );
   const recoveryResponse = await middleware(
-    new NextRequest('https://bangbangwenfa.com/civil?__bbwv=old&__bbwv_recover=1', {
+    new NextRequest('https://www.bangbangwenfa.com/civil?__bbwv=old&__bbwv_recover=1', {
       headers: { accept: 'text/html' },
     }),
   );
@@ -45,12 +45,12 @@ async function main() {
   assert.equal(recoveryResponse.status, 307);
   assert.equal(
     recoveryResponse.headers.get('location'),
-    'https://bangbangwenfa.com/civil?__bbwv=test-build',
+    'https://www.bangbangwenfa.com/civil?__bbwv=test-build',
   );
   assert.equal(recoveryResponse.headers.get('clear-site-data'), '"cache"');
 
   const normalResponse = await middleware(
-    new NextRequest('https://bangbangwenfa.com/civil?__bbwv=test-build', {
+    new NextRequest('https://www.bangbangwenfa.com/civil?__bbwv=test-build', {
       headers: { accept: 'text/html' },
     }),
   );
