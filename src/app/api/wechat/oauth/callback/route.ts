@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSiteUrl } from '@/lib/site';
+import { getWechatPaymentSessionCookie, isSafePaymentRedirect } from '@/lib/payment/payment-context';
 
 export async function GET(request: NextRequest) {
   const oaAppId = process.env.WEIXIN_OA_APPID;
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
-  const redirect = searchParams.get('redirect') || '/pay';
+  const redirect = searchParams.get('state') || '/pay';
   const siteUrl = getSiteUrl();
 
   console.log('[WeChat OAuth Callback] incoming', {
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  if (!redirect.startsWith('/')) {
+  if (!isSafePaymentRedirect(redirect)) {
     return NextResponse.json(
       { success: false, error: '无效的 redirect 参数' },
       { status: 400 }
@@ -67,8 +68,10 @@ export async function GET(request: NextRequest) {
   });
 
   const targetUrl = new URL(redirect, siteUrl);
-  targetUrl.searchParams.set('oa_openid', tokenData.openid);
-  targetUrl.searchParams.set('oa_oauth', '1');
-
-  return NextResponse.redirect(targetUrl.toString(), 302);
+  const response = NextResponse.redirect(targetUrl.toString(), 302);
+  response.headers.set('Set-Cookie', getWechatPaymentSessionCookie({
+    openid: String(tokenData.openid),
+    redirect,
+  }));
+  return response;
 }

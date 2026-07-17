@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSiteUrl } from '@/lib/site';
+import { isSafePaymentRedirect } from '@/lib/payment/payment-context';
 
 export async function GET(request: NextRequest) {
   const oaAppId = process.env.WEIXIN_OA_APPID;
@@ -14,14 +15,14 @@ export async function GET(request: NextRequest) {
   const redirect = searchParams.get('redirect') || '/pay';
   const siteUrl = getSiteUrl();
 
-  if (!redirect.startsWith('/')) {
+  if (!isSafePaymentRedirect(redirect)) {
     return NextResponse.json(
       { success: false, error: '无效的 redirect 参数' },
       { status: 400 }
     );
   }
 
-  const callbackUrl = `${siteUrl}/api/wechat/oauth/callback?redirect=${encodeURIComponent(redirect)}`;
+  const callbackUrl = `${siteUrl}/api/wechat/oauth/callback`;
   const oauthUrl =
     'https://open.weixin.qq.com/connect/oauth2/authorize' +
     `?appid=${encodeURIComponent(oaAppId)}` +
