@@ -3,8 +3,10 @@ import vm from 'node:vm';
 import {
   STATIC_ASSET_RECOVERY_KEY,
   buildInlineStaticAssetRecoveryScript,
+  buildStaticAssetRecoveryFailureMarkup,
   buildStaticAssetRecoveryUrl,
   claimStaticAssetRecovery,
+  cleanStaticAssetRecoveryParams,
   getStaticResourceUrl,
   isSameOriginNextStaticAsset,
 } from '../src/lib/static-asset-recovery';
@@ -47,6 +49,11 @@ const target = new URL(
 assert.equal(target.searchParams.get('__bbwv'), '20260716');
 assert.equal(target.searchParams.get('__bbwv_recover'), '1');
 assert.equal(target.searchParams.get('foo'), '1');
+
+const dirtyUrl = new URL('https://bangbangwenfa.com/civil?foo=1&__bbwv=20260718&__bbwv_recover=1&__bbwv_retry=2&__bbwv_attempt=1');
+assert.equal(cleanStaticAssetRecoveryParams(dirtyUrl), true);
+assert.equal(dirtyUrl.toString(), 'https://bangbangwenfa.com/civil?foo=1');
+assert.match(buildStaticAssetRecoveryFailureMarkup(), /页面暂时没有加载完整/);
 
 assert.equal(claimStaticAssetRecovery(session), true);
 assert.equal(storage.get(STATIC_ASSET_RECOVERY_KEY), '1');
@@ -91,6 +98,8 @@ assert.match(inlineRecoveryScript, /_next\/static\//);
 assert.match(inlineRecoveryScript, /__bbwv_recover/);
 assert.match(inlineRecoveryScript, /maxRecoveryAttempts = 3/);
 assert.match(inlineRecoveryScript, /20260718/);
+assert.match(inlineRecoveryScript, /replaceState/);
+assert.match(inlineRecoveryScript, /重新打开/);
 
 class FakeLinkElement {
   readonly tagName = 'LINK';
@@ -113,6 +122,11 @@ const inlineWindow = {
     origin: 'https://www.bangbangwenfa.com',
     replace: (url: string) => {
       replacementUrl = url;
+    },
+  },
+  history: {
+    replaceState: (_state: unknown, _title: string, url: string) => {
+      inlineWindow.location.href = `https://www.bangbangwenfa.com${url}`;
     },
   },
   sessionStorage: {

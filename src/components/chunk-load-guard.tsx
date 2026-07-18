@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { BUILD_CACHE_BUST_VALUE } from '@/lib/build-meta';
 import {
   buildStaticAssetRecoveryUrl,
+  buildStaticAssetRecoveryFailureMarkup,
   claimStaticAssetRecoveryFromSession,
 } from '@/lib/static-asset-recovery';
 
@@ -19,7 +20,12 @@ function isChunkLoadError(reason: unknown) {
 export function ChunkLoadGuard() {
   useEffect(() => {
     const reloadOnce = () => {
-      if (!claimStaticAssetRecoveryFromSession()) return;
+      if (!claimStaticAssetRecoveryFromSession()) {
+        if (document.body) {
+          document.body.innerHTML = buildStaticAssetRecoveryFailureMarkup();
+        }
+        return;
+      }
       window.location.replace(
         buildStaticAssetRecoveryUrl(window.location.href, BUILD_CACHE_BUST_VALUE),
       );

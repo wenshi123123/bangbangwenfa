@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { BUILD_CACHE_BUST_VALUE } from '@/lib/build-meta';
 import {
   buildStaticAssetRecoveryUrl,
+  buildStaticAssetRecoveryFailureMarkup,
   claimStaticAssetRecoveryFromSession,
   getStaticResourceUrl,
   isSameOriginNextStaticAsset,
@@ -20,6 +21,9 @@ export function StaticAssetRecoveryGuard() {
       }
 
       if (!claimStaticAssetRecoveryFromSession()) {
+        if (document.body) {
+          document.body.innerHTML = buildStaticAssetRecoveryFailureMarkup();
+        }
         return;
       }
 
