@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Shield, Users, TrendingUp, CheckCircle, Sparkles, ArrowRight, ArrowLeft, ChevronDown } from 'lucide-react';
+import { Shield, Users, TrendingUp, CheckCircle, Sparkles, ArrowRight, ArrowLeft, ChevronDown, Smartphone, WalletCards } from 'lucide-react';
 
 interface LawyerPromoSectionProps {
   applyHref: string;
@@ -87,7 +87,7 @@ function ScrollProgress() {
 
 export function LawyerPromoSection({ applyHref }: LawyerPromoSectionProps) {
   return (
-    <>
+    <div className="lawyer-onboarding-theme">
       {/* 背景漂浮圆点 */}
       <FloatingDots />
       
@@ -95,7 +95,7 @@ export function LawyerPromoSection({ applyHref }: LawyerPromoSectionProps) {
       <ScrollProgress />
       
       {/* 宣传内容区 */}
-      <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, #F0FDF4 0%, #FFFFFF 100%)' }}>
+      <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, #FAF7F2 0%, #FFFFFF 100%)' }}>
         
         {/* 顶部导航栏 */}
         <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-green-100/50">
@@ -136,15 +136,15 @@ export function LawyerPromoSection({ applyHref }: LawyerPromoSectionProps) {
               <div className="space-y-4 sm:space-y-6">
                 {[
                   {
-                    icon: '📉',
+                    icon: <TrendingUp className="h-6 w-6 text-[#C47353]" aria-hidden="true" />,
                     text: '其他平台线索质量差、标的额小，免费咨询耗光精力，你能转化为真正的收益？'
                   },
                   {
-                    icon: '📱',
+                    icon: <Smartphone className="h-6 w-6 text-[#C47353]" aria-hidden="true" />,
                     text: '做自媒体，用户凭什么不选几十万粉丝的大博主，偏偏选择刚起号的你？'
                   },
                   {
-                    icon: '💸',
+                    icon: <WalletCards className="h-6 w-6 text-[#C47353]" aria-hidden="true" />,
                     text: '律师费被律所高额抽成，社保还要自己全额缴纳，收入不稳定，律师梦该如何继续？'
                   }
                 ].map((item, index) => (
@@ -154,7 +154,7 @@ export function LawyerPromoSection({ applyHref }: LawyerPromoSectionProps) {
                     style={{ animationDelay: `${0.2 + index * 0.15}s` }}
                   >
                     <div className="flex items-start gap-3 sm:gap-4">
-                      <div className="text-2xl sm:text-3xl flex-shrink-0 animate-icon-bounce group-hover:scale-110">{item.icon}</div>
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#F5EDE5] animate-icon-bounce group-hover:scale-110">{item.icon}</div>
                       <p className="text-sm sm:text-base md:text-lg text-foreground leading-relaxed pt-1">
                         {item.text}
                       </p>
@@ -443,6 +443,6 @@ export function LawyerPromoSection({ applyHref }: LawyerPromoSectionProps) {
           }
         `}</style>
       </div>
-    </>
+    </div>
   );
 }

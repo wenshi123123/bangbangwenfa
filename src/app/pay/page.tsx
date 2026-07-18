@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { WechatExternalBrowserGuide } from '@/components/payment/wechat-external-browser-guide';
 
 // 支付页面 - 咨询下单后跳转此页面完成支付
 
@@ -96,6 +97,7 @@ function PayPageInner() {
   const [isWechat, setIsWechat] = useState(false);
   const [deviceReady, setDeviceReady] = useState(false);
   const [autoJsapiStarted, setAutoJsapiStarted] = useState(false);
+  const [showWechatBrowserGuide, setShowWechatBrowserGuide] = useState(false);
 
   // 检测设备类型
   useEffect(() => {
@@ -171,6 +173,7 @@ function PayPageInner() {
 
     setPayLoading(true);
     setError(null);
+    setShowWechatBrowserGuide(false);
 
     try {
       const data = await apiRequest('/api/pay/create', {
@@ -194,7 +197,9 @@ function PayPageInner() {
             return;
           } catch (jsapiErr) {
             console.error('JSAPI 调起失败:', jsapiErr);
-            setError(jsapiErr instanceof Error ? jsapiErr.message : '微信支付拉起失败');
+            const message = jsapiErr instanceof Error ? jsapiErr.message : '微信支付拉起失败';
+            setError(message);
+            setShowWechatBrowserGuide(message !== '支付已取消');
             return;
           }
         }
@@ -231,6 +236,11 @@ function PayPageInner() {
     } catch (err: any) {
       if (isWechat && err.code === 'WECHAT_OAUTH_REQUIRED') {
         window.location.replace(`/api/wechat/oauth/authorize?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+        return;
+      }
+      if (isWechat && err.code === 'WECHAT_JSAPI_CONFIG_ERROR') {
+        setError(err.message || '微信内支付暂不可用，请在浏览器打开后继续支付');
+        setShowWechatBrowserGuide(true);
         return;
       }
       console.error('创建支付失败:', err);
@@ -460,6 +470,7 @@ function PayPageInner() {
                   <span>{error}</span>
                 </div>
               )}
+              {showWechatBrowserGuide && <WechatExternalBrowserGuide />}
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between py-2 border-b border-gray-100">
                   <span className="text-muted-foreground">订单编号</span>
@@ -499,7 +510,7 @@ function PayPageInner() {
                 {payLoading ? '正在创建支付...' : isWechat ? '微信支付' : isMobile ? '微信支付' : '确认支付'}
               </Button>
               <p className="text-xs text-center text-muted-foreground">
-                {isWechat ? '微信内优先走 H5，必要时再拉起微信支付' : isMobile ? '点击后将跳转到微信完成支付' : '点击后将显示微信支付二维码'}
+                {isWechat ? '微信内将直接拉起微信支付；如不可用可按提示在浏览器继续支付' : isMobile ? '点击后将跳转到微信完成支付' : '点击后将显示微信支付二维码'}
               </p>
             </CardContent>
           </Card>

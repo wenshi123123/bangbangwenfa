@@ -95,9 +95,6 @@ export async function POST(request: NextRequest) {
     // 生成订单号
     const orderNo = generateOrderNo();
 
-    // 获取微信支付客户端
-    const wechatPay = getWechatPayClient();
-
     // 获取套餐名称
     const isCivil = ['civil_premium', 'civil'].includes(application.package_type);
     const isCriminal = ['criminal_premium', 'criminal'].includes(application.package_type);
@@ -110,6 +107,15 @@ export async function POST(request: NextRequest) {
                      request.headers.get('x-real-ip') || '127.0.0.1';
     const { channel } = getPaymentClientContext(request);
     const wechatSession = getWechatPaymentSession(request);
+    // 微信内 JSAPI 必须使用获取 openid 的公众号 AppID；否则微信会拒绝该 openid。
+    const jsapiAppId = channel === 'jsapi' ? process.env.WEIXIN_OA_APPID : undefined;
+    if (channel === 'jsapi' && !jsapiAppId) {
+      return NextResponse.json(
+        { success: false, code: 'WECHAT_JSAPI_CONFIG_ERROR', error: '微信内支付暂未配置完成，请在浏览器打开后继续支付' },
+        { status: 503 }
+      );
+    }
+    const wechatPay = getWechatPayClient({ appId: jsapiAppId });
 
     // 根据场景调用不同支付 API
     let payData: {
@@ -184,6 +190,13 @@ export async function POST(request: NextRequest) {
     console.error('创建律师入驻支付订单失败:', error);
     // 开发环境暴露具体错误便于排查
     const errMsg = error instanceof Error ? error.message : '创建支付订单失败';
+    if (getPaymentClientContext(request).channel === 'jsapi') {
+      return NextResponse.json(
+        { success: false, code: 'WECHAT_JSAPI_CONFIG_ERROR', error: '微信内支付暂不可用，请在浏览器打开后继续支付' },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json(
       { success: false, error: errMsg },
       { status: 500 }

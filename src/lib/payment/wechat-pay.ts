@@ -369,8 +369,8 @@ export class WechatPayClient {
   /**
    * 从环境变量创建客户端
    */
-  static fromEnv(): WechatPayClient {
-    const appId = getEnvValue('WEIXIN_APPID') || process.env.WECHAT_PAY_APP_ID || '';
+  static fromEnv(options?: { appId?: string }): WechatPayClient {
+    const appId = options?.appId || getEnvValue('WEIXIN_APPID') || process.env.WECHAT_PAY_APP_ID || '';
     const mchId = getEnvValue('WEIXIN_MCHID') || process.env.WECHAT_PAY_MCH_ID || '';
     const serialNo = getEnvValue('WEIXIN_SERIAL_NO') || process.env.WECHAT_PAY_SERIAL_NO || '';
     const apiV3Key = getEnvValue('WEIXIN_APIV3_KEY') || process.env.WECHAT_PAY_API_V3_KEY || '';
@@ -810,23 +810,28 @@ export class WechatPayClient {
 
 // ===== 单例实例 =====
 
-let clientInstance: WechatPayClient | null = null;
+const clientInstances = new Map<string, WechatPayClient>();
 
 /**
  * 获取微信支付客户端单例
  */
-export function getWechatPayClient(): WechatPayClient {
-  if (!clientInstance) {
-    clientInstance = WechatPayClient.fromEnv();
+export function getWechatPayClient(options?: { appId?: string }): WechatPayClient {
+  const appId = options?.appId || getEnvValue('WEIXIN_APPID') || process.env.WECHAT_PAY_APP_ID || '';
+  const existingClient = clientInstances.get(appId);
+  if (existingClient) {
+    return existingClient;
   }
-  return clientInstance;
+
+  const client = WechatPayClient.fromEnv({ appId });
+  clientInstances.set(appId, client);
+  return client;
 }
 
 /**
  * 重置客户端（测试用）
  */
 export function resetWechatPayClient(): void {
-  clientInstance = null;
+  clientInstances.clear();
 }
 
 export type {

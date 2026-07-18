@@ -826,23 +826,56 @@
   color: #3D322D;
 }
 .lawyer-onboarding-theme [class*="text-green-"],
-.lawyer-onboarding-theme [class*="text-emerald-"] {
+.lawyer-onboarding-theme [class*="text-emerald-"],
+.lawyer-onboarding-theme [class*="text-blue-"],
+.lawyer-onboarding-theme [class*="text-orange-"],
+.lawyer-onboarding-theme [class*="text-teal-"] {
   color: #C47353 !important;
 }
-.lawyer-onboarding-theme [class*="border-green-"] {
+.lawyer-onboarding-theme [class*="border-green-"],
+.lawyer-onboarding-theme [class*="border-emerald-"],
+.lawyer-onboarding-theme [class*="border-blue-"],
+.lawyer-onboarding-theme [class*="border-orange-"],
+.lawyer-onboarding-theme [class*="border-teal-"] {
   border-color: rgba(196, 115, 83, 0.22) !important;
 }
-.lawyer-onboarding-theme [class*="bg-green-"],
-.lawyer-onboarding-theme [class*="bg-emerald-"] {
+.lawyer-onboarding-theme .bg-green-50,
+.lawyer-onboarding-theme .bg-green-100,
+.lawyer-onboarding-theme .bg-green-200,
+.lawyer-onboarding-theme .bg-emerald-50,
+.lawyer-onboarding-theme .bg-emerald-100,
+.lawyer-onboarding-theme .bg-emerald-200 {
   background-color: #F5EDE5 !important;
 }
+.lawyer-onboarding-theme .bg-green-400,
+.lawyer-onboarding-theme .bg-green-600,
+.lawyer-onboarding-theme .bg-emerald-400,
+.lawyer-onboarding-theme .bg-emerald-500,
+.lawyer-onboarding-theme .bg-emerald-600,
+.lawyer-onboarding-theme .bg-blue-400,
+.lawyer-onboarding-theme .bg-blue-500,
+.lawyer-onboarding-theme .bg-orange-400,
+.lawyer-onboarding-theme .bg-orange-500,
+.lawyer-onboarding-theme .bg-teal-400,
+.lawyer-onboarding-theme .bg-teal-500 {
+  background-color: #C47353 !important;
+}
+.lawyer-onboarding-theme .bg-green-500 {
+  background-color: #C47353 !important;
+}
 .lawyer-onboarding-theme [class*="from-green-"],
-.lawyer-onboarding-theme [class*="from-emerald-"] {
+.lawyer-onboarding-theme [class*="from-emerald-"],
+.lawyer-onboarding-theme [class*="from-blue-"],
+.lawyer-onboarding-theme [class*="from-orange-"],
+.lawyer-onboarding-theme [class*="from-teal-"] {
   --tw-gradient-from: #C47353 var(--tw-gradient-from-position) !important;
   --tw-gradient-to: rgb(196 115 83 / 0) var(--tw-gradient-to-position) !important;
 }
 .lawyer-onboarding-theme [class*="to-green-"],
-.lawyer-onboarding-theme [class*="to-emerald-"] {
+.lawyer-onboarding-theme [class*="to-emerald-"],
+.lawyer-onboarding-theme [class*="to-blue-"],
+.lawyer-onboarding-theme [class*="to-orange-"],
+.lawyer-onboarding-theme [class*="to-teal-"] {
   --tw-gradient-to: #A85D40 var(--tw-gradient-to-position) !important;
 }
 .lawyer-onboarding-theme [class*="shadow-green-"] {

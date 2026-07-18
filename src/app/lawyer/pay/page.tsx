@@ -6,6 +6,7 @@ import { Loader2, CheckCircle, ArrowLeft, Smartphone, AlertCircle } from 'lucide
 import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
 import { getLawyerUrl } from '@/lib/site';
+import { WechatExternalBrowserGuide } from '@/components/payment/wechat-external-browser-guide';
 
 function getPaymentRequestHeaders(): Record<string, string> {
   const ua = typeof navigator !== 'undefined' ? navigator.userAgent || '' : '';
@@ -74,6 +75,7 @@ function LawyerPayContent() {
   const [deviceReady, setDeviceReady] = useState(false);
   const [qrCodeValue, setQrCodeValue] = useState<string | null>(null);
   const [h5Url, setH5Url] = useState<string | null>(null);
+  const [showWechatBrowserGuide, setShowWechatBrowserGuide] = useState(false);
 
   // 检测微信环境
   useEffect(() => {
@@ -135,6 +137,11 @@ function LawyerPayContent() {
             window.location.replace(`/api/wechat/oauth/authorize?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
             return;
           }
+          if (isWechat && result.code === 'WECHAT_JSAPI_CONFIG_ERROR') {
+            setError(result.error || '微信内支付暂不可用，请在浏览器打开后继续支付');
+            setShowWechatBrowserGuide(true);
+            return;
+          }
           console.error('支付创建失败:', result.error);
           setError(result.error || '支付创建失败，请稍后重试');
         }
@@ -167,6 +174,7 @@ function LawyerPayContent() {
             setError('支付已取消');
           } else {
             setError('支付失败，请重试');
+            setShowWechatBrowserGuide(true);
           }
         });
       } else if (typeof window.wx !== 'undefined' && window.wx.chooseWXPay) {
@@ -178,7 +186,10 @@ function LawyerPayContent() {
           signType: params.signType,
           paySign: params.paySign,
           success: () => setIsConfirming(true),
-          fail: () => setError('支付失败，请重试'),
+          fail: () => {
+            setError('支付失败，请重试');
+            setShowWechatBrowserGuide(true);
+          },
           cancel: () => setError('支付已取消'),
         });
       }
@@ -321,11 +332,12 @@ function LawyerPayContent() {
                 >
                   重新尝试
                 </button>
+                {showWechatBrowserGuide && <WechatExternalBrowserGuide className="mt-4" />}
               </div>
             )}
 
             <p className="text-xs text-muted-foreground">
-              微信内优先走 H5，必要时再拉起微信支付
+              微信内将直接拉起微信支付；如不可用可按提示在浏览器继续支付
             </p>
           </div>
         </div>

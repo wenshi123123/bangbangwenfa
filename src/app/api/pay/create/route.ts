@@ -84,8 +84,17 @@ export async function POST(request: NextRequest) {
     // WX(2) + 时间戳(13) + 随机hex(12) = 27字符，在32字符限制内
     const payTradeNo = `WX${Date.now()}${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
 
+    // 微信内 JSAPI 必须使用获取 openid 的公众号 AppID；否则微信会拒绝该 openid。
+    const jsapiAppId = channel === 'jsapi' ? process.env.WEIXIN_OA_APPID : undefined;
+    if (channel === 'jsapi' && !jsapiAppId) {
+      return NextResponse.json(
+        { success: false, code: 'WECHAT_JSAPI_CONFIG_ERROR', error: '微信内支付暂未配置完成，请在浏览器打开后继续支付' },
+        { status: 503 }
+      );
+    }
+
     // 正式模式：使用真实微信支付
-    const wechatPay = getWechatPayClient();
+    const wechatPay = getWechatPayClient({ appId: jsapiAppId });
     const siteUrl = getSiteUrl();
     const h5SiteUrl = getWechatH5SiteUrl();
     const callbackUrl =
@@ -182,6 +191,13 @@ export async function POST(request: NextRequest) {
     console.error('创建微信支付订单失败:', errorMsg);
     
     // 返回详细错误信息以便调试
+    if (getPaymentClientContext(request).channel === 'jsapi') {
+      return NextResponse.json(
+        { success: false, code: 'WECHAT_JSAPI_CONFIG_ERROR', error: '微信内支付暂不可用，请在浏览器打开后继续支付' },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json(
       { success: false, error: `创建支付订单失败: ${errorMsg}` },
       { status: 500 }
