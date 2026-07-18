@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { Check, Loader2 } from 'lucide-react';
 import { LawyerFormData } from './lawyer-join-wizard';
 
@@ -49,7 +48,6 @@ const PACKAGE_CONFIGS = [
 ];
 
 export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) {
-  const router = useRouter();
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
@@ -174,7 +172,9 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
       if (result.success) {
         // 跳转到支付页面前先滚动到顶部
         window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-        router.push(`/lawyer/pay?applicationId=${result.data.applicationId}`);
+        // Use a document navigation so WeChat's “open in browser” menu
+        // receives the real payment URL, including the application id.
+        window.location.assign(`/lawyer/pay?applicationId=${encodeURIComponent(result.data.applicationId)}`);
       } else {
         alert(result.error || '提交失败，请重试');
       }

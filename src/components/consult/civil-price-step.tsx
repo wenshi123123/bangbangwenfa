@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { services } from './civil-consultation-wizard';
 import { caseTypes } from './civil-case-type-step';
 import { apiRequest } from '@/lib/api/request';
@@ -34,7 +33,6 @@ const defaultPlans: PriceConfig[] = [
 ];
 
 export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
-  const router = useRouter();
   const [selectedPlan, setSelectedPlan] = useState<string>('standard');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [prices, setPrices] = useState<PriceConfig[]>([]);
@@ -102,7 +100,9 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
       const result = await response.json();
       
       if (result.success) {
-        router.push(`/pay?orderId=${result.data.orderId}`);
+        // Use a document navigation so WeChat's “open in browser” menu
+        // receives the real payment URL, including the order id.
+        window.location.assign(`/pay?orderId=${encodeURIComponent(result.data.orderId)}`);
       } else {
         setSubmitError(result.error || '提交失败，请重试');
       }
