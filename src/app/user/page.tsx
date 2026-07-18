@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { getGuardianCenterUrl, getLawyerDashboardUrl, getVersionedPath } from '@/lib/site';
 import { useRouter } from 'next/navigation';
@@ -33,7 +33,6 @@ function UserCenterPageContent() {
   const [editNickname, setEditNickname] = useState('');
   const [saving, setSaving] = useState(false);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
-  const [needsAuthRedirect, setNeedsAuthRedirect] = useState(false);
   const [targetOrderId, setTargetOrderId] = useState<string | null>(null);
 
   // 订单相关状态
@@ -108,23 +107,6 @@ function UserCenterPageContent() {
       setShowOrderDetail(targetOrder);
     }
   }, [orders, targetOrderId, showOrderDetail?.id]);
-
-  useEffect(() => {
-    if (isLoading) {
-      return;
-    }
-
-    if (!effectiveLoggedIn) {
-      setNeedsAuthRedirect(true);
-    } else {
-      setNeedsAuthRedirect(false);
-    }
-  }, [effectiveLoggedIn, isLoading]);
-
-  useLayoutEffect(() => {
-    if (!needsAuthRedirect) return;
-    window.location.replace('/register?next=/user');
-  }, [needsAuthRedirect]);
 
   if (!effectiveLoggedIn) {
     if (isLoading) {

@@ -170,40 +170,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
         }
       } else {
-        if (userInfoStr) {
-          localStorage.removeItem('user_info');
-          localStorage.removeItem('token');
-        }
-        // 兼容旧的 guardian_user 存储
-        const guardianStr = localStorage.getItem('guardian_user');
-        if (guardianStr) {
-          try {
-            const guardianData = JSON.parse(guardianStr);
-            // 转换为新的用户格式
-            setUser(buildUserInfo({
-              id: guardianData.id,
-              phone: guardianData.phone,
-              nickname: guardianData.nickname,
-              userType: 'guardian',
-              isGuardian: true,
-              guardianInfo: {
-                id: guardianData.id,
-                inviteCode: guardianData.invite_code,
-                totalInvites: guardianData.total_invites,
-                validInvites: guardianData.valid_invites,
-                totalCommission: guardianData.total_commission,
-                availableCommission: guardianData.available_commission,
-              },
-              isLawyer: false,
-              lawyerInfo: null,
-            }));
-          } catch (e) {
-            console.error('解析 guardian_user 失败:', e);
-            setUser(null);
-          }
-        } else {
-          setUser(null);
-        }
+        // 旧的用户/守护者资料没有可用令牌时，不能被当成已登录状态。
+        // 统一清理，确保顶部展示、个人中心和接口鉴权使用同一标准。
+        localStorage.removeItem('user_info');
+        localStorage.removeItem('guardian_user');
+        localStorage.removeItem('user_id');
+        localStorage.removeItem('token');
+        setUser(null);
       }
     } catch (error) {
       console.error('检查登录状态失败:', error);
@@ -229,30 +202,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeAuth();
     
     // 监听登录成功事件
-    const handleLoginSuccess = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const userData = customEvent.detail;
-      
-      if (userData) {
-        // 注意：调用方（login-modal/register-page）已经将 user_info 和 token 写入 localStorage
-        // 这里只更新 React 状态，避免重复写入
-        setUser(buildUserInfo(userData));
-        setIsLoading(false);
-      }
+    const handleLoginSuccess = () => {
+      // 以存储中的有效 token 为准，避免仅凭事件传参把页面误设为已登录。
+      void checkAuth().finally(() => setIsLoading(false));
     };
 
     // 监听律师状态更新事件
     const handleLawyerStatusUpdated = () => {
-      const userInfoStr = localStorage.getItem('user_info');
-      if (userInfoStr) {
-        try {
-          const userData = JSON.parse(userInfoStr);
-          // 重新构建用户信息
-          setUser(buildUserInfo(userData));
-        } catch (e) {
-          console.error('解析用户信息失败:', e);
-        }
-      }
+      void checkAuth();
     };
 
     window.addEventListener('user-logged-in', handleLoginSuccess);
@@ -269,13 +226,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // 监听 storage 事件（跨标签页通信）
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'user_info' && e.newValue) {
-        try {
-          const userData = JSON.parse(e.newValue);
-          setUser(buildUserInfo(userData));
-        } catch (err) {
-          console.error('解析 storage 用户信息失败:', err);
-        }
+      if (['user_info', 'token', 'guardian_user'].includes(e.key || '')) {
+        void checkAuth();
       }
     };
     window.addEventListener('storage', handleStorageChange);

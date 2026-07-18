@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { X, Smartphone, Lock, Loader2, CheckCircle, AlertCircle, Eye, EyeOff, User } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -18,6 +18,7 @@ type LoginTab = "code" | "password";
 
 export default function LoginModal() {
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     const {
         refreshAuth
@@ -302,6 +303,16 @@ export default function LoginModal() {
             window.removeEventListener("open-login-modal", handleOpenLogin);
         };
     }, []);
+
+    useEffect(() => {
+        if (searchParams.get("login") !== "1") return;
+
+        const next = searchParams.get("next");
+        if (next?.startsWith("/") && !next.startsWith("//") && !next.includes("\\")) {
+            sessionStorage.setItem("login_redirect", next);
+        }
+        setIsOpen(true);
+    }, [searchParams]);
 
     useEffect(() => {
         return () => {

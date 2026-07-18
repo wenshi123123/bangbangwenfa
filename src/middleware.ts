@@ -99,8 +99,10 @@ export async function middleware(request: NextRequest) {
 
   if ((pathname === '/user' || pathname === '/me') && !tokenCookie && !authSyncCookie) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = '/register';
-    redirectUrl.search = `?next=${encodeURIComponent(`${pathname}${search}`)}`;
+    // 未登录应回首页打开登录框，不能把已有用户误导到注册页。
+    redirectUrl.pathname = '/';
+    redirectUrl.searchParams.set('login', '1');
+    redirectUrl.searchParams.set('next', `${pathname}${search}`);
     return NextResponse.redirect(redirectUrl);
   }
 
