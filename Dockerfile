@@ -17,16 +17,9 @@ RUN pnpm install --prefer-frozen-lockfile --prefer-offline --prod=false
 # 复制所有源码（.dockerignore 会过滤掉不需要的文件）
 COPY . .
 
-# 构建应用，同时生成每次构建唯一的缓存破坏 token
-# 线上构建显式使用 webpack，避免 Next 默认构建器/缓存差异导致静态 chunk 产物不一致
-RUN BUILD_CACHE_BUST_VALUE="$(date -u +%Y%m%d%H%M%S)"; \
-    echo "Cache bust: ${BUILD_CACHE_BUST_VALUE}"; \
-    rm -rf .next dist; \
-    export BUILD_CACHE_BUST_VALUE="${BUILD_CACHE_BUST_VALUE}"; \
-    export NEXT_PUBLIC_BUILD_CACHE_BUST_VALUE="${BUILD_CACHE_BUST_VALUE}"; \
-    node ./scripts/write-build-meta.mjs ./src/lib/build-meta.ts; \
-    pnpm exec next build --webpack && \
-    node ./scripts/generate-cache-recovery-assets.mjs
+# 构建应用。线上显式使用 webpack，保持与本地构建一致。
+RUN rm -rf .next dist && \
+    pnpm exec next build --webpack
 
 # 构建 server bundle
 RUN pnpm exec tsup src/server.mts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
