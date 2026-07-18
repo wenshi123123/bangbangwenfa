@@ -55,7 +55,7 @@ export function CivilDescriptionStep({ value, contactPhone = '', onChange, onCon
       {onContactPhoneChange && (
         <div className="mb-4 sm:mb-6">
           <label className="block text-sm font-medium text-foreground mb-2">
-            手机号码（选填）
+            手机号码（必填）
           </label>
           <div className={`
             relative rounded-xl sm:rounded-xl border-2 transition-all duration-300 overflow-hidden

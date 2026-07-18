@@ -51,6 +51,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!/^\d{11}$/.test(phone)) {
+      return NextResponse.json(
+        { success: false, error: '联系电话必须为11位数字' },
+        { status: 400 }
+      );
+    }
+
     // 验证套餐选择
     if (!selectedPackages || selectedPackages.length === 0) {
       return NextResponse.json(

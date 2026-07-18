@@ -7,6 +7,21 @@ import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
 import { getLawyerUrl } from '@/lib/site';
 
+function getPaymentRequestHeaders(): Record<string, string> {
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent || '' : '';
+  const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'x-client-device': isMobile ? 'mobile' : 'web',
+    'x-user-agent': ua.toLowerCase(),
+  };
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 declare global {
   interface Window {
     WeixinJSBridge?: {
@@ -81,7 +96,7 @@ function LawyerPayContent() {
       try {
         const response = await fetch('/api/lawyer/pay/create', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getPaymentRequestHeaders(),
           body: JSON.stringify({
             applicationId,
           }),
@@ -100,6 +115,7 @@ function LawyerPayContent() {
           
           if (h5Url) {
             // H5 支付：直接跳转
+            setOrderId(orderIdFromServer);
             window.location.href = h5Url;
           } else if (isWechat && jsapiPayParams) {
             setOrderId(orderIdFromServer);
@@ -179,7 +195,9 @@ function LawyerPayContent() {
 
     const checkPaymentStatus = async () => {
       try {
-        const response = await fetch(`/api/lawyer/pay/status?orderId=${orderId}`);
+        const response = await fetch(`/api/lawyer/pay/status?orderId=${orderId}`, {
+          headers: getPaymentRequestHeaders(),
+        });
         const result = await response.json();
 
         if (result.success && result.data.status === 'paid') {

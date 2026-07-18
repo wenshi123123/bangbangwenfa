@@ -156,13 +156,12 @@ export default function LoginModal() {
                     detail: result.data.user
                 }));
 
-                const userType = result.data.user?.userType;
                 const authGuardRedirect = sessionStorage.getItem("auth_guard_redirect");
                 const modalRedirect = sessionStorage.getItem("login_redirect");
                 const redirectPath =
                     authGuardRedirect ||
                     modalRedirect ||
-                    (userType === "lawyer" ? "/lawyer" : userType === "guardian" ? "/guardian/center" : null);
+                    '/';
                 const versionedRedirectPath = redirectPath ? getVersionedPath(redirectPath) : null;
 
                 setTimeout(() => {
@@ -240,13 +239,12 @@ export default function LoginModal() {
                     detail: result.data.user
                 }));
 
-                const userType = result.data.user?.userType;
                 const authGuardRedirect = sessionStorage.getItem("auth_guard_redirect");
                 const modalRedirect = sessionStorage.getItem("login_redirect");
                 const redirectPath =
                     authGuardRedirect ||
                     modalRedirect ||
-                    (userType === "lawyer" ? "/lawyer" : userType === "guardian" ? "/guardian/center" : null);
+                    '/';
                 const versionedRedirectPath = redirectPath ? getVersionedPath(redirectPath) : null;
 
                 setTimeout(() => {

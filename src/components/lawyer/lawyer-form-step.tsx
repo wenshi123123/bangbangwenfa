@@ -75,7 +75,7 @@ export function LawyerFormStep({ formData, onUpdate, onNext, onBack }: LawyerFor
       formData.graduatedSchool.trim() !== '' && // 毕业院校必填
       formData.workingYears !== '' && parseInt(formData.workingYears) > 0 && // 执业年限必填
       formData.city.trim() !== '' && // 城市必填
-      formData.phone.trim() !== '' &&
+      /^\d{11}$/.test(formData.phone) &&
       formData.wechat.trim() !== ''
     );
   };
@@ -284,14 +284,24 @@ export function LawyerFormStep({ formData, onUpdate, onNext, onBack }: LawyerFor
         <div>
           <label className="block text-sm font-medium text-foreground mb-1.5">
             联系电话 <span className="text-red-500">*</span>
+            <span className="text-xs text-muted-foreground font-normal ml-2">（11位数字）</span>
           </label>
           <input
             type="tel"
+            inputMode="numeric"
             value={formData.phone}
-            onChange={(e) => onUpdate({ phone: e.target.value })}
-            placeholder="请输入您的手机号码"
-            className="w-full px-4 py-3 rounded-xl border-2 border-border bg-card focus:border-green-400 focus:outline-none transition-all duration-300 text-foreground placeholder:text-muted-foreground"
+            onChange={(e) => onUpdate({ phone: e.target.value.replace(/\D/g, '').slice(0, 11) })}
+            placeholder="请输入11位手机号码"
+            maxLength={11}
+            className={`w-full px-4 py-3 rounded-xl border-2 bg-card focus:outline-none transition-all duration-300 text-foreground placeholder:text-muted-foreground ${
+              formData.phone.length > 0 && formData.phone.length !== 11
+                ? 'border-red-400 focus:border-red-400'
+                : 'border-border focus:border-green-400'
+            }`}
           />
+          {formData.phone.length > 0 && formData.phone.length !== 11 && (
+            <p className="text-xs text-red-500 mt-1">请输入完整的11位数字，当前已输入 {formData.phone.length} 位</p>
+          )}
         </div>
 
         {/* 微信号 */}

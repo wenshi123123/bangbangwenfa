@@ -59,6 +59,21 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function isTokenUsable(token: string | null): boolean {
+  if (!token) return false;
+
+  try {
+    const [, encodedPayload, signature] = token.split('.');
+    if (!encodedPayload || !signature) return false;
+    let base64 = encodedPayload.replace(/-/g, '+').replace(/_/g, '/');
+    base64 += '='.repeat((4 - (base64.length % 4)) % 4);
+    const payload = JSON.parse(atob(base64));
+    return typeof payload.exp !== 'number' || payload.exp > Math.floor(Date.now() / 1000);
+  } catch {
+    return false;
+  }
+}
+
 // 全局滚动重置组件
 function GlobalScrollReset() {
   const pathname = usePathname();
@@ -123,11 +138,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 读取 user_info（统一登录方式）
       const userInfoStr = localStorage.getItem('user_info');
       
-      if (userInfoStr) {
+      const token = localStorage.getItem('token');
+      if (userInfoStr && isTokenUsable(token)) {
         try {
           const userData = JSON.parse(userInfoStr);
           // 🔑 从 token 中检查 userType，覆盖 isLawyer 状态
-          const token = localStorage.getItem('token');
           if (token) {
             try {
               // 修复：支持 base64url 编码的 JWT
@@ -155,6 +170,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
         }
       } else {
+        if (userInfoStr) {
+          localStorage.removeItem('user_info');
+          localStorage.removeItem('token');
+        }
         // 兼容旧的 guardian_user 存储
         const guardianStr = localStorage.getItem('guardian_user');
         if (guardianStr) {
