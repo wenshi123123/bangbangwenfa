@@ -231,9 +231,9 @@ function LawyerPayContent() {
 
   if (loading) {
     return (
-      <div className="lawyer-onboarding-theme min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)' }}>
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-[#C47353] animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-green-500 animate-spin mx-auto mb-4" />
           <p className="text-lg text-foreground">正在创建支付订单...</p>
         </div>
       </div>
@@ -242,10 +242,10 @@ function LawyerPayContent() {
 
   if (paid) {
     return (
-      <div className="lawyer-onboarding-theme min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)' }}>
         <div className="max-w-md mx-auto bg-white rounded-xl shadow-xl p-8 text-center">
-          <div className="w-16 h-16 bg-[#F5EDE5] rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-8 h-8 text-[#C47353]" />
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-8 h-8 text-green-500" />
           </div>
           <h2 className="text-xl font-bold text-foreground mb-2">支付成功</h2>
           <p className="text-muted-foreground mb-6">您的律师入驻申请已提交成功，我们将在1-2个工作日内审核。</p>
@@ -260,7 +260,7 @@ function LawyerPayContent() {
   }
 
   return (
-    <div className="lawyer-onboarding-theme min-h-screen">
+    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)' }}>
       {/* Header */}
       <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-green-100/50">
         <div className="container mx-auto px-4 py-3">
@@ -348,9 +348,9 @@ function LawyerPayContent() {
 
 function LoadingFallback() {
   return (
-      <div className="lawyer-onboarding-theme min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)' }}>
       <div className="text-center">
-          <Loader2 className="w-12 h-12 text-[#C47353] animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-green-500 animate-spin mx-auto mb-4" />
         <p className="text-lg text-foreground">加载中...</p>
       </div>
     </div>

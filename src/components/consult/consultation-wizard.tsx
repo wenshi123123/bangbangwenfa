@@ -7,6 +7,7 @@ import { CaseTypeStep } from './case-type-step';
 import { DescriptionStep } from './description-step';
 import { ServiceStep } from './service-step';
 import { PriceStep } from './price-step';
+import { useAuth } from '@/hooks/use-auth';
 
 export interface CaseType {
   id: string;
@@ -72,9 +73,8 @@ interface ConsultationWizardProps {
 export function ConsultationWizard({ onBack }: ConsultationWizardProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isLoggedIn, isLoading } = useAuth();
   const [step, setStep] = useState(1);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isChecking, setIsChecking] = useState(true);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     caseType: '',
@@ -83,15 +83,8 @@ export function ConsultationWizard({ onBack }: ConsultationWizardProps) {
     contactPhone: '', // 第二步填写的手机号
   });
 
-  // 检查登录状态和获取邀请码
+  // 获取邀请码
   useEffect(() => {
-    const checkLogin = () => {
-      const savedUser = localStorage.getItem('user_info');
-      const loggedIn = !!savedUser;
-      setIsLoggedIn(loggedIn);
-      setIsChecking(false);
-    };
-    
     // 从 URL 获取邀请码
     const code = searchParams.get('code');
     if (code) {
@@ -104,21 +97,7 @@ export function ConsultationWizard({ onBack }: ConsultationWizardProps) {
       if (savedCode) setInviteCode(savedCode);
     }
     
-    checkLogin();
-    
-    // 监听登录成功事件
-    const handleLoginSuccess = () => {
-      // 登录成功，重新检查并更新状态
-      setTimeout(() => {
-        checkLogin();
-      }, 100);
-    };
-    window.addEventListener('user-logged-in', handleLoginSuccess);
-    
-    return () => {
-      window.removeEventListener('user-logged-in', handleLoginSuccess);
-    };
-  }, []);
+  }, [searchParams]);
 
   const handleBack = () => {
     if (step === 1) {
@@ -133,7 +112,7 @@ export function ConsultationWizard({ onBack }: ConsultationWizardProps) {
   };
 
   // 未登录提示
-  if (!isChecking && !isLoggedIn) {
+  if (!isLoading && !isLoggedIn) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#FAF7F2] to-white">
         <div className="max-w-lg mx-auto px-4 py-16">
@@ -159,7 +138,7 @@ export function ConsultationWizard({ onBack }: ConsultationWizardProps) {
   }
 
   // 加载中
-  if (isChecking) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#FAF7F2] to-white flex items-center justify-center">
         <div className="text-center">

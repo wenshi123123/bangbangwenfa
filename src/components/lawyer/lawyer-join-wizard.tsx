@@ -169,7 +169,7 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
   // 加载中：只在短暂等待期内显示，避免页面长时间卡死
   if (isLoading && !authGraceExpired) {
     return (
-      <div className="lawyer-onboarding-theme min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)' }}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
           <p className="text-muted-foreground">正在检查登录状态...</p>
@@ -181,7 +181,7 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
   // 已是认证律师，无需重复入驻
   if (user?.isLawyer) {
     return (
-      <div className="lawyer-onboarding-theme min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)' }}>
         <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-sm w-full shadow-xl text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -210,7 +210,7 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
   // 未登录提示
   if (showLoginPrompt) {
     return (
-      <div className="lawyer-onboarding-theme min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)' }}>
         <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-sm w-full shadow-xl text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -239,7 +239,7 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
   }
 
   return (
-    <div className="lawyer-onboarding-theme min-h-screen">
+    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)' }}>
       {/* Top Navigation Bar */}
       <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-green-100/50">
         <div className="container mx-auto px-4 py-3">

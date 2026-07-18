@@ -8,6 +8,7 @@ import { CivilDescriptionStep } from './civil-description-step';
 import { CivilServiceStep } from './civil-service-step';
 import { CivilPriceStep } from './civil-price-step';
 import { apiRequest } from '@/lib/api/request';
+import { useAuth } from '@/hooks/use-auth';
 
 export interface CaseType {
   id: string;
@@ -47,9 +48,8 @@ interface CivilConsultationWizardProps {
 
 export function CivilConsultationWizard({ onBack }: CivilConsultationWizardProps) {
   const router = useRouter();
+  const { isLoggedIn, isLoading } = useAuth();
   const [step, setStep] = useState(1);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isChecking, setIsChecking] = useState(false);
   const [formData, setFormData] = useState({
     caseType: '',
     description: '',
@@ -77,35 +77,6 @@ export function CivilConsultationWizard({ onBack }: CivilConsultationWizardProps
     fetchPrices();
   }, []);
 
-  // 检查登录状态
-  useEffect(() => {
-    const checkLogin = () => {
-      try {
-        const savedUser = localStorage.getItem('user_info');
-        const loggedIn = !!savedUser;
-        setIsLoggedIn(loggedIn);
-      } catch (error) {
-        console.error('Failed to check civil login state:', error);
-        setIsLoggedIn(false);
-      } finally {
-        setIsChecking(false);
-      }
-    };
-    checkLogin();
-    
-    // 监听登录成功事件
-    const handleLoginSuccess = () => {
-      setTimeout(() => {
-        checkLogin();
-      }, 100);
-    };
-    window.addEventListener('user-logged-in', handleLoginSuccess);
-    
-    return () => {
-      window.removeEventListener('user-logged-in', handleLoginSuccess);
-    };
-  }, []);
-
   const handleBack = () => {
     if (step === 1) {
       if (onBack) {
@@ -119,7 +90,7 @@ export function CivilConsultationWizard({ onBack }: CivilConsultationWizardProps
   };
 
   // 未登录提示
-  if (!isChecking && !isLoggedIn) {
+  if (!isLoading && !isLoggedIn) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#FAF7F2] to-white">
         <div className="max-w-lg mx-auto px-4 py-16">
@@ -145,7 +116,7 @@ export function CivilConsultationWizard({ onBack }: CivilConsultationWizardProps
   }
 
   // 加载中
-  if (isChecking) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#FAF7F2] to-white flex items-center justify-center">
         <div className="text-center">

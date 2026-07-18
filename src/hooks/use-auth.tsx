@@ -140,6 +140,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       const token = localStorage.getItem('token');
       if (userInfoStr && isTokenUsable(token)) {
+        // 本地只能判断令牌形状和过期时间，不能验证签名。先由服务端确认，
+        // 避免顶部显示已登录、提交订单时才被 401 拦下的割裂体验。
+        const sessionResponse = await fetch('/api/auth/session', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          cache: 'no-store',
+        });
+
+        if (!sessionResponse.ok) {
+          localStorage.removeItem('user_info');
+          localStorage.removeItem('guardian_user');
+          localStorage.removeItem('user_id');
+          localStorage.removeItem('token');
+          setUser(null);
+          return;
+        }
+
         try {
           const userData = JSON.parse(userInfoStr);
           // 🔑 从 token 中检查 userType，覆盖 isLawyer 状态
