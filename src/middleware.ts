@@ -1,23 +1,17 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import {
-  BUILD_CACHE_BUST_VALUE,
-  STATIC_ASSET_RECOVERY_PARAM,
-} from '@/lib/build-meta';
-import {
   getCanonicalSiteUrl,
   getRequestHostname,
   shouldRedirectToCanonicalHost,
 } from '@/lib/site';
-
-const CACHE_BUST_PARAM = '__bbwv';
 
 function applySecurityHeaders(
   response: NextResponse,
   isProd: boolean,
   clearBrowserCache = false,
   preserveCacheControl = false,
-  cacheHomeDocument = false
+  _cacheHomeDocument = false
 ) {
   // 隐藏技术栈信息
   response.headers.delete('X-Powered-By');
@@ -34,9 +28,7 @@ function applySecurityHeaders(
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   // 页面和 API 响应不要长期缓存，避免 CloudBase/CDN 命中旧 HTML 后引用失效的静态资源。
   // 公开价格接口有自己的短时缓存策略，不能被这里的全局 no-store 覆盖。
-  if (cacheHomeDocument) {
-    response.headers.set('Cache-Control', 'private, max-age=300, stale-while-revalidate=60');
-  } else if (!preserveCacheControl) {
+  if (!preserveCacheControl) {
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
     response.headers.set('Pragma', 'no-cache');
     response.headers.set('Expires', '0');
@@ -77,22 +69,9 @@ function applySecurityHeaders(
  */
 export async function middleware(request: NextRequest) {
   const isProd = process.env.DEPLOY_ENV === 'PROD' || process.env.NODE_ENV === 'production';
-  const hasBuildCacheBust = BUILD_CACHE_BUST_VALUE !== 'dev';
   const hostname = getRequestHostname(request.headers, request.nextUrl.hostname);
   const { pathname } = request.nextUrl;
-  const acceptHeader = request.headers.get('accept') || '';
-  const isHtmlNavigation = acceptHeader.includes('text/html');
-  const isApiRoute = pathname === '/api' || pathname.startsWith('/api/');
   const preserveCacheControl = pathname === '/api/price';
-  const isRecoveryNavigation =
-    request.nextUrl.searchParams.get(STATIC_ASSET_RECOVERY_PARAM) === '1';
-  const canCacheHomeDocument =
-    request.method === 'GET' &&
-    pathname === '/' &&
-    isHtmlNavigation &&
-    hasBuildCacheBust &&
-    request.nextUrl.searchParams.get(CACHE_BUST_PARAM) === BUILD_CACHE_BUST_VALUE &&
-    !isRecoveryNavigation;
 
   if (isProd && shouldRedirectToCanonicalHost(hostname)) {
     const redirectUrl = request.nextUrl.clone();
@@ -103,30 +82,13 @@ export async function middleware(request: NextRequest) {
     return applySecurityHeaders(NextResponse.redirect(redirectUrl, 307), isProd);
   }
 
-  if (
-    hasBuildCacheBust &&
-    isHtmlNavigation &&
-    !isApiRoute &&
-    (request.nextUrl.searchParams.get(CACHE_BUST_PARAM) !== BUILD_CACHE_BUST_VALUE ||
-      isRecoveryNavigation)
-  ) {
-    const rewriteUrl = request.nextUrl.clone();
-    rewriteUrl.searchParams.set(CACHE_BUST_PARAM, BUILD_CACHE_BUST_VALUE);
-    rewriteUrl.searchParams.delete(STATIC_ASSET_RECOVERY_PARAM);
-    return applySecurityHeaders(
-      NextResponse.redirect(rewriteUrl, 307),
-      isProd,
-      isRecoveryNavigation
-    );
-  }
-
   // 添加安全响应头
   return applySecurityHeaders(
     NextResponse.next(),
     isProd,
     false,
     preserveCacheControl,
-    canCacheHomeDocument
+    false
   );
 }
 

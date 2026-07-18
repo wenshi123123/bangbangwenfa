@@ -5,11 +5,7 @@ import { Header } from '@/components/layout/header';
 import LoginModal from '@/components/auth/login-modal';
 import SearchModal from '@/components/search/search-modal';
 import { CanonicalHostGuard } from '@/components/canonical-host-guard';
-import { ChunkLoadGuard } from '@/components/chunk-load-guard';
-import { StaticAssetRecoveryGuard } from '@/components/static-asset-recovery-guard';
 import { getSiteUrl } from '@/lib/site';
-import { buildInlineStaticAssetRecoveryScript } from '@/lib/static-asset-recovery';
-import { BUILD_CACHE_BUST_VALUE } from '@/lib/build-meta';
 import {
   LEGACY_BROWSER_FALLBACK_CSS,
   buildLegacyBrowserDetectionScript,
@@ -64,16 +60,9 @@ export default function RootLayout({
           }}
         />
         <style dangerouslySetInnerHTML={{ __html: LEGACY_BROWSER_FALLBACK_CSS }} />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: buildInlineStaticAssetRecoveryScript(BUILD_CACHE_BUST_VALUE),
-          }}
-        />
       </head>
       <body className="font-sans antialiased">
         <CanonicalHostGuard />
-        <StaticAssetRecoveryGuard />
-        <ChunkLoadGuard />
         <AuthProvider>
           <Header />
           <main className="min-h-screen">{children}</main>

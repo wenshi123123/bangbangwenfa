@@ -1,10 +1,5 @@
 const BARE_CANONICAL_HOST = 'bangbangwenfa.com';
 const PREFERRED_CANONICAL_HOST = `www.${BARE_CANONICAL_HOST}`;
-const BUILD_CACHE_BUST_VALUE =
-  process.env.BUILD_CACHE_BUST_VALUE ||
-  process.env.NEXT_PUBLIC_BUILD_CACHE_BUST_VALUE ||
-  'dev';
-
 function normalizeHostnameValue(value: string | null | undefined): string | null {
   if (!value) return null;
 
@@ -118,17 +113,7 @@ export function getRequestHostname(headers: Headers, fallbackHostname?: string |
 }
 
 export function getVersionedPath(pathname: string): string {
-  if (!pathname.startsWith('/')) {
-    return pathname;
-  }
-
-  if (BUILD_CACHE_BUST_VALUE === 'dev') {
-    return pathname;
-  }
-
-  const url = new URL(`https://${PREFERRED_CANONICAL_HOST}${pathname}`);
-  url.searchParams.set('__bbwv', BUILD_CACHE_BUST_VALUE);
-  return `${url.pathname}${url.search}`;
+  return pathname;
 }
 
 export function getCivilUrl(): string {

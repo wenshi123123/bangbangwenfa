@@ -9,11 +9,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 cd "${COZE_WORKSPACE_PATH}"
 
-BUILD_CACHE_BUST_VALUE="$(date -u +%Y%m%d%H%M%S)"
-echo "Preparing build cache-bust token: ${BUILD_CACHE_BUST_VALUE}"
-export BUILD_CACHE_BUST_VALUE
-export NEXT_PUBLIC_BUILD_CACHE_BUST_VALUE="${BUILD_CACHE_BUST_VALUE}"
-
 echo "Cleaning previous build artifacts..."
 rm -rf .next dist
 
@@ -25,12 +20,6 @@ if [ -z "${NODE_BIN}" ]; then
   echo "Unable to locate a usable Node.js binary."
   exit 1
 fi
-
-# The middleware and the earliest static-asset recovery script run after the
-# container starts, when BUILD_CACHE_BUST_VALUE is no longer guaranteed to be
-# present. Persist this build's token into the compiled application first.
-"${NODE_BIN}" "${COZE_WORKSPACE_PATH}/scripts/write-build-meta.mjs" \
-  "${COZE_WORKSPACE_PATH}/src/lib/build-meta.ts"
 
 RESOLVE_PKG_DIR='const path = require("path"); const pkg = process.argv[1]; try { console.log(path.dirname(require.resolve(`${pkg}/package.json`))); } catch (err) { process.exit(1); }'
 NEXT_PKG_DIR="$("${NODE_BIN}" -e "${RESOLVE_PKG_DIR}" next)"
@@ -119,9 +108,6 @@ fi
 
 echo "Building the Next.js project..."
 "${NODE_BIN}" "${NEXT_BIN}" build --webpack
-
-echo "Generating cache-recovery assets..."
-"${NODE_BIN}" "${COZE_WORKSPACE_PATH}/scripts/generate-cache-recovery-assets.mjs"
 
 echo "Bundling server with tsup..."
 "${NODE_BIN}" "${TSUP_BIN}" src/server.mts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
