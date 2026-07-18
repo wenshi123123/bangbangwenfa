@@ -53,7 +53,10 @@ assert.equal(target.searchParams.get('foo'), '1');
 const dirtyUrl = new URL('https://bangbangwenfa.com/civil?foo=1&__bbwv=20260718&__bbwv_recover=1&__bbwv_retry=2&__bbwv_attempt=1');
 assert.equal(cleanStaticAssetRecoveryParams(dirtyUrl), true);
 assert.equal(dirtyUrl.toString(), 'https://bangbangwenfa.com/civil?foo=1');
-assert.match(buildStaticAssetRecoveryFailureMarkup(), /页面暂时没有加载完整/);
+const failureMarkup = buildStaticAssetRecoveryFailureMarkup('20260718');
+assert.match(failureMarkup, /页面暂时没有加载完整/);
+assert.match(failureMarkup, /sessionStorage\.removeItem/);
+assert.match(failureMarkup, /__bbwv_retry/);
 
 assert.equal(claimStaticAssetRecovery(session), true);
 assert.equal(storage.get(STATIC_ASSET_RECOVERY_KEY), '1');
@@ -100,6 +103,7 @@ assert.match(inlineRecoveryScript, /maxRecoveryAttempts = 3/);
 assert.match(inlineRecoveryScript, /20260718/);
 assert.match(inlineRecoveryScript, /replaceState/);
 assert.match(inlineRecoveryScript, /重新打开/);
+assert.match(inlineRecoveryScript, /sessionStorage\.removeItem/);
 
 class FakeLinkElement {
   readonly tagName = 'LINK';

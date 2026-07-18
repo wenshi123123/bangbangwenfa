@@ -22,7 +22,7 @@ export function ChunkLoadGuard() {
     const reloadOnce = () => {
       if (!claimStaticAssetRecoveryFromSession()) {
         if (document.body) {
-          document.body.innerHTML = buildStaticAssetRecoveryFailureMarkup();
+          document.body.innerHTML = buildStaticAssetRecoveryFailureMarkup(BUILD_CACHE_BUST_VALUE);
         }
         return;
       }

@@ -49,13 +49,36 @@ export function cleanStaticAssetRecoveryParams(url: URL) {
   return changed;
 }
 
-export function buildStaticAssetRecoveryFailureMarkup() {
+export function buildStaticAssetRecoveryFailureMarkup(buildToken = '') {
+  const serializedRecoveryKey = JSON.stringify(STATIC_ASSET_RECOVERY_KEY);
+  const serializedAttemptsKey = JSON.stringify(`${STATIC_ASSET_RECOVERY_KEY}_attempts`);
+  const serializedBuildToken = JSON.stringify(buildToken);
+  const retryAction = `(() => {
+    try {
+      window.sessionStorage.removeItem(${serializedRecoveryKey});
+      window.sessionStorage.removeItem(${serializedAttemptsKey});
+    } catch (_) {}
+    const target = new URL(window.location.href);
+    target.searchParams.delete('__bbwv_recover');
+    target.searchParams.delete('__bbwv_retry');
+    target.searchParams.delete('__bbwv_attempt');
+    if (${serializedBuildToken}) target.searchParams.set('__bbwv', ${serializedBuildToken});
+    target.searchParams.set('__bbwv_recover', '1');
+    target.searchParams.set('__bbwv_retry', String(Date.now()));
+    window.location.replace(target.toString());
+  })()`;
+  const escapedRetryAction = retryAction
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
   return `
     <main style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#faf7f2;color:#3d322d;font-family:Arial,'Microsoft YaHei',sans-serif;text-align:center">
       <section style="max-width:360px">
         <h1 style="font-size:24px;margin:0 0 12px">页面暂时没有加载完整</h1>
         <p style="font-size:15px;line-height:1.7;margin:0 0 20px;color:#6f625b">请点击下面按钮重新打开，通常即可恢复正常。</p>
-        <button type="button" onclick="window.location.reload()" style="min-height:44px;padding:10px 24px;border:1px solid #c47353;border-radius:24px;background:#c47353;color:#fff;font-size:16px">重新打开</button>
+        <button type="button" onclick="${escapedRetryAction}" style="min-height:44px;padding:10px 24px;border:1px solid #c47353;border-radius:24px;background:#c47353;color:#fff;font-size:16px">重新打开</button>
       </section>
     </main>`;
 }
@@ -114,7 +137,7 @@ export function buildInlineStaticAssetRecoveryScript(buildToken: string) {
 
     if (attempts >= maxRecoveryAttempts) {
       if (document && document.body) {
-        document.body.innerHTML = ${JSON.stringify(buildStaticAssetRecoveryFailureMarkup())};
+        document.body.innerHTML = ${JSON.stringify(buildStaticAssetRecoveryFailureMarkup(buildToken))};
       }
       return;
     }
