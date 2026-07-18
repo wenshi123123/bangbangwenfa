@@ -107,6 +107,28 @@ function PayPageInner() {
     setDeviceReady(true);
   }, []);
 
+  // 微信内从历史待支付订单进入时，现场补发外部浏览器专用凭证。
+  useEffect(() => {
+    if (!deviceReady || !isWechat || !isLoggedIn || !orderIdParam || handoffToken || isLoading) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    fetch('/api/pay/handoff', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ orderId: orderIdParam }),
+    })
+      .then((response) => response.json())
+      .then((result) => {
+        if (!result.success || !result.data?.handoffToken) return;
+        const nextUrl = new URL(window.location.href);
+        nextUrl.searchParams.set('handoff', result.data.handoffToken);
+        window.location.replace(nextUrl.toString());
+      })
+      .catch((error) => console.error('创建支付凭证失败:', error));
+  }, [deviceReady, isWechat, isLoggedIn, orderIdParam, handoffToken, isLoading]);
+
   // 加载订单信息
   useEffect(() => {
     if (!deviceReady || isWechat) return;

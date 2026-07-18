@@ -48,6 +48,7 @@ async function main() {
   assert.match(lawyerPackageStep, /window\.location\.assign\(`\/lawyer\/pay\?applicationId=\$\{encodeURIComponent\(/, '律师入驻必须使用真实地址跳转到支付页');
   assert.match(layout, /pageshow/,'页面必须在最早阶段监听历史缓存恢复');
   assert.match(layout, /event\.persisted/, '页面必须只刷新历史缓存恢复的文档');
+  assert.match(consultPay, /\/api\/pay\/handoff/, '微信内打开历史待支付订单时必须补发支付凭证');
 
   console.log('wechat external browser payment gate test passed');
 }
