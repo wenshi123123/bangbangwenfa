@@ -79,7 +79,7 @@ export async function middleware(request: NextRequest) {
   const isProd = process.env.DEPLOY_ENV === 'PROD' || process.env.NODE_ENV === 'production';
   const hasBuildCacheBust = BUILD_CACHE_BUST_VALUE !== 'dev';
   const hostname = getRequestHostname(request.headers, request.nextUrl.hostname);
-  const { pathname, search } = request.nextUrl;
+  const { pathname } = request.nextUrl;
   const acceptHeader = request.headers.get('accept') || '';
   const isHtmlNavigation = acceptHeader.includes('text/html');
   const isApiRoute = pathname === '/api' || pathname.startsWith('/api/');
@@ -93,18 +93,6 @@ export async function middleware(request: NextRequest) {
     hasBuildCacheBust &&
     request.nextUrl.searchParams.get(CACHE_BUST_PARAM) === BUILD_CACHE_BUST_VALUE &&
     !isRecoveryNavigation;
-
-  const tokenCookie = request.cookies.get('token')?.value;
-  const authSyncCookie = request.cookies.get('auth_sync')?.value;
-
-  if ((pathname === '/user' || pathname === '/me') && !tokenCookie && !authSyncCookie) {
-    const redirectUrl = request.nextUrl.clone();
-    // 未登录应回首页打开登录框，不能把已有用户误导到注册页。
-    redirectUrl.pathname = '/';
-    redirectUrl.searchParams.set('login', '1');
-    redirectUrl.searchParams.set('next', `${pathname}${search}`);
-    return NextResponse.redirect(redirectUrl);
-  }
 
   if (isProd && shouldRedirectToCanonicalHost(hostname)) {
     const redirectUrl = request.nextUrl.clone();

@@ -7,7 +7,13 @@ import { LawyerBottomNav } from '@/components/lawyer/lawyer-bottom-nav';
 import { getVersionedPath } from '@/lib/site';
 
 // 不需要认证的律师相关页面
-const PUBLIC_LAWYER_PATHS = ['/lawyer/login', '/lawyer/join', '/lawyer/join/apply'];
+const PUBLIC_LAWYER_PATHS = [
+  '/lawyer/login',
+  '/lawyer/join',
+  '/lawyer/join/apply',
+  '/lawyer/pay',
+  '/lawyer/renew',
+];
 
 export default function LawyerLayout({
   children,

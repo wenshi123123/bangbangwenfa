@@ -20,12 +20,12 @@ async function main() {
     assert.match(route, /WECHAT_JSAPI_CONFIG_ERROR/, '微信内配置失败必须返回可识别的兜底错误码');
   }
   for (const page of [consultPay, lawyerPay]) {
-    assert.match(page, /WechatExternalBrowserGuide/, '微信内支付配置失败必须展示浏览器外支付引导');
-    assert.match(page, /WECHAT_JSAPI_CONFIG_ERROR/, '页面必须识别 JSAPI 配置失败错误码');
+    assert.match(page, /WechatExternalBrowserGuide/, '微信内付款页必须展示浏览器外支付引导');
+    assert.match(page, /if \(deviceReady && isWechat\)/, '微信内付款页必须在创建支付前展示引导');
   }
   assert.match(guide, /复制支付链接/, '引导必须让用户能复制当前支付链接');
   assert.match(guide, /在浏览器打开/, '引导必须明确告诉用户如何离开微信完成支付');
-  console.log('wechat jsapi fallback test passed');
+  console.log('wechat external browser payment guidance test passed');
 }
 
 main().catch((error) => {

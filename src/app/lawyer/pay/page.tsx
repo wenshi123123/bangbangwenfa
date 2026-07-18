@@ -23,36 +23,6 @@ function getPaymentRequestHeaders(): Record<string, string> {
   return headers;
 }
 
-declare global {
-  interface Window {
-    WeixinJSBridge?: {
-      invoke: (method: string, params: Record<string, unknown>, callback: (res: { err_msg?: string }) => void) => void;
-    };
-    wx?: {
-      chooseWXPay: (params: {
-        appId: string;
-        timestamp: string;
-        nonceStr: string;
-        package: string;
-        signType: string;
-        paySign: string;
-        success: () => void;
-        fail: (err: unknown) => void;
-        cancel: () => void;
-      }) => void;
-    };
-  }
-}
-
-interface JsapiPayParams {
-  appId: string;
-  timeStamp: string;
-  nonceStr: string;
-  package: string;
-  signType: string;
-  paySign: string;
-}
-
 function LawyerPayContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -66,16 +36,13 @@ function LawyerPayContent() {
   };
 
   const [orderId, setOrderId] = useState<string | null>(null);
-  const [payParams, setPayParams] = useState<JsapiPayParams | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [paid, setPaid] = useState(false);
-  const [isConfirming, setIsConfirming] = useState(false);
   const [isWechat, setIsWechat] = useState(false);
   const [deviceReady, setDeviceReady] = useState(false);
   const [qrCodeValue, setQrCodeValue] = useState<string | null>(null);
   const [h5Url, setH5Url] = useState<string | null>(null);
-  const [showWechatBrowserGuide, setShowWechatBrowserGuide] = useState(false);
 
   // 检测微信环境
   useEffect(() => {
@@ -94,6 +61,7 @@ function LawyerPayContent() {
     if (!deviceReady) {
       return;
     }
+    if (isWechat) return;
 
     // 创建支付订单
     const createPayment = async () => {
@@ -109,7 +77,7 @@ function LawyerPayContent() {
         const result = await response.json();
 
         if (result.success) {
-          const { h5Url, codeUrl, jsapiPayParams, orderId: orderIdFromServer } = result.data;
+          const { h5Url, codeUrl, orderId: orderIdFromServer } = result.data;
 
           if (result.data?.status === 'paid') {
             setOrderId(orderIdFromServer);
@@ -121,10 +89,6 @@ function LawyerPayContent() {
             // 外部手机浏览器需要由用户点击触发 App 唤起，避免荣耀/夸克/Chrome 拦截异步跳转。
             setOrderId(orderIdFromServer);
             setH5Url(h5Url);
-          } else if (isWechat && jsapiPayParams) {
-            setOrderId(orderIdFromServer);
-            setPayParams(jsapiPayParams);
-            invokeWechatPay(jsapiPayParams);
           } else if (codeUrl) {
             // Native 支付：显示二维码
             setOrderId(orderIdFromServer);
@@ -133,15 +97,6 @@ function LawyerPayContent() {
             setError('未获取到支付二维码，请稍后重试');
           }
         } else {
-          if (isWechat && result.code === 'WECHAT_OAUTH_REQUIRED') {
-            window.location.replace(`/api/wechat/oauth/authorize?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
-            return;
-          }
-          if (isWechat && result.code === 'WECHAT_JSAPI_CONFIG_ERROR') {
-            setError(result.error || '微信内支付暂不可用，请在浏览器打开后继续支付');
-            setShowWechatBrowserGuide(true);
-            return;
-          }
           console.error('支付创建失败:', result.error);
           setError(result.error || '支付创建失败，请稍后重试');
         }
@@ -156,54 +111,9 @@ function LawyerPayContent() {
     createPayment();
   }, [applicationId, isWechat, deviceReady]);
 
-  // 微信内调起 JSAPI 支付
-  const invokeWechatPay = (params: JsapiPayParams) => {
-    const doPay = () => {
-      if (typeof window.WeixinJSBridge !== 'undefined') {
-        window.WeixinJSBridge.invoke('getBrandWCPayRequest', {
-          appId: params.appId,
-          timeStamp: params.timeStamp,
-          nonceStr: params.nonceStr,
-          package: params.package,
-          signType: params.signType,
-          paySign: params.paySign,
-        }, (res) => {
-          if (res.err_msg === 'get_brand_wcpay_request:ok') {
-            setIsConfirming(true);
-          } else if (res.err_msg === 'get_brand_wcpay_request:cancel') {
-            setError('支付已取消');
-          } else {
-            setError('支付失败，请重试');
-            setShowWechatBrowserGuide(true);
-          }
-        });
-      } else if (typeof window.wx !== 'undefined' && window.wx.chooseWXPay) {
-        window.wx.chooseWXPay({
-          appId: params.appId,
-          timestamp: params.timeStamp,
-          nonceStr: params.nonceStr,
-          package: params.package,
-          signType: params.signType,
-          paySign: params.paySign,
-          success: () => setIsConfirming(true),
-          fail: () => {
-            setError('支付失败，请重试');
-            setShowWechatBrowserGuide(true);
-          },
-          cancel: () => setError('支付已取消'),
-        });
-      }
-    };
-
-    if (typeof window.WeixinJSBridge === 'undefined') {
-      document.addEventListener('WeixinJSBridgeReady', doPay, false);
-    } else {
-      doPay();
-    }
-  };
-
   // 轮询检查支付状态
   useEffect(() => {
+    if (isWechat) return;
     if (!orderId) return;
 
     const checkPaymentStatus = async () => {
@@ -227,7 +137,11 @@ function LawyerPayContent() {
     checkPaymentStatus();
     const interval = setInterval(checkPaymentStatus, 3000);
     return () => clearInterval(interval);
-  }, [orderId]);
+  }, [orderId, isWechat, router]);
+
+  if (deviceReady && isWechat) {
+    return <WechatExternalBrowserGuide />;
+  }
 
   if (loading) {
     return (
@@ -281,15 +195,6 @@ function LawyerPayContent() {
           <div className="bg-white rounded-xl shadow-xl p-6 text-center">
             <h2 className="text-xl font-bold text-foreground mb-4">完成支付</h2>
 
-            {/* 微信环境提示 */}
-            {isWechat && !error && (
-              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl">
-                <p className="text-sm text-green-700">
-                  {isConfirming ? '支付结果确认中，请勿关闭页面...' : payParams ? '支付窗口已弹出，请在微信内完成支付' : '正在准备支付...'}
-                </p>
-              </div>
-            )}
-
             {/* 非微信环境：由用户点击唤起微信 H5，无法唤起时再使用二维码 */}
             {!isWechat && !error && (
               <div className="mb-6">
@@ -332,12 +237,11 @@ function LawyerPayContent() {
                 >
                   重新尝试
                 </button>
-                {showWechatBrowserGuide && <WechatExternalBrowserGuide className="mt-4" />}
               </div>
             )}
 
             <p className="text-xs text-muted-foreground">
-              微信内将直接拉起微信支付；如不可用可按提示在浏览器继续支付
+              请在浏览器中继续完成支付
             </p>
           </div>
         </div>

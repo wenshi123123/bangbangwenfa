@@ -316,7 +316,7 @@ async function handleCodeLogin(body: { phone?: string; code?: string }) {
       guardianId: guardian.id,  // 🔧 修复：独立传入 guardian_users 表 ID
     });
 
-    return NextResponse.json({
+    return attachAuthCookie(NextResponse.json({
       success: true,
       data: {
         user: {
@@ -339,7 +339,7 @@ async function handleCodeLogin(body: { phone?: string; code?: string }) {
         },
         token
       }
-    });
+    }), token);
   }
 
   // 3. 查 lawyer_applications 表（律师申请）
@@ -424,7 +424,7 @@ async function handleCodeLogin(body: { phone?: string; code?: string }) {
         lawyerId: effectiveLawyerId,  // 🔧 使用 lawyers 表的 UUID（而非 lawyer_applications 整数）
       });
 
-      return NextResponse.json({
+      return attachAuthCookie(NextResponse.json({
         success: true,
         data: {
           user: {
@@ -445,7 +445,7 @@ async function handleCodeLogin(body: { phone?: string; code?: string }) {
           },
           token
         }
-      });
+      }), token);
     }
   }
 

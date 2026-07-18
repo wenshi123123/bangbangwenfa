@@ -96,7 +96,6 @@ function PayPageInner() {
   const [isMobile, setIsMobile] = useState(false);
   const [isWechat, setIsWechat] = useState(false);
   const [deviceReady, setDeviceReady] = useState(false);
-  const [autoJsapiStarted, setAutoJsapiStarted] = useState(false);
   const [showWechatBrowserGuide, setShowWechatBrowserGuide] = useState(false);
 
   // 检测设备类型
@@ -109,6 +108,8 @@ function PayPageInner() {
 
   // 加载订单信息
   useEffect(() => {
+    if (!deviceReady || isWechat) return;
+
     if (!orderIdParam) {
       setError('缺少订单号');
       setLoading(false);
@@ -128,7 +129,7 @@ function PayPageInner() {
     // 订单号有效后，清掉可能残留的旧错误态，再重新加载订单
     setError(null);
     loadOrder();
-  }, [orderIdParam, isLoggedIn, isLoading, isWechat]);
+  }, [orderIdParam, isLoggedIn, isLoading, isWechat, deviceReady]);
 
   const loadOrder = async () => {
     try {
@@ -169,6 +170,7 @@ function PayPageInner() {
 
   // 创建支付
   const handlePay = async () => {
+    if (isWechat) return;
     if (!order || payLoading) return;
 
     setPayLoading(true);
@@ -188,21 +190,6 @@ function PayPageInner() {
       if (data.success) {
         const result = data.data;
         setPayResult(result);
-
-        // 微信内：JSAPI 支付
-        if (isWechat && result.jsapiPayParams) {
-          try {
-            await invokeWechatPay(result.jsapiPayParams);
-            router.push(`/success?orderId=${order.id}&payTradeNo=${encodeURIComponent(result.payTradeNo)}`);
-            return;
-          } catch (jsapiErr) {
-            console.error('JSAPI 调起失败:', jsapiErr);
-            const message = jsapiErr instanceof Error ? jsapiErr.message : '微信支付拉起失败';
-            setError(message);
-            setShowWechatBrowserGuide(message !== '支付已取消');
-            return;
-          }
-        }
 
         // 手机浏览器：H5 支付跳转
         if (isMobile && result.h5Url) {
@@ -234,15 +221,6 @@ function PayPageInner() {
         setError(data.error || '创建支付失败');
       }
     } catch (err: any) {
-      if (isWechat && err.code === 'WECHAT_OAUTH_REQUIRED') {
-        window.location.replace(`/api/wechat/oauth/authorize?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
-        return;
-      }
-      if (isWechat && err.code === 'WECHAT_JSAPI_CONFIG_ERROR') {
-        setError(err.message || '微信内支付暂不可用，请在浏览器打开后继续支付');
-        setShowWechatBrowserGuide(true);
-        return;
-      }
       console.error('创建支付失败:', err);
       setError(err.message || '创建支付失败，请稍后重试');
     } finally {
@@ -250,50 +228,9 @@ function PayPageInner() {
     }
   };
 
-  const invokeWechatPay = async (params: NonNullable<PayResult['jsapiPayParams']>) => {
-    return new Promise<void>((resolve, reject) => {
-      const doPay = () => {
-        if (typeof window.WeixinJSBridge !== 'undefined') {
-          window.WeixinJSBridge.invoke(
-            'getBrandWCPayRequest',
-            {
-              appId: params.appId,
-              timeStamp: params.timeStamp,
-              nonceStr: params.nonceStr,
-              package: params.package,
-              signType: params.signType,
-              paySign: params.paySign,
-            },
-            (res) => {
-              if (res.err_msg === 'get_brand_wcpay_request:ok') {
-                resolve();
-                return;
-              }
-
-              if (res.err_msg === 'get_brand_wcpay_request:cancel') {
-                reject(new Error('支付已取消'));
-                return;
-              }
-
-              reject(new Error(res.err_msg || '支付失败'));
-            }
-          );
-          return;
-        }
-
-        reject(new Error('WeixinJSBridge 不可用，请在微信内打开'));
-      };
-
-      if (typeof window.WeixinJSBridge === 'undefined') {
-        document.addEventListener('WeixinJSBridgeReady', doPay, false);
-      } else {
-        doPay();
-      }
-    });
-  };
-
   // 轮询支付状态
   useEffect(() => {
+    if (isWechat) return;
     if (!showQrCode || !payResult || isMobile) return;
 
     let cancelled = false;
@@ -333,14 +270,11 @@ function PayPageInner() {
         pollRef.current = null;
       }
     };
-  }, [showQrCode, payResult, pollCount, orderIdParam, router, isMobile]);
+  }, [showQrCode, payResult, pollCount, orderIdParam, router, isMobile, isWechat]);
 
-  useEffect(() => {
-    if (!deviceReady || !order || !isWechat || autoJsapiStarted) return;
-
-    setAutoJsapiStarted(true);
-    handlePay();
-  }, [deviceReady, order, isWechat, autoJsapiStarted, orderIdParam]);
+  if (deviceReady && isWechat) {
+    return <WechatExternalBrowserGuide />;
+  }
 
   // 加载中
   if (loading) {

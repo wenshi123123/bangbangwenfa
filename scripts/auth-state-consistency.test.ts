@@ -20,7 +20,7 @@ async function main() {
   assert.doesNotMatch(userCenter, /window\.location\.replace\('\/register\?next=\/user'\)/, '个人中心未登录时不能强制跳转注册页');
   assert.match(userCenter, /open-login-modal/, '个人中心未登录时必须提供正常登录入口');
   assert.doesNotMatch(middleware, /redirectUrl\.pathname = '\/register'/, '路由守卫未登录时不能跳注册页');
-  assert.match(middleware, /searchParams\.set\('login', '1'\)/, '路由守卫必须携带打开登录框的标记');
+  assert.doesNotMatch(middleware, /pathname === '\/me'/, '个人中心不能只凭 Cookie 在中间层判定未登录');
   assert.match(loginModal, /useSearchParams/, '登录弹窗必须能读取路由守卫携带的登录标记');
   assert.match(loginModal, /searchParams\.get\(["']login["']\)/, '登录弹窗收到登录标记后必须自行打开');
   assert.match(loginModal, /setIsOpen\(true\)/, '登录标记必须真正打开登录弹窗');

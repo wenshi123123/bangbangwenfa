@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { LawyerBottomNav } from '@/components/lawyer/lawyer-bottom-nav';
 import { useLawyerAuth } from '@/hooks/use-lawyer-auth';
 import { getLawyerLoginUrl, getLawyerUrl } from '@/lib/site';
+import { WechatExternalBrowserGuide } from '@/components/payment/wechat-external-browser-guide';
 
 // 套餐配置
 const renewalPackages = [
@@ -28,8 +29,16 @@ function RenewContent() {
   const [orderId, setOrderId] = useState<string | null>(null);
   const [qrcodeUrl, setQrcodeUrl] = useState<string | null>(null);
   const [paid, setPaid] = useState(false);
+  const [isWechat, setIsWechat] = useState(false);
+  const [deviceReady, setDeviceReady] = useState(false);
 
   useEffect(() => {
+    setIsWechat(/MicroMessenger/i.test(navigator.userAgent || ''));
+    setDeviceReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (isWechat) return;
     if (!orderId) return;
     const checkStatus = async () => {
       try {
@@ -48,11 +57,13 @@ function RenewContent() {
     };
     const interval = setInterval(checkStatus, 3000);
     return () => clearInterval(interval);
-  }, [orderId, router]);
+  }, [orderId, router, isWechat]);
 
   const handleSelectPackage = (pkgId: string) => { setSelectedPackage(pkgId); setError(null); };
 
   const handlePay = useCallback(async () => {
+    if (!deviceReady) return;
+    if (isWechat) return;
     if (!selectedPackage || loading) return;
     setLoading(true); setError(null);
     const pkg = renewalPackages.find(p => p.id === selectedPackage);
@@ -73,7 +84,11 @@ function RenewContent() {
       console.error('创建支付订单失败:', err);
       setError(err?.message || (typeof err === 'string' ? err : '网络错误，请检查连接后重试'));
     } finally { setLoading(false); }
-  }, [selectedPackage, loading]);
+  }, [selectedPackage, loading, deviceReady, isWechat]);
+
+  if (deviceReady && isWechat) {
+    return <WechatExternalBrowserGuide />;
+  }
 
   if (authLoading) {
     return (
