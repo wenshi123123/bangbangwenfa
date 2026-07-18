@@ -150,6 +150,7 @@ export async function POST(request: NextRequest) {
       const returnUrl = new URL('/success', H5_SITE_URL);
       returnUrl.searchParams.set('type', 'lawyer');
       returnUrl.searchParams.set('orderId', orderNo);
+      returnUrl.searchParams.set('applicationId', String(application.id));
       payData.h5Url = withH5ReturnUrl(result.h5Url, returnUrl.toString());
     } else {
       // PC：Native 扫码支付

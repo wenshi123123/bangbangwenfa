@@ -73,6 +73,7 @@ function LawyerPayContent() {
   const [isWechat, setIsWechat] = useState(false);
   const [deviceReady, setDeviceReady] = useState(false);
   const [qrCodeValue, setQrCodeValue] = useState<string | null>(null);
+  const [h5Url, setH5Url] = useState<string | null>(null);
 
   // 检测微信环境
   useEffect(() => {
@@ -115,9 +116,9 @@ function LawyerPayContent() {
           }
           
           if (h5Url) {
-            // H5 支付：直接跳转
+            // 外部手机浏览器需要由用户点击触发 App 唤起，避免荣耀/夸克/Chrome 拦截异步跳转。
             setOrderId(orderIdFromServer);
-            window.location.href = h5Url;
+            setH5Url(h5Url);
           } else if (isWechat && jsapiPayParams) {
             setOrderId(orderIdFromServer);
             setPayParams(jsapiPayParams);
@@ -278,29 +279,31 @@ function LawyerPayContent() {
               </div>
             )}
 
-            {/* 非微信环境：显示二维码 */}
+            {/* 非微信环境：由用户点击唤起微信 H5，无法唤起时再使用二维码 */}
             {!isWechat && !error && (
               <div className="mb-6">
-                <p className="text-sm text-muted-foreground mb-4">
-                  请使用微信扫描下方二维码，在微信内完成支付
-                </p>
-                <div className="bg-white p-4 rounded-xl border border-border mx-auto inline-block">
-                  {qrCodeValue ? (
-                    <QRCodeSVG
-                      value={qrCodeValue}
-                      size={220}
-                      level="M"
-                      includeMargin={true}
-                    />
-                  ) : (
-                    <div className="w-[220px] h-[220px] flex items-center justify-center text-sm text-muted-foreground">
-                      正在生成支付二维码...
+                {h5Url ? (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-4">点击后将打开微信完成支付；若未安装微信，请使用其他设备扫码支付。</p>
+                    <button
+                      onClick={() => window.location.assign(h5Url)}
+                      className="w-full py-3 px-6 bg-[#C47353] text-white rounded-xl font-semibold hover:bg-[#A85D40] transition-all flex items-center justify-center gap-2"
+                    >
+                      <Smartphone className="w-5 h-5" />前往微信支付
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-4">请使用微信扫描下方二维码，在微信内完成支付</p>
+                    <div className="bg-white p-4 rounded-xl border border-border mx-auto inline-block">
+                      {qrCodeValue ? (
+                        <QRCodeSVG value={qrCodeValue} size={220} level="M" includeMargin={true} />
+                      ) : (
+                        <div className="w-[220px] h-[220px] flex items-center justify-center text-sm text-muted-foreground">正在生成支付二维码...</div>
+                      )}
                     </div>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-3">
-                  请直接使用微信扫码完成支付
-                </p>
+                  </>
+                )}
               </div>
             )}
 

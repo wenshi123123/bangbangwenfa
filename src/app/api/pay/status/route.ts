@@ -4,26 +4,37 @@ import { getWechatPayClient } from '@/lib/payment/wechat-pay';
 
 /**
  * 咨询支付状态查询
- * GET /api/pay/status?payTradeNo=xxx
+ * GET /api/pay/status?payTradeNo=xxx 或 orderId=xxx
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const payTradeNo = searchParams.get('payTradeNo');
+    const orderId = searchParams.get('orderId');
 
-    if (!payTradeNo) {
+    if (!payTradeNo && !orderId) {
       return NextResponse.json(
-        { success: false, error: '支付单号不能为空' },
+        { success: false, error: '支付单号或订单号不能为空' },
         { status: 400 }
       );
     }
 
     const supabase = getSupabaseClient();
-    const { data: order, error } = await supabase
+    let orderQuery = supabase
       .from('consult_orders')
-      .select('id, payment_status, service_price, pay_trade_no, paid_at, wechat_transaction_id')
-      .eq('pay_trade_no', payTradeNo)
-      .maybeSingle();
+      .select('id, payment_status, service_price, pay_trade_no, paid_at, wechat_transaction_id');
+
+    if (payTradeNo) {
+      orderQuery = orderQuery.eq('pay_trade_no', payTradeNo);
+    } else {
+      const parsedOrderId = Number(orderId);
+      if (!Number.isInteger(parsedOrderId) || parsedOrderId <= 0) {
+        return NextResponse.json({ success: false, error: '订单号无效' }, { status: 400 });
+      }
+      orderQuery = orderQuery.eq('id', parsedOrderId);
+    }
+
+    const { data: order, error } = await orderQuery.maybeSingle();
 
     if (error) {
       console.error('查询支付状态失败:', error);
@@ -46,10 +57,10 @@ export async function GET(request: NextRequest) {
 
     // 兜底补偿：如果本地仍是未支付，主动查一次微信订单状态
     // 避免微信回调偶发未到导致前端长期卡在 pending
-    if (paymentStatus !== 'paid') {
+    if (paymentStatus !== 'paid' && order.pay_trade_no) {
       try {
         const wechatPay = getWechatPayClient();
-        const remote = await wechatPay.queryOrder(payTradeNo);
+        const remote = await wechatPay.queryOrder(order.pay_trade_no);
 
         if (remote.tradeState === 'SUCCESS') {
           const { error: updateError } = await supabase

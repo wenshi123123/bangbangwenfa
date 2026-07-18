@@ -139,6 +139,7 @@ export async function POST(request: NextRequest) {
       });
       const returnUrl = new URL('/success', h5SiteUrl);
       returnUrl.searchParams.set('orderId', String(orderId));
+      returnUrl.searchParams.set('payTradeNo', payTradeNo);
       payData = {
         orderId,
         payTradeNo,

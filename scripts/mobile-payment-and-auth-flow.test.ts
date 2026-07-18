@@ -23,7 +23,8 @@ async function main() {
   assert.match(lawyerPayPage, /'x-client-device': isMobile \? 'mobile' : 'web'/, '律师支付必须告诉服务端当前是移动端还是电脑端');
   assert.match(lawyerPayPage, /headers\['Authorization'\] = `Bearer \$\{token\}`/, '律师支付必须携带登录凭证');
   assert.match(lawyerPayPage, /WECHAT_OAUTH_REQUIRED/, '律师支付必须在微信内缺少授权时进入微信授权');
-  assert.match(lawyerPayPage, /setOrderId\(orderIdFromServer\);[\s\S]*?window\.location\.href = h5Url/, 'H5 支付跳转前必须保存订单号，便于回跳后查询状态');
+  assert.match(lawyerPayPage, /setOrderId\(orderIdFromServer\);[\s\S]*?setH5Url\(h5Url\)/, 'H5 支付跳转前必须保存订单号，便于回跳后查询状态');
+  assert.match(lawyerPayPage, /window\.location\.assign\(h5Url\)/, '外部手机浏览器必须由用户点击后再唤起微信 H5 支付');
   assert.match(lawyerPayCreate, /const \{ channel \} = getPaymentClientContext\(request\)/, '律师支付服务端必须按渠道创建支付单');
   assert.match(lawyerPayCreate, /channel === 'jsapi'/, '律师支付必须支持微信内 JSAPI');
   assert.match(lawyerPayCreate, /channel === 'h5'/, '律师支付必须支持外部手机浏览器 H5');

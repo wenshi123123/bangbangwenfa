@@ -190,7 +190,7 @@ function PayPageInner() {
         if (isWechat && result.jsapiPayParams) {
           try {
             await invokeWechatPay(result.jsapiPayParams);
-            router.push(`/success?orderId=${order.id}`);
+            router.push(`/success?orderId=${order.id}&payTradeNo=${encodeURIComponent(result.payTradeNo)}`);
             return;
           } catch (jsapiErr) {
             console.error('JSAPI 调起失败:', jsapiErr);
@@ -201,7 +201,8 @@ function PayPageInner() {
 
         // 手机浏览器：H5 支付跳转
         if (isMobile && result.h5Url) {
-          window.location.href = result.h5Url;
+          // Android 浏览器常会拦截异步回调中的 App 唤起；展示按钮，让用户点击后跳转。
+          setShowQrCode(true);
           return;
         }
 
@@ -393,7 +394,7 @@ function PayPageInner() {
                         window.location.href = payResult.h5Url;
                       }
                     }} className="w-full h-14 text-lg font-medium bg-[#07c160] hover:bg-[#06ad56] text-white rounded-xl" disabled={!payResult.h5Url}>
-                      <Smartphone className="h-5 w-5 mr-2" />确认支付
+                      <Smartphone className="h-5 w-5 mr-2" />前往微信支付
                     </Button>
                       );
                     })()}

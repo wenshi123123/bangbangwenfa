@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Loader2, Search, ArrowRight, Home } from 'lucide-react';
+import { CheckCircle, Loader2, Search, ArrowRight, Home, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { apiRequest } from '@/lib/api/request';
 import { getLawyerUrl, getVersionedPath } from '@/lib/site';
@@ -31,6 +31,8 @@ const serviceTypeLabels: Record<string, string> = {
 function SuccessContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('orderId') || searchParams.get('orderNo');
+  const payTradeNo = searchParams.get('payTradeNo');
+  const applicationId = searchParams.get('applicationId');
   const orderType = searchParams.get('type'); // 'lawyer' 或其他
   const isLawyerOrder = orderType === 'lawyer';
   const centerHref = isLawyerOrder ? getLawyerUrl() : getVersionedPath(USER_CENTER_HREF);
@@ -38,7 +40,8 @@ function SuccessContent() {
   
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [lawyerPaymentConfirmed, setLawyerPaymentConfirmed] = useState(false);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
+  const [paymentCheckError, setPaymentCheckError] = useState<string | null>(null);
 
   const fetchOrder = useCallback(async () => {
     if (!orderId) {
@@ -50,9 +53,10 @@ function SuccessContent() {
       try {
         const response = await apiRequest(`/api/lawyer/pay/status?orderId=${encodeURIComponent(orderId)}`);
         const data = await response.json();
-        setLawyerPaymentConfirmed(data.success && data.data?.isPaid === true);
+        setPaymentConfirmed(data.success && data.data?.isPaid === true);
       } catch (error) {
         console.error('确认律师支付状态失败:', error);
+        setPaymentCheckError('暂时无法确认支付状态，请稍后重试。');
       } finally {
         setLoading(false);
       }
@@ -60,28 +64,31 @@ function SuccessContent() {
     }
 
     try {
-      // 🔧 使用 apiRequest 代替 fetch，自动携带 Authorization token
+      const statusUrl = payTradeNo
+        ? `/api/pay/status?payTradeNo=${encodeURIComponent(payTradeNo)}`
+        : `/api/pay/status?orderId=${encodeURIComponent(orderId)}`;
+      const response = await apiRequest(statusUrl);
+      const data = await response.json();
+      setPaymentConfirmed(data.success && data.data?.tradeState === 'SUCCESS');
+    } catch (error) {
+      console.error('确认咨询支付状态失败:', error);
+      setPaymentCheckError('暂时无法确认支付状态，请稍后重试。');
+    }
+
+    try {
       const response = await apiRequest(`/api/consult/order?orderId=${orderId}`);
       const data = await response.json();
-      if (data.success && data.order) {
-        setOrder(data.order);
-      }
+      if (data.success && data.order) setOrder(data.order);
     } catch (error) {
-      console.error('获取订单失败:', error);
+      console.error('获取咨询订单失败:', error);
     } finally {
       setLoading(false);
     }
-  }, [orderId, orderType]);
+  }, [orderId, orderType, payTradeNo]);
 
   useEffect(() => {
     fetchOrder();
   }, [orderId, fetchOrder]);
-
-  useEffect(() => {
-    if (!isLawyerOrder || !orderId || lawyerPaymentConfirmed) return;
-    const timer = window.setInterval(fetchOrder, 3000);
-    return () => window.clearInterval(timer);
-  }, [fetchOrder, isLawyerOrder, lawyerPaymentConfirmed, orderId]);
 
   if (loading) {
     return (
@@ -101,7 +108,9 @@ function SuccessContent() {
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-green-400 to-green-500 flex items-center justify-center">
                 <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
-              <span className="font-medium text-sm sm:text-base">支付成功</span>
+              <span className="font-medium text-sm sm:text-base">
+                {paymentConfirmed ? '支付成功' : paymentCheckError ? '支付状态待确认' : '尚未完成支付'}
+              </span>
             </div>
             <Link href="/">
               <Button variant="ghost" size="sm" className="rounded-xl text-xs sm:text-sm">
@@ -117,7 +126,7 @@ function SuccessContent() {
         <div className="max-w-md mx-auto space-y-4 sm:space-y-6">
           
           {/* 添加客服微信提示 */}
-          {orderType !== 'lawyer' && order && (
+          {!isLawyerOrder && order && paymentConfirmed && (
             <Card className="card-apple bg-gradient-to-br from-green-50 to-emerald-100/50 border-green-200">
               <CardContent className="pt-6 pb-6 flex flex-col items-center">
                 <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mb-3">
@@ -143,7 +152,7 @@ function SuccessContent() {
           )}
 
           {/* 律师入驻提示 */}
-          {orderType === 'lawyer' && lawyerPaymentConfirmed && (
+          {isLawyerOrder && paymentConfirmed && (
             <Card className="card-apple bg-[#F5EDE5] border-[rgba(196,115,83,0.25)]">
               <CardContent className="pt-6 pb-6 flex flex-col items-center">
                 <div className="w-12 h-12 bg-[#C47353] rounded-full flex items-center justify-center mb-3">
@@ -158,12 +167,16 @@ function SuccessContent() {
             </Card>
           )}
 
-          {orderType === 'lawyer' && !lawyerPaymentConfirmed && (
+          {!paymentConfirmed && (
             <Card className="card-apple bg-[#F5EDE5] border-[rgba(196,115,83,0.2)]">
               <CardContent className="pt-6 pb-6 flex flex-col items-center">
-                <Loader2 className="h-7 w-7 animate-spin text-[#C47353] mb-3" />
-                <h3 className="text-lg font-medium text-[#3D322D] mb-2">支付结果确认中</h3>
-                <p className="text-sm text-[#8C7B6E] text-center">正在向微信确认支付结果，请勿重复支付或关闭页面。</p>
+                <AlertCircle className="h-7 w-7 text-[#C47353] mb-3" />
+                <h3 className="text-lg font-medium text-[#3D322D] mb-2">
+                  {paymentCheckError ? '支付状态暂时无法确认' : '尚未完成支付'}
+                </h3>
+                <p className="text-sm text-[#8C7B6E] text-center">
+                  {paymentCheckError || '本次订单尚未收到微信支付成功确认。取消支付或直接返回不会视为支付成功。'}
+                </p>
               </CardContent>
             </Card>
           )}
@@ -206,12 +219,23 @@ function SuccessContent() {
 
           {/* 操作按钮 */}
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            {(!isLawyerOrder || lawyerPaymentConfirmed) && (
+            {paymentConfirmed && (
             <Link href={centerHref} className="flex-1">
               <Button variant="outline" className="w-full rounded-xl py-3 sm:py-6 text-sm sm:text-base">
                 {centerLabel}
               </Button>
             </Link>
+            )}
+            {!paymentConfirmed && (
+              <Link
+                href={isLawyerOrder && applicationId ? `/lawyer/pay?applicationId=${encodeURIComponent(applicationId)}` : `/pay?orderId=${encodeURIComponent(orderId || '')}`}
+                className="flex-1"
+              >
+                <Button className="btn-apple text-white w-full rounded-xl py-3 sm:py-6 text-sm sm:text-base">
+                  继续支付
+                  <ArrowRight className="ml-1 sm:ml-2 h-4 w-4" />
+                </Button>
+              </Link>
             )}
             <Link href="/" className="flex-1">
               <Button className="btn-apple text-white w-full rounded-xl py-3 sm:py-6 text-sm sm:text-base">

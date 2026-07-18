@@ -32,7 +32,7 @@ async function main() {
   assert.match(lawyerStatus, /notifyOrder\(/, '查单补偿成功后也必须发送支付成功通知');
   assert.match(lawyerPayPage, /支付结果确认中/, '微信内支付成功后必须提示正在确认，而不是卡住');
   assert.match(successPage, /api\/lawyer\/pay\/status/, '律师 H5 回跳成功页必须核验支付状态');
-  assert.match(successPage, /支付结果确认中/, '律师 H5 回跳未确认时必须显示处理中');
+  assert.match(successPage, /尚未完成支付/, '律师 H5 回跳未确认时必须明确显示尚未完成支付');
 
   assert.doesNotMatch(homePage, /首页真实场景图集|真实图片/, '首页轮播不应再显示多余图集文案');
   assert.doesNotMatch(lawyerLayout, />加载中\.\.\.</, '律师工作台切页不应显示整页加载中文字');
