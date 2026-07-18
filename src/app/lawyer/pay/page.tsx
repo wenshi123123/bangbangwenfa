@@ -69,6 +69,7 @@ function LawyerPayContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [paid, setPaid] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
   const [isWechat, setIsWechat] = useState(false);
   const [deviceReady, setDeviceReady] = useState(false);
   const [qrCodeValue, setQrCodeValue] = useState<string | null>(null);
@@ -160,7 +161,7 @@ function LawyerPayContent() {
           paySign: params.paySign,
         }, (res) => {
           if (res.err_msg === 'get_brand_wcpay_request:ok') {
-            // 支付成功
+            setIsConfirming(true);
           } else if (res.err_msg === 'get_brand_wcpay_request:cancel') {
             setError('支付已取消');
           } else {
@@ -175,7 +176,7 @@ function LawyerPayContent() {
           package: params.package,
           signType: params.signType,
           paySign: params.paySign,
-          success: () => {},
+          success: () => setIsConfirming(true),
           fail: () => setError('支付失败，请重试'),
           cancel: () => setError('支付已取消'),
         });
@@ -211,15 +212,16 @@ function LawyerPayContent() {
       }
     };
 
+    checkPaymentStatus();
     const interval = setInterval(checkPaymentStatus, 3000);
     return () => clearInterval(interval);
   }, [orderId]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)' }}>
+      <div className="lawyer-onboarding-theme min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-green-500 animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-[#C47353] animate-spin mx-auto mb-4" />
           <p className="text-lg text-foreground">正在创建支付订单...</p>
         </div>
       </div>
@@ -228,15 +230,15 @@ function LawyerPayContent() {
 
   if (paid) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)' }}>
+      <div className="lawyer-onboarding-theme min-h-screen flex items-center justify-center">
         <div className="max-w-md mx-auto bg-white rounded-xl shadow-xl p-8 text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-8 h-8 text-green-500" />
+          <div className="w-16 h-16 bg-[#F5EDE5] rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-8 h-8 text-[#C47353]" />
           </div>
           <h2 className="text-xl font-bold text-foreground mb-2">支付成功</h2>
           <p className="text-muted-foreground mb-6">您的律师入驻申请已提交成功，我们将在1-2个工作日内审核。</p>
           <Link href="/">
-            <button className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-semibold hover:from-green-600 hover:to-emerald-600 transition-all">
+            <button className="px-6 py-3 bg-[#C47353] text-white rounded-xl font-semibold hover:bg-[#A85D40] transition-all">
               返回首页
             </button>
           </Link>
@@ -246,7 +248,7 @@ function LawyerPayContent() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)' }}>
+    <div className="lawyer-onboarding-theme min-h-screen">
       {/* Header */}
       <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-green-100/50">
         <div className="container mx-auto px-4 py-3">
@@ -271,7 +273,7 @@ function LawyerPayContent() {
             {isWechat && !error && (
               <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl">
                 <p className="text-sm text-green-700">
-                  {payParams ? '支付窗口已弹出，请在微信内完成支付' : '正在准备支付...'}
+                  {isConfirming ? '支付结果确认中，请勿关闭页面...' : payParams ? '支付窗口已弹出，请在微信内完成支付' : '正在准备支付...'}
                 </p>
               </div>
             )}
@@ -331,9 +333,9 @@ function LawyerPayContent() {
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)' }}>
+      <div className="lawyer-onboarding-theme min-h-screen flex items-center justify-center">
       <div className="text-center">
-        <Loader2 className="w-12 h-12 text-green-500 animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-[#C47353] animate-spin mx-auto mb-4" />
         <p className="text-lg text-foreground">加载中...</p>
       </div>
     </div>

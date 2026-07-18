@@ -424,9 +424,6 @@ export default function Home() {
                                             <div className="absolute inset-0 bg-gradient-to-t from-[#3D322D]/70 via-[#3D322D]/12 to-transparent" />
                                             <div className="absolute inset-0 bg-gradient-to-br from-[#C47353]/12 via-transparent to-[#D4957A]/10" />
                                             <div className="absolute left-5 right-5 bottom-24 sm:bottom-28 text-white">
-                                                <div className="inline-flex items-center rounded-full bg-white/15 backdrop-blur-md border border-white/20 px-3 py-1 text-[11px] sm:text-xs tracking-[0.12em] uppercase">
-                                                    真实图片 {String(i + 1).padStart(2, "0")}
-                                                </div>
                                                 <div className="mt-3 font-serif text-[1.6rem] sm:text-[1.9rem] md:text-[2.1rem] leading-tight font-medium drop-shadow-sm">
                                                     {img.title}
                                                 </div>
@@ -436,12 +433,6 @@ export default function Home() {
                                             </div>
                                         </div>
                                     ))}
-                                </div>
-                                <div className="absolute top-4 left-4 z-20">
-                                    <div className="inline-flex items-center gap-2 rounded-full bg-white/15 backdrop-blur-md border border-white/20 px-3 py-1.5 text-[11px] sm:text-xs text-white">
-                                        <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
-                                        首页真实场景图集
-                                    </div>
                                 </div>
                                 <div className="absolute bottom-4 left-4 right-4 z-20 flex items-center justify-center gap-2 sm:gap-2.5 overflow-x-auto">
                                     {heroImages.map((img, i) => (

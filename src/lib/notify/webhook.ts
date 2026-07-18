@@ -14,6 +14,8 @@ interface OrderInfo {
   type: string;
   /** 用户姓名或联系人 */
   userName: string;
+  /** 联系手机号 */
+  phone?: string;
   /** 金额（单位：分） */
   amount?: number;
   /** 套餐/案件类型 */
@@ -22,6 +24,8 @@ interface OrderInfo {
   orderId?: string | number;
   /** 状态 */
   status?: string;
+  /** 本次通知对应的业务事件 */
+  event?: 'created' | 'paid';
 }
 
 /**
@@ -55,7 +59,7 @@ function buildOrderMessage(info: OrderInfo): string {
   const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   const amountStr = info.amount !== undefined ? `¥${(info.amount / 100).toFixed(2)}` : '';
 
-  const lines = ['帮帮问法 - 新订单通知', ''];
+  const lines = [info.event === 'paid' ? '帮帮问法 - 支付成功通知' : '帮帮问法 - 下单通知', ''];
 
   // 类型映射
   const typeMap: Record<string, string> = {
@@ -65,6 +69,7 @@ function buildOrderMessage(info: OrderInfo): string {
   };
   lines.push(`类型：${typeMap[info.type] || info.type}`);
   lines.push(`用户：${info.userName}`);
+  if (info.phone) lines.push(`联系方式：${info.phone}`);
   if (amountStr) lines.push(`金额：${amountStr}`);
   if (info.detail) lines.push(`详情：${info.detail}`);
   if (info.status) {

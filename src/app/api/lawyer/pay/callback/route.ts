@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { verifyWechatPaySignature } from '@/lib/payment/wechat-cert';
+import { notifyOrder } from '@/lib/notify/webhook';
 import crypto from 'crypto';
 
 function decryptNotifyData(
@@ -145,7 +146,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 更新申请状态为已支付
-    const { error: updateError } = await supabase
+    const { data: updatedApplication, error: updateError } = await supabase
       .from('lawyer_applications')
       .update({
         payment_status: 'paid',
@@ -153,7 +154,11 @@ export async function POST(request: NextRequest) {
         wechat_transaction_id: transactionId,
         order_no: outTradeNo,
       })
-      .eq('id', application.id);
+      .eq('id', application.id)
+      // 回调和前端补偿查询可能同时抵达；只有第一个成功更新者发送支付通知。
+      .neq('payment_status', 'paid')
+      .select('id')
+      .maybeSingle();
 
     if (updateError) {
       console.error('更新支付状态失败:', updateError);
@@ -162,6 +167,21 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    if (!updatedApplication) {
+      return NextResponse.json({ code: 'SUCCESS', message: 'OK' });
+    }
+
+    await notifyOrder({
+      type: 'Registration',
+      userName: application.name || application.phone || '未知',
+      phone: application.phone || undefined,
+      amount: application.package_price,
+      detail: `套餐：${application.package_type || '律师入驻'}`,
+      orderId: outTradeNo,
+      status: 'Paid',
+      event: 'paid',
+    });
 
     // 计算会员到期时间（套餐固定18个月）
     const calculateMemberExpiry = (baseDate: Date, months: number): Date => {

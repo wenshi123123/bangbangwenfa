@@ -38,10 +38,24 @@ function SuccessContent() {
   
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lawyerPaymentConfirmed, setLawyerPaymentConfirmed] = useState(false);
 
   const fetchOrder = useCallback(async () => {
-    if (!orderId || orderType === 'lawyer') {
+    if (!orderId) {
       setLoading(false);
+      return;
+    }
+
+    if (orderType === 'lawyer') {
+      try {
+        const response = await apiRequest(`/api/lawyer/pay/status?orderId=${encodeURIComponent(orderId)}`);
+        const data = await response.json();
+        setLawyerPaymentConfirmed(data.success && data.data?.isPaid === true);
+      } catch (error) {
+        console.error('确认律师支付状态失败:', error);
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
@@ -62,6 +76,12 @@ function SuccessContent() {
   useEffect(() => {
     fetchOrder();
   }, [orderId, fetchOrder]);
+
+  useEffect(() => {
+    if (!isLawyerOrder || !orderId || lawyerPaymentConfirmed) return;
+    const timer = window.setInterval(fetchOrder, 3000);
+    return () => window.clearInterval(timer);
+  }, [fetchOrder, isLawyerOrder, lawyerPaymentConfirmed, orderId]);
 
   if (loading) {
     return (
@@ -123,17 +143,27 @@ function SuccessContent() {
           )}
 
           {/* 律师入驻提示 */}
-          {orderType === 'lawyer' && (
-            <Card className="card-apple bg-gradient-to-br from-green-50 to-green-100/50 border-green-200">
+          {orderType === 'lawyer' && lawyerPaymentConfirmed && (
+            <Card className="card-apple bg-[#F5EDE5] border-[rgba(196,115,83,0.25)]">
               <CardContent className="pt-6 pb-6 flex flex-col items-center">
-                <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mb-3">
+                <div className="w-12 h-12 bg-[#C47353] rounded-full flex items-center justify-center mb-3">
                   <CheckCircle className="h-6 w-6 text-white" />
                 </div>
-                <h3 className="text-lg font-bold text-green-800 mb-2">入驻支付成功</h3>
-                <p className="text-sm text-green-700 text-center">
+                <h3 className="text-lg font-medium text-[#3D322D] mb-2">入驻支付成功</h3>
+                <p className="text-sm text-[#8C7B6E] text-center">
                   您的入驻申请已提交，请等待管理员审核。<br/>
                   审核通过后，将自动跳转到律师工作台。
                 </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {orderType === 'lawyer' && !lawyerPaymentConfirmed && (
+            <Card className="card-apple bg-[#F5EDE5] border-[rgba(196,115,83,0.2)]">
+              <CardContent className="pt-6 pb-6 flex flex-col items-center">
+                <Loader2 className="h-7 w-7 animate-spin text-[#C47353] mb-3" />
+                <h3 className="text-lg font-medium text-[#3D322D] mb-2">支付结果确认中</h3>
+                <p className="text-sm text-[#8C7B6E] text-center">正在向微信确认支付结果，请勿重复支付或关闭页面。</p>
               </CardContent>
             </Card>
           )}
@@ -176,11 +206,13 @@ function SuccessContent() {
 
           {/* 操作按钮 */}
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            {(!isLawyerOrder || lawyerPaymentConfirmed) && (
             <Link href={centerHref} className="flex-1">
               <Button variant="outline" className="w-full rounded-xl py-3 sm:py-6 text-sm sm:text-base">
                 {centerLabel}
               </Button>
             </Link>
+            )}
             <Link href="/" className="flex-1">
               <Button className="btn-apple text-white w-full rounded-xl py-3 sm:py-6 text-sm sm:text-base">
                 返回首页

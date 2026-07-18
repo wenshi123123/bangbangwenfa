@@ -76,14 +76,11 @@ export default function LawyerLayout({
     );
   }
 
-  // 加载中显示占位
+  // 首次进入时只保留无文字的极轻量占位；路由切换不再用整页“加载中”遮挡内容。
   if (isLoading || (!isPublicPath && !checked)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">加载中...</p>
-        </div>
+      <div className="min-h-screen bg-[#FAF7F2]">
+        <div className="h-1 w-full overflow-hidden bg-[#F5EDE5]"><div className="h-full w-1/3 animate-pulse bg-[#C47353]/70" /></div>
       </div>
     );
   }

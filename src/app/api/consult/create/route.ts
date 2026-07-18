@@ -137,10 +137,12 @@ export async function POST(request: NextRequest) {
     notifyOrder({
       type: 'Consult',
       userName: finalContactName,
+      phone: finalContactPhone,
       amount: finalServicePrice,
       detail: `${finalCategory === 'criminal' ? '刑事' : '民事'}咨询 - ${finalServiceType}`,
-      orderId: createdOrderId,
+      orderId: orderNo,
       status: 'Pending Payment',
+      event: 'created',
     });
 
     return NextResponse.json({

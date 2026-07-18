@@ -170,10 +170,12 @@ export async function POST(request: NextRequest) {
       notifyOrder({
         type: 'Registration',
         userName: name || phone || '未知',
+        phone,
         amount: packagePrice,
         detail: `套餐：${(selectedPackages || []).map((p: string) => p === 'civil_premium' ? '民事臻选' : '刑事臻选').join(' + ') || '未知'}`,
         orderId: application.id,
         status: 'Pending Review',
+        event: 'created',
       });
 
       return NextResponse.json({

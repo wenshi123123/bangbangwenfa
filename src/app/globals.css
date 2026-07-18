@@ -820,6 +820,35 @@
   animation: carouselEntrance 1.5s cubic-bezier(0.25, 0.1, 0.25, 1) 0.5s forwards;
 }
 
+/* 律师入驻沿用律师工作台的米白、深棕、陶土色体系；仅作用于入驻流程。 */
+.lawyer-onboarding-theme {
+  background: #FAF7F2;
+  color: #3D322D;
+}
+.lawyer-onboarding-theme [class*="text-green-"],
+.lawyer-onboarding-theme [class*="text-emerald-"] {
+  color: #C47353 !important;
+}
+.lawyer-onboarding-theme [class*="border-green-"] {
+  border-color: rgba(196, 115, 83, 0.22) !important;
+}
+.lawyer-onboarding-theme [class*="bg-green-"],
+.lawyer-onboarding-theme [class*="bg-emerald-"] {
+  background-color: #F5EDE5 !important;
+}
+.lawyer-onboarding-theme [class*="from-green-"],
+.lawyer-onboarding-theme [class*="from-emerald-"] {
+  --tw-gradient-from: #C47353 var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(196 115 83 / 0) var(--tw-gradient-to-position) !important;
+}
+.lawyer-onboarding-theme [class*="to-green-"],
+.lawyer-onboarding-theme [class*="to-emerald-"] {
+  --tw-gradient-to: #A85D40 var(--tw-gradient-to-position) !important;
+}
+.lawyer-onboarding-theme [class*="shadow-green-"] {
+  --tw-shadow-color: rgb(196 115 83 / 0.2) !important;
+}
+
 @keyframes carouselEntrance {
   to {
     opacity: 1;
