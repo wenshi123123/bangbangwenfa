@@ -72,6 +72,10 @@ export async function middleware(request: NextRequest) {
   const hostname = getRequestHostname(request.headers, request.nextUrl.hostname);
   const { pathname } = request.nextUrl;
   const preserveCacheControl = pathname === '/api/price';
+  const buildVersion = process.env.BUILD_CACHE_BUST_VALUE || 'unknown';
+  const seenBuildVersion = request.cookies.get('bb_build_version')?.value;
+  const isDocumentRequest = !pathname.startsWith('/api/') && !pathname.startsWith('/_next/');
+  const shouldClearBrowserCache = isProd && isDocumentRequest && seenBuildVersion !== buildVersion;
 
   if (isProd && shouldRedirectToCanonicalHost(hostname)) {
     const redirectUrl = request.nextUrl.clone();
@@ -79,17 +83,30 @@ export async function middleware(request: NextRequest) {
     redirectUrl.protocol = canonicalUrl.protocol;
     redirectUrl.hostname = canonicalUrl.hostname;
     redirectUrl.port = canonicalUrl.port;
-    return applySecurityHeaders(NextResponse.redirect(redirectUrl, 307), isProd);
+    const response = applySecurityHeaders(NextResponse.redirect(redirectUrl, 307), isProd, shouldClearBrowserCache);
+    if (shouldClearBrowserCache) {
+      response.cookies.set('bb_build_version', buildVersion, {
+        path: '/', maxAge: 31536000, httpOnly: true, secure: true, sameSite: 'lax',
+      });
+    }
+    return response;
   }
 
   // 添加安全响应头
-  return applySecurityHeaders(
+  const response = applySecurityHeaders(
     NextResponse.next(),
     isProd,
     false,
     preserveCacheControl,
     false
   );
+  if (shouldClearBrowserCache) {
+    response.headers.set('Clear-Site-Data', '"cache"');
+    response.cookies.set('bb_build_version', buildVersion, {
+      path: '/', maxAge: 31536000, httpOnly: true, secure: true, sameSite: 'lax',
+    });
+  }
+  return response;
 }
 
 export const config = {
