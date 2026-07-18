@@ -5,6 +5,7 @@ import { Header } from '@/components/layout/header';
 import LoginModal from '@/components/auth/login-modal';
 import SearchModal from '@/components/search/search-modal';
 import { CanonicalHostGuard } from '@/components/canonical-host-guard';
+import { BfcacheRefreshGuard } from '@/components/bfcache-refresh-guard';
 import { getSiteUrl } from '@/lib/site';
 import {
   LEGACY_BROWSER_FALLBACK_CSS,
@@ -63,6 +64,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased">
         <CanonicalHostGuard />
+        <BfcacheRefreshGuard />
         <AuthProvider>
           <Header />
           <main className="min-h-screen">{children}</main>

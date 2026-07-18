@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { services } from './civil-consultation-wizard';
 import { caseTypes } from './civil-case-type-step';
 import { apiRequest } from '@/lib/api/request';
+import { ServicePlanDialog, type ServicePlanDialogPlan } from './service-plan-dialog';
 
 interface PriceStepProps {
   formData: {
@@ -39,6 +40,7 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
   const [prices, setPrices] = useState<PriceConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [detailPlan, setDetailPlan] = useState<ServicePlanDialogPlan | null>(null);
 
   // 从 API 读取价格配置
   useEffect(() => {
@@ -206,7 +208,7 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
               return (
                 <button
                   key={plan.id}
-                  onClick={() => setSelectedPlan(plan.id)}
+                  onClick={() => setDetailPlan(plan)}
                   className={`
                     w-full p-2.5 sm:p-3 md:p-4 rounded-lg sm:rounded-xl md:rounded-xl border-2 transition-all duration-300 text-left relative
                     ${isSelected 
@@ -283,6 +285,15 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
           ) : '确认并提交'}
         </button>
       </div>
+
+      <ServicePlanDialog
+        plan={detailPlan}
+        onClose={() => setDetailPlan(null)}
+        onConfirm={(planId) => {
+          setSelectedPlan(planId);
+          setDetailPlan(null);
+        }}
+      />
     </div>
   );
 }
