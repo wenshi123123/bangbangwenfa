@@ -32,6 +32,7 @@ function SuccessContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('orderId') || searchParams.get('orderNo');
   const payTradeNo = searchParams.get('payTradeNo');
+  const handoffToken = searchParams.get('handoff');
   const applicationId = searchParams.get('applicationId');
   const orderType = searchParams.get('type'); // 'lawyer' 或其他
   const isLawyerOrder = orderType === 'lawyer';
@@ -76,7 +77,8 @@ function SuccessContent() {
     }
 
     try {
-      const response = await apiRequest(`/api/consult/order?orderId=${orderId}`);
+      const handoffQuery = handoffToken ? `&handoff=${encodeURIComponent(handoffToken)}` : '';
+      const response = await apiRequest(`/api/consult/order?orderId=${orderId}${handoffQuery}`);
       const data = await response.json();
       if (data.success && data.order) setOrder(data.order);
     } catch (error) {
@@ -84,7 +86,7 @@ function SuccessContent() {
     } finally {
       setLoading(false);
     }
-  }, [orderId, orderType, payTradeNo]);
+  }, [orderId, orderType, payTradeNo, handoffToken]);
 
   useEffect(() => {
     fetchOrder();

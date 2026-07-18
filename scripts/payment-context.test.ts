@@ -4,6 +4,10 @@ import {
   getPaymentClientContext,
   readWechatPaymentSession,
 } from '../src/lib/payment/payment-context';
+import {
+  createConsultPaymentHandoff,
+  readConsultPaymentHandoff,
+} from '../src/lib/payment/payment-handoff';
 
 process.env.WEIXIN_PAYMENT_SESSION_SECRET = 'test-session-secret';
 
@@ -26,5 +30,15 @@ assert.deepEqual(readWechatPaymentSession(session), {
   redirect: '/pay?orderId=1',
 });
 assert.equal(readWechatPaymentSession(`${session}x`), null);
+
+const handoff = createConsultPaymentHandoff(123, 456);
+assert.ok(handoff);
+assert.deepEqual(readConsultPaymentHandoff(handoff), {
+  kind: 'consult-payment',
+  orderId: 123,
+  userId: 456,
+  expiresAt: (readConsultPaymentHandoff(handoff) as { expiresAt: number }).expiresAt,
+});
+assert.equal(readConsultPaymentHandoff(`${handoff}x`), null);
 
 console.log('payment-context tests passed');

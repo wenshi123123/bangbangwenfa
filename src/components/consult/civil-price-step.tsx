@@ -102,7 +102,8 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
       if (result.success) {
         // Use a document navigation so WeChat's “open in browser” menu
         // receives the real payment URL, including the order id.
-        window.location.assign(`/pay?orderId=${encodeURIComponent(result.data.orderId)}`);
+        const handoff = result.data.paymentHandoffToken ? `&handoff=${encodeURIComponent(result.data.paymentHandoffToken)}` : '';
+        window.location.assign(`/pay?orderId=${encodeURIComponent(result.data.orderId)}${handoff}`);
       } else {
         setSubmitError(result.error || '提交失败，请重试');
       }

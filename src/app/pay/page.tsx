@@ -73,6 +73,7 @@ function PayPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderIdParam = searchParams.get('orderId') || searchParams.get('orderNo');
+  const handoffToken = searchParams.get('handoff');
   const { user, isLoggedIn, isLoading } = useAuth();
   const handleBack = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -120,7 +121,7 @@ function PayPageInner() {
       return;
     }
 
-    if (!isLoggedIn && !isWechat) {
+    if (!isLoggedIn && !isWechat && !handoffToken) {
       setError('未登录或登录已过期');
       setLoading(false);
       return;
@@ -129,13 +130,14 @@ function PayPageInner() {
     // 订单号有效后，清掉可能残留的旧错误态，再重新加载订单
     setError(null);
     loadOrder();
-  }, [orderIdParam, isLoggedIn, isLoading, isWechat, deviceReady]);
+  }, [orderIdParam, handoffToken, isLoggedIn, isLoading, isWechat, deviceReady]);
 
   const loadOrder = async () => {
     try {
       // 修复：API 期望的参数是 orderId（不是 orderNo）
       setError(null);
-      const data = await apiRequest(`/api/consult/order?orderId=${orderIdParam}`);
+      const handoffQuery = handoffToken ? `&handoff=${encodeURIComponent(handoffToken)}` : '';
+      const data = await apiRequest(`/api/consult/order?orderId=${orderIdParam}${handoffQuery}`);
       if (data.success && data.order) {  // 修复：API 返回的是 data.order（不是 data.data）
         setOrder(data.order);
       } else {
@@ -184,6 +186,7 @@ function PayPageInner() {
           orderId: order.id,  // 使用数据库主键作为支付订单ID
           amount: order.servicePrice, // 订单金额已是分，直接传给支付接口
           description: order.caseTitle || order.serviceName || '法律咨询服务',
+          handoffToken: handoffToken || undefined,
         },
       });
 

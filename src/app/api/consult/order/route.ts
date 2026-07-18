@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
 import { getWechatPaymentSession } from '@/lib/payment/payment-context';
+import { readConsultPaymentHandoff } from '@/lib/payment/payment-handoff';
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const orderId = searchParams.get('orderId');
     const orderNo = searchParams.get('orderNo');
+    const handoff = readConsultPaymentHandoff(searchParams.get('handoff'));
     const requestOpenid = getWechatPaymentSession(request)?.openid;
 
     const orderRef = orderId || orderNo;
@@ -64,7 +66,8 @@ export async function GET(request: NextRequest) {
     const userId = auth.success ? (auth.userId || auth.guardianId || auth.lawyerId) : null;
     const isOwnerByUserId = !!userId && data.user_id !== null && data.user_id === userId;
     const isOwnerByOpenid = !!requestOpenid && !!data.openid && String(data.openid) === String(requestOpenid);
-    const isOwner = isOwnerByUserId || isOwnerByOpenid;
+    const isOwnerByHandoff = !!handoff && handoff.orderId === Number(data.id) && handoff.userId === Number(data.user_id);
+    const isOwner = isOwnerByUserId || isOwnerByOpenid || isOwnerByHandoff;
 
     // 非订单所有者只能看到基本信息；微信内 openid 命中时视为订单所有者
     if (data.user_id !== null && !isOwner && !auth.success && !requestOpenid) {

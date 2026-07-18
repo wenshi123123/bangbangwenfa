@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
 import { notifyOrder } from '@/lib/notify/webhook';
+import { createConsultPaymentHandoff } from '@/lib/payment/payment-handoff';
 
 function generateOrderNo(): string {
   const timestamp = Date.now();
@@ -147,7 +148,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: { orderId: createdOrderId }
+      data: {
+        orderId: createdOrderId,
+        paymentHandoffToken: createConsultPaymentHandoff(createdOrderId, userId),
+      }
     });
 
   } catch (error) {

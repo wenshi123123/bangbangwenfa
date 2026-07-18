@@ -4,6 +4,7 @@ import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
 import { getSiteUrl, getWechatH5SiteUrl, normalizeCanonicalUrl } from '@/lib/site';
 import { getPaymentClientContext, getWechatPaymentSession } from '@/lib/payment/payment-context';
+import { readConsultPaymentHandoff } from '@/lib/payment/payment-handoff';
 import crypto from 'crypto';
 
 function withH5ReturnUrl(h5Url: string, returnUrl: string): string {
@@ -21,7 +22,8 @@ function withH5ReturnUrl(h5Url: string, returnUrl: string): string {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => null);
-    const { orderId } = body ?? {};
+    const { orderId, handoffToken } = body ?? {};
+    const handoff = readConsultPaymentHandoff(handoffToken);
 
     if (!orderId) {
       return NextResponse.json(
@@ -46,7 +48,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, code: 'WECHAT_OAUTH_REQUIRED', error: '需要微信授权' }, { status: 401 });
     }
 
-    if (!auth.success) {
+    const handoffMatchesOrder = !!handoff && handoff.orderId === Number(orderId) && handoff.userId === Number(order?.user_id);
+    if (!auth.success && !handoffMatchesOrder) {
       const orderOpenid = order?.openid ? String(order.openid) : null;
       const openidMatched = !!wechatSession && !!orderOpenid && wechatSession.openid === orderOpenid;
 
@@ -65,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     // 验证订单归属：仅允许订单所有者发起支付
     const tokenUserId = auth.userId;
-    if (order.user_id && tokenUserId && String(order.user_id) !== String(tokenUserId)) {
+    if (order.user_id && tokenUserId && String(order.user_id) !== String(tokenUserId) && !handoffMatchesOrder) {
       return NextResponse.json(
         { success: false, error: '无权操作此订单' },
         { status: 403 }
@@ -149,6 +152,7 @@ export async function POST(request: NextRequest) {
       const returnUrl = new URL('/success', h5SiteUrl);
       returnUrl.searchParams.set('orderId', String(orderId));
       returnUrl.searchParams.set('payTradeNo', payTradeNo);
+      if (handoffToken) returnUrl.searchParams.set('handoff', handoffToken);
       payData = {
         orderId,
         payTradeNo,
