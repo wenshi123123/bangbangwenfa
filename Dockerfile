@@ -25,7 +25,9 @@ COPY legacy-next-static ./legacy-next-static
 RUN rm -rf .next dist && \
     pnpm exec next build --webpack && \
     mkdir -p .next/static && \
-    cp -Rn legacy-next-static/. .next/static/
+    cp -Rn legacy-next-static/. .next/static/ && \
+    mkdir -p public/_next/static/css && \
+    cp -Rn legacy-next-static/css/. public/_next/static/css/
 
 # 构建 server bundle
 RUN pnpm exec tsup src/server.mts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
