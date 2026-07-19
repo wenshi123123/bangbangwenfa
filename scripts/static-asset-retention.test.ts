@@ -7,7 +7,7 @@ async function main() {
 
   assert.match(dockerfile, /legacy-next-static/, 'Docker build must include retained legacy static assets');
   assert.match(dockerfile, /cp -R[nf]? .*legacy-next-static|legacy-next-static.*\.next\/static/, 'build must merge retained assets into the active Next static directory');
-  assert.match(dockerfile, /public\/_next\/static\/css/, 'legacy CSS must have a public fallback path');
+  assert.match(dockerfile, /public\/legacy\.css/, 'legacy CSS must have a stable public fallback path');
   assert.match(dockerfile, /COPY --from=base \/app\/.next \.\/.next/, 'runtime image must include the merged static directory');
 
   const archive = path.join(process.cwd(), 'legacy-next-static');

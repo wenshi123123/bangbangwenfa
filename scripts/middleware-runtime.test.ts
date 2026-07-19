@@ -72,6 +72,12 @@ async function main() {
   assert.equal(wechatResponse.headers.get('clear-site-data'), null);
   assert.equal(wechatResponse.headers.get('set-cookie'), null);
   assert.match(wechatResponse.headers.get('cache-control') ?? '', /no-store/);
+
+  const legacyCssResponse = await middleware(
+    new NextRequest('https://www.bangbangwenfa.com/_next/static/css/old-build.css'),
+  );
+  assert.equal(legacyCssResponse.status, 200);
+  assert.equal(legacyCssResponse.headers.get('x-middleware-rewrite'), 'https://www.bangbangwenfa.com/legacy.css');
   console.log('middleware runtime test passed');
 }
 

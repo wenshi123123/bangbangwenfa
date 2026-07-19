@@ -26,8 +26,8 @@ RUN rm -rf .next dist && \
     pnpm exec next build --webpack && \
     mkdir -p .next/static && \
     cp -Rn legacy-next-static/. .next/static/ && \
-    mkdir -p public/_next/static/css && \
-    cp -Rn legacy-next-static/css/. public/_next/static/css/
+    css_file=$(find .next/static/css -maxdepth 1 -type f -name '*.css' | head -n 1) && \
+    test -n "$css_file" && cp "$css_file" public/legacy.css
 
 # 构建 server bundle
 RUN pnpm exec tsup src/server.mts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
