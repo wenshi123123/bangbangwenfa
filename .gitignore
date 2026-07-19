@@ -46,6 +46,7 @@ assets/image_*.png
 .workbuddy/
 .codebuddy/
 .agents/
+.worktrees/
 
 # pnpm 锁文件（不使用 npm）
 package-lock.json
