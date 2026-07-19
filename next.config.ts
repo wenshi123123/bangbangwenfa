@@ -57,6 +57,14 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      {
+        source: '/_next/static/media/:path*',
+        destination: '/legacy-font',
+      },
+    ];
+  },
 };
 
 export default nextConfig;
