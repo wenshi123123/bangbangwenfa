@@ -75,7 +75,12 @@ export async function middleware(request: NextRequest) {
   const buildVersion = process.env.BUILD_CACHE_BUST_VALUE || 'unknown';
   const seenBuildVersion = request.cookies.get('bb_build_version')?.value;
   const isDocumentRequest = !pathname.startsWith('/api/') && !pathname.startsWith('/_next/');
-  const shouldClearBrowserCache = isProd && isDocumentRequest && seenBuildVersion !== buildVersion;
+  // 微信内置浏览器在收到 Clear-Site-Data 的同时加载页面资源时，部分版本会中断
+  // CSS/图片请求，导致用户看到“只有文字、没有样式”的半加载页面。微信自身的
+  // WebView 不走这次主动清缓存，仍保留 no-store 与 pageshow 刷新防止旧文档恢复。
+  const isWechatBrowser = /MicroMessenger/i.test(request.headers.get('user-agent') ?? '');
+  const shouldClearBrowserCache =
+    isProd && isDocumentRequest && !isWechatBrowser && seenBuildVersion !== buildVersion;
 
   if (isProd && shouldRedirectToCanonicalHost(hostname)) {
     const redirectUrl = request.nextUrl.clone();

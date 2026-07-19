@@ -59,6 +59,19 @@ async function main() {
   assert.equal(warmResponse.headers.get('clear-site-data'), null);
   assert.equal(warmResponse.headers.get('set-cookie'), null);
   assert.match(warmResponse.headers.get('cache-control') ?? '', /no-store/);
+
+  const wechatResponse = await middleware(
+    new NextRequest('https://www.bangbangwenfa.com/civil?foo=wechat', {
+      headers: {
+        accept: 'text/html',
+        'user-agent': 'Mozilla/5.0 MicroMessenger/8.0.50',
+      },
+    }),
+  );
+  assert.equal(wechatResponse.status, 200);
+  assert.equal(wechatResponse.headers.get('clear-site-data'), null);
+  assert.equal(wechatResponse.headers.get('set-cookie'), null);
+  assert.match(wechatResponse.headers.get('cache-control') ?? '', /no-store/);
   console.log('middleware runtime test passed');
 }
 
