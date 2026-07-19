@@ -1,5 +1,7 @@
 import { createServer, IncomingMessage, ServerResponse, request as httpRequest } from 'http';
 import { parse } from 'url';
+import { stat } from 'node:fs/promises';
+import path from 'node:path';
 import next from 'next';
 
 const dev = process.env.DEPLOY_ENV !== 'PROD';
@@ -76,6 +78,52 @@ function handleHealthCheck(req: IncomingMessage, res: ServerResponse) {
 }
 
 /**
+ * 旧标签页可能持有已经被新版本删除的 Next 静态 chunk。
+ * 这类页面不会执行新 HTML 里的恢复脚本，因此对缺失的旧 JS chunk 返回一个
+ * 一次性刷新脚本，让它重新请求最新 HTML，而不是把错误的 404 留在页面里。
+ */
+async function handleMissingLegacyStaticAsset(
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<boolean> {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return false;
+
+  const pathname = parse(req.url || '').pathname || '';
+  if (!pathname.startsWith('/_next/static/')) return false;
+
+  const assetPath = path.join(process.cwd(), '.next', pathname.replace(/^\/_next\//, ''));
+  try {
+    await stat(assetPath);
+    return false;
+  } catch {
+    // 只有缺失的脚本需要接管。CSS/字体/图片仍交给 Next 返回原始 404，
+    // 避免误替换正常的静态资源。
+    if (!/\.(?:js|mjs)$/.test(pathname)) return false;
+
+    const recoveryScript = `;(function () {
+  try {
+    var key = '__bbwv_legacy_asset_retry';
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+  } catch (error) {}
+  var url = new URL(window.location.href);
+  url.searchParams.set('__bbwv_legacy_asset_retry', '1');
+  url.searchParams.set('__bbwv_recover', String(Date.now()));
+  window.location.replace(url.toString());
+})();`;
+
+    res.writeHead(200, {
+      'Content-Type': 'application/javascript; charset=utf-8',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+      'X-BBWV-Legacy-Asset-Recovery': '1',
+    });
+    if (req.method === 'HEAD') res.end();
+    else res.end(recoveryScript);
+    return true;
+  }
+}
+
+/**
  * Probe 服务器请求处理 — 智能分流
  * - 健康检查请求：直接返回 200
  * - 其他请求：反向代理到主应用，确保业务不中断
@@ -111,6 +159,10 @@ app.prepare().then(() => {
     try {
       if (probePort === appPort && isHealthCheck(req)) {
         handleHealthCheck(req, res);
+        return;
+      }
+
+      if (await handleMissingLegacyStaticAsset(req, res)) {
         return;
       }
 
