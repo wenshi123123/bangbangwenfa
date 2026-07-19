@@ -67,6 +67,32 @@ export default function RootLayout({
         />
         <script
           dangerouslySetInnerHTML={{
+            __html: `;(function () {
+  if (window.__bbStaleResourceGuardInstalled) return;
+  window.__bbStaleResourceGuardInstalled = true;
+  var retryKey = '__bbwv_resource_retry';
+  var currentUrl = window.location.href;
+  var hasRetried = currentUrl.indexOf(retryKey + '=1') !== -1;
+  var recoveryStarted = false;
+  function isRecoverableResource(target) {
+    if (!target || !target.tagName) return false;
+    var tag = target.tagName.toLowerCase();
+    if (tag === 'script' || tag === 'img') return true;
+    return tag === 'link' && (target.rel || '').toLowerCase().split(/\\s+/).indexOf('stylesheet') !== -1;
+  }
+  window.addEventListener('error', function (event) {
+    var target = event.target;
+    if (recoveryStarted || hasRetried || !isRecoverableResource(target)) return;
+    recoveryStarted = true;
+    var separator = currentUrl.indexOf('?') === -1 ? '?' : '&';
+    var freshUrl = currentUrl + separator + retryKey + '=1&__bbwv_recover=' + Date.now();
+    window.location.replace(freshUrl);
+  }, true);
+})();`,
+          }}
+        />
+        <script
+          dangerouslySetInnerHTML={{
             __html: buildLegacyBrowserDetectionScript(),
           }}
         />
