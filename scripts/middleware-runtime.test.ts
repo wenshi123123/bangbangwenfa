@@ -78,6 +78,12 @@ async function main() {
   );
   assert.equal(legacyCssResponse.status, 200);
   assert.equal(legacyCssResponse.headers.get('x-middleware-rewrite'), 'https://www.bangbangwenfa.com/legacy.css');
+
+  const legacyFontResponse = await middleware(
+    new NextRequest('https://www.bangbangwenfa.com/_next/static/media/old-font.woff2'),
+  );
+  assert.equal(legacyFontResponse.status, 204);
+  assert.equal(legacyFontResponse.headers.get('x-bbwv-legacy-font-recovery'), '1');
   console.log('middleware runtime test passed');
 }
 

@@ -94,6 +94,21 @@ export async function middleware(request: NextRequest) {
     );
   }
 
+  // 旧 HTML 可能预加载已经不存在的字体文件。返回空响应让浏览器安静地使用
+  // 系统回退字体，避免控制台持续出现 404；页面文字仍可正常显示。
+  if (
+    pathname.startsWith('/_next/static/media/') &&
+    /\.(?:woff2?|ttf|otf)$/.test(pathname)
+  ) {
+    return new NextResponse(null, {
+      status: 204,
+      headers: {
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        'X-BBWV-Legacy-Font-Recovery': '1',
+      },
+    });
+  }
+
   if (isProd && shouldRedirectToCanonicalHost(hostname)) {
     const redirectUrl = request.nextUrl.clone();
     const canonicalUrl = new URL(getCanonicalSiteUrl());
@@ -130,6 +145,7 @@ export const config = {
   matcher: [
     // HTML/API 仍由中间件防旧缓存；带内容哈希的 Next 静态资源交给 Next 默认的长期缓存策略。
     '/_next/static/css/:path*',
+    '/_next/static/media/:path*',
     '/((?!_next/static/|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|woff2?|ttf|map)$).*)',
   ],
 };
