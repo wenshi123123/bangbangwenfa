@@ -17,9 +17,15 @@ RUN pnpm install --prefer-frozen-lockfile --prefer-offline --prod=false
 # 复制所有源码（.dockerignore 会过滤掉不需要的文件）
 COPY . .
 
+# 保留上一批发布的 Next 静态资源，避免旧 HTML 因资源被删除而变成无样式页面。
+# 新资源优先，旧资源仅作为兼容回退，后续可按发布周期定期清理归档。
+COPY legacy-next-static ./legacy-next-static
+
 # 构建应用。线上显式使用 webpack，保持与本地构建一致。
 RUN rm -rf .next dist && \
-    pnpm exec next build --webpack
+    pnpm exec next build --webpack && \
+    mkdir -p .next/static && \
+    cp -Rn legacy-next-static/. .next/static/
 
 # 构建 server bundle
 RUN pnpm exec tsup src/server.mts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
