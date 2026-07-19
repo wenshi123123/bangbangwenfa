@@ -1,6 +1,6 @@
 import { createServer, IncomingMessage, ServerResponse, request as httpRequest } from 'http';
 import { parse } from 'url';
-import { stat } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import next from 'next';
 
@@ -96,9 +96,26 @@ async function handleMissingLegacyStaticAsset(
     await stat(assetPath);
     return false;
   } catch {
-    // 只有缺失的脚本需要接管。CSS/字体/图片仍交给 Next 返回原始 404，
-    // 避免误替换正常的静态资源。
-    if (!/\.(?:js|mjs)$/.test(pathname)) return false;
+    const isScript = /\.(?:js|mjs)$/.test(pathname);
+    const isStylesheet = /\.css$/.test(pathname);
+    if (!isScript && !isStylesheet) return false;
+
+    if (isStylesheet) {
+      const retainedCssPath = path.join(process.cwd(), 'public', pathname);
+      try {
+        const css = await readFile(retainedCssPath);
+        res.writeHead(200, {
+          'Content-Type': 'text/css; charset=utf-8',
+          'Cache-Control': 'public, max-age=31536000, immutable',
+          'X-BBWV-Legacy-Asset-Recovery': '1',
+        });
+        if (req.method === 'HEAD') res.end();
+        else res.end(css);
+        return true;
+      } catch {
+        return false;
+      }
+    }
 
     const recoveryScript = `;(function () {
   try {

@@ -9,6 +9,7 @@ async function main() {
   assert.match(server, /stat\(/, 'server must distinguish existing assets from stale paths');
   assert.match(server, /legacy_asset_retry/, 'legacy responses must carry a one-time retry marker');
   assert.match(server, /application\/javascript/, 'missing legacy scripts must return executable recovery JavaScript');
+  assert.match(server, /text\/css/, 'missing legacy stylesheets must return retained CSS');
   assert.match(server, /location\.replace/, 'legacy recovery must navigate to fresh HTML');
 
   console.log('legacy asset recovery test passed');
