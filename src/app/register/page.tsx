@@ -8,12 +8,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
+import {
+  getGuardianInviteCode,
+  GUARDIAN_INVITE_QUERY_PARAM,
+  type GuardianInviteInfo,
+  type GuardianInviteVerificationResponse,
+} from '@/lib/guardian/invite-contract';
 
 function RegisterForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { refreshAuth } = useAuth();
-  const inviteCode = searchParams.get('code') || '';
+  const inviteCode = getGuardianInviteCode(searchParams);
   const nextPath = searchParams.get('next') || '/';
   
   const [formData, setFormData] = useState({
@@ -31,7 +37,7 @@ function RegisterForm() {
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [usernameMessage, setUsernameMessage] = useState('');
   
-  const [guardianInfo, setGuardianInfo] = useState<{ nickname: string } | null>(null);
+  const [guardianInfo, setGuardianInfo] = useState<GuardianInviteInfo | null>(null);
   const [step, setStep] = useState<'form' | 'success'>('form');
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
@@ -45,10 +51,11 @@ function RegisterForm() {
     setVerifyingInvite(true);
     setInviteError(null);
     try {
-      const res = await fetch(`/api/guardian/verify-code?code=${code}`);
-      const data = await res.json();
-      if (data.success) {
-        setGuardianInfo(data.data);
+      const query = new URLSearchParams({ [GUARDIAN_INVITE_QUERY_PARAM]: code });
+      const res = await fetch(`/api/guardian/verify-code?${query.toString()}`);
+      const data: GuardianInviteVerificationResponse = await res.json();
+      if (data.valid) {
+        setGuardianInfo(data.guardian);
       } else {
         setInviteError(data.error || '邀请码无效');
       }

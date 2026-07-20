@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback } from 'react';
 import QRCode from 'qrcode';
+import { getGuardianInviteRegistrationPath } from '@/lib/guardian/invite-contract';
 
 interface PosterOptions {
   inviteCode: string;
@@ -51,7 +52,7 @@ export function usePosterGenerator() {
       ctx.drawImage(bgImg, 0, 0, CANVAS_W, CANVAS_H);
       
       // ========== 2. 绘制二维码（精准嵌入白色方框） ==========
-      const inviteUrl = `${window.location.origin}/register?code=${inviteCode}`;
+      const inviteUrl = `${window.location.origin}${getGuardianInviteRegistrationPath(inviteCode)}`;
       const qrDataUrl = await QRCode.toDataURL(inviteUrl, {
         width: QR_SIZE,
         margin: 0,

@@ -53,6 +53,9 @@ export default function LawyerLayout({
       return;
     }
 
+    // 登录状态异步恢复后，清除路由切换期间留下的未授权标记。
+    // 否则律师已成功登录也会停留在“请先登录”的错误页面，直到手动刷新。
+    setUnauthorized(false);
     setChecked(true);
   }, [isLoggedIn, isLoading, isPublicPath, pathname, router]);
 

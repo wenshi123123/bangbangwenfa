@@ -21,5 +21,8 @@ export default defineConfig([
     'next-env.d.ts',
     'playwright-report*/**',
     'test-results/**',
+    // Retained, prebuilt Next.js chunks are deployment fallback artifacts,
+    // not maintainable application source.
+    'legacy-next-static/**',
   ]),
 ]);

@@ -50,7 +50,7 @@ function applySecurityHeaders(
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: https:",
         "font-src 'self' data:",
-        "connect-src 'self' https://api.mch.weixin.qq.com https://*.supabase.co",
+        "connect-src 'self' https://bangbangwenfa.com https://www.bangbangwenfa.com https://api.mch.weixin.qq.com https://*.supabase.co",
         "frame-ancestors 'none'",
         "base-uri 'self'",
         "form-action 'self'",
@@ -81,18 +81,6 @@ export async function middleware(request: NextRequest) {
   const isWechatBrowser = /MicroMessenger/i.test(request.headers.get('user-agent') ?? '');
   const shouldClearBrowserCache =
     isProd && isDocumentRequest && !isWechatBrowser && seenBuildVersion !== buildVersion;
-
-  // CloudBase 网关会对旧的 /_next/static/css 哈希路径直接返回 404。
-  // 统一改写到构建时生成的稳定 CSS 文件，旧 HTML 也能继续获得当前样式。
-  if (pathname.startsWith('/_next/static/css/')) {
-    return applySecurityHeaders(
-      NextResponse.rewrite(new URL('/legacy.css', request.url)),
-      isProd,
-      false,
-      true,
-      true,
-    );
-  }
 
   // 旧 HTML 可能预加载已经不存在的字体文件。返回空响应让浏览器安静地使用
   // 系统回退字体，避免控制台持续出现 404；页面文字仍可正常显示。
@@ -144,7 +132,6 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     // HTML/API 仍由中间件防旧缓存；带内容哈希的 Next 静态资源交给 Next 默认的长期缓存策略。
-    '/_next/static/css/:path*',
     '/_next/static/media/:path*',
     '/((?!_next/static/|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|woff2?|ttf|map)$).*)',
   ],

@@ -17,6 +17,11 @@ async function main() {
     'https://www.bangbangwenfa.com/civil?foo=1',
   );
   assert.match(bareResponse.headers.get('cache-control') ?? '', /no-store/);
+  assert.match(
+    bareResponse.headers.get('content-security-policy') ?? '',
+    /connect-src[^;]*https:\/\/www\.bangbangwenfa\.com/,
+    'the bare-domain redirect document must allow its canonical-host navigation request',
+  );
   assert.equal(bareResponse.headers.get('clear-site-data'), '"cache"');
   assert.match(bareResponse.headers.get('set-cookie') ?? '', /bb_build_version=/);
 
@@ -73,11 +78,15 @@ async function main() {
   assert.equal(wechatResponse.headers.get('set-cookie'), null);
   assert.match(wechatResponse.headers.get('cache-control') ?? '', /no-store/);
 
-  const legacyCssResponse = await middleware(
-    new NextRequest('https://www.bangbangwenfa.com/_next/static/css/old-build.css'),
+  const currentCssResponse = await middleware(
+    new NextRequest('https://www.bangbangwenfa.com/_next/static/css/current-build.css'),
   );
-  assert.equal(legacyCssResponse.status, 200);
-  assert.equal(legacyCssResponse.headers.get('x-middleware-rewrite'), 'https://www.bangbangwenfa.com/legacy.css');
+  assert.equal(currentCssResponse.status, 200);
+  assert.equal(
+    currentCssResponse.headers.get('x-middleware-rewrite'),
+    null,
+    'current hashed CSS must reach Next directly so its immutable cache policy remains effective',
+  );
 
   const legacyFontResponse = await middleware(
     new NextRequest('https://www.bangbangwenfa.com/_next/static/media/old-font.woff2'),

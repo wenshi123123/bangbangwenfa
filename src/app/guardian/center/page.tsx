@@ -9,6 +9,7 @@ import { getGuardianUrl } from '@/lib/site';
 import { Card, CardContent } from '@/components/ui/card';
 import QRCode from 'qrcode';
 import { usePosterGenerator } from '@/hooks/use-poster';
+import { getGuardianInviteRegistrationPath } from '@/lib/guardian/invite-contract';
 import { apiRequest, getToken } from '@/lib/api/request';
 import { GuardianLoginForm } from '@/components/guardian/guardian-login-form';
 
@@ -103,7 +104,7 @@ export default function GuardianCenterPage() {
   const generateQRCode = useCallback(async (invite_code: string) => {
     try {
       // 生成本站注册链接
-      const inviteUrl = `${window.location.origin}/register?code=${invite_code}`;
+      const inviteUrl = `${window.location.origin}${getGuardianInviteRegistrationPath(invite_code)}`;
       const url = await QRCode.toDataURL(inviteUrl, {
         width: 200,
         margin: 2,
@@ -232,7 +233,7 @@ export default function GuardianCenterPage() {
   }, [fetchData, generateQRCode, hasToken]);
 
   const copyInviteLink = () => {
-    const inviteUrl = `${window.location.origin}/register?code=${guardian?.invite_code}`;
+    const inviteUrl = `${window.location.origin}${getGuardianInviteRegistrationPath(guardian?.invite_code || '')}`;
     navigator.clipboard.writeText(inviteUrl);
     setShowCopied(true);
     setTimeout(() => setShowCopied(false), 2000);
@@ -1531,7 +1532,7 @@ export default function GuardianCenterPage() {
             <Button
               variant="outline"
               onClick={() => {
-                const inviteUrl = window.location.origin + '/register?code=' + (guardian?.invite_code || '');
+                const inviteUrl = window.location.origin + getGuardianInviteRegistrationPath(guardian?.invite_code || '');
                 navigator.clipboard.writeText(inviteUrl);
                 setShowCopied(true);
                 setTimeout(() => setShowCopied(false), 2000);

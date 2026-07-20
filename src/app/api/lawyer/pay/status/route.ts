@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { getWechatPayClient } from '@/lib/payment/wechat-pay';
 import { notifyOrder } from '@/lib/notify/webhook';
+import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,6 +23,52 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = getSupabaseAdmin();
+
+    // 律师续费订单使用独立表。续费页在支付后轮询同一状态接口，
+    // 因此在这里按订单类型分流，并始终校验当前律师身份。
+    if (orderRef.startsWith('RENEW')) {
+      const auth = authenticateRequest(request);
+      if (!auth?.success) {
+        return unauthorizedResponse(auth?.error || '请先登录');
+      }
+      if (!auth.lawyerId) {
+        return NextResponse.json(
+          { success: false, error: '非律师账号' },
+          { status: 403 }
+        );
+      }
+
+      const { data: renewOrder, error: renewOrderError } = await supabase
+        .from('lawyer_renew_orders')
+        .select('order_no, lawyer_id, payment_status, paid_at, trade_no, expires_at')
+        .eq('order_no', orderRef)
+        .maybeSingle();
+
+      if (renewOrderError || !renewOrder) {
+        return NextResponse.json(
+          { success: false, error: '订单不存在' },
+          { status: 404 }
+        );
+      }
+      if (String(renewOrder.lawyer_id) !== String(auth.lawyerId)) {
+        return NextResponse.json(
+          { success: false, error: '无权查看此订单' },
+          { status: 403 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          orderId: renewOrder.order_no,
+          status: renewOrder.payment_status,
+          isPaid: renewOrder.payment_status === 'paid',
+          paidAt: renewOrder.paid_at,
+          transactionId: renewOrder.trade_no,
+          expiresAt: renewOrder.expires_at,
+        },
+      });
+    }
 
     // 通过订单号查找申请
     const { data: application, error } = await supabase

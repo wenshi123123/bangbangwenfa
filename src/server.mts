@@ -89,6 +89,28 @@ async function handleMissingLegacyStaticAsset(
   if (req.method !== 'GET' && req.method !== 'HEAD') return false;
 
   const pathname = parse(req.url || '').pathname || '';
+
+  // 首页轮播图曾使用 hero-1.jpg 至 hero-5.jpg。保留旧地址到当前
+  // 图片的映射，避免缓存中的旧 HTML 在恢复前先出现图片 404。
+  const legacyHeroMatch = pathname.match(/^\/hero-([1-5])\.jpg$/);
+  if (legacyHeroMatch) {
+    try {
+      const image = await readFile(
+        path.join(process.cwd(), 'public', `hero-photo-${legacyHeroMatch[1]}.jpg`),
+      );
+      res.writeHead(200, {
+        'Content-Type': 'image/jpeg',
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        'X-BBWV-Legacy-Asset-Recovery': '1',
+      });
+      if (req.method === 'HEAD') res.end();
+      else res.end(image);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   if (!pathname.startsWith('/_next/static/')) return false;
 
   const assetPath = path.join(process.cwd(), '.next', pathname.replace(/^\/_next\//, ''));
@@ -102,8 +124,9 @@ async function handleMissingLegacyStaticAsset(
 
     if (isStylesheet) {
       const retainedCssPath = path.join(process.cwd(), 'public', pathname);
+      const fallbackCssPath = path.join(process.cwd(), 'public', 'legacy.css');
       try {
-        const css = await readFile(retainedCssPath);
+        const css = await readFile(retainedCssPath).catch(() => readFile(fallbackCssPath));
         res.writeHead(200, {
           'Content-Type': 'text/css; charset=utf-8',
           'Cache-Control': 'public, max-age=31536000, immutable',

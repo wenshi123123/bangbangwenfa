@@ -109,6 +109,23 @@ fi
 echo "Building the Next.js project..."
 "${NODE_BIN}" "${NEXT_BIN}" build --webpack
 
+echo "Preparing retained static assets and CSS fallback..."
+mkdir -p .next/static
+while IFS= read -r -d '' SOURCE_FILE; do
+  RELATIVE_PATH="${SOURCE_FILE#legacy-next-static/}"
+  TARGET_FILE=".next/static/${RELATIVE_PATH}"
+  if [ ! -e "${TARGET_FILE}" ]; then
+    mkdir -p "$(dirname "${TARGET_FILE}")"
+    cp "${SOURCE_FILE}" "${TARGET_FILE}"
+  fi
+done < <(find legacy-next-static -type f -print0)
+CSS_FILE=$(find .next/static/css -maxdepth 1 -type f -name '*.css' | head -n 1)
+if [ -z "${CSS_FILE}" ]; then
+  echo "Unable to locate a built CSS asset for the legacy fallback."
+  exit 1
+fi
+cp "${CSS_FILE}" public/legacy.css
+
 echo "Bundling server with tsup..."
 "${NODE_BIN}" "${TSUP_BIN}" src/server.mts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
 

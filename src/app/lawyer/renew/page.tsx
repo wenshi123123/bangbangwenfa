@@ -23,6 +23,7 @@ const renewalPackages = [
 function RenewContent() {
   const router = useRouter();
   const { isAuthorized, isLoading: authLoading } = useLawyerAuth();
+  const loginUrl = `${getLawyerLoginUrl()}?redirect=${encodeURIComponent('/lawyer/renew')}`;
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,7 +111,7 @@ function RenewContent() {
           </div>
           <h2 className="text-xl font-serif text-[#3D322D] mb-2">请先登录律师账号</h2>
           <p className="text-sm text-[#8C7B6E] mb-6">登录后才能进行会员续费操作</p>
-          <Link href={getLawyerLoginUrl()}>
+          <Link href={loginUrl}>
             <Button className="w-full py-3 bg-[#C47353] hover:bg-[#A85D40] text-white rounded-full font-serif tracking-wide shadow-[0_2px_12px_rgba(196,115,83,0.3)]">
               前往登录
             </Button>

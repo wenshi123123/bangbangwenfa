@@ -52,13 +52,12 @@ test.describe('注册流程', () => {
 });
 
 test.describe('登录流程', () => {
-  test('登录页面应正常渲染', async ({ page }) => {
-    // 访问需要登录的页面，应被重定向
+  test('未登录访问个人中心应显示登录提示', async ({ page }) => {
+    // 个人中心采用页内登录提示，而非 URL 重定向。
     await page.goto('/user');
 
-    // 检查是否被重定向
-    const url = page.url();
-    expect(url).toMatch(/\/(login|register|$)/);
+    await expect(page.getByRole('heading', { name: '请先登录' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '手机号登录' })).toBeVisible();
   });
 
   test('错误凭据登录应被拒绝', async ({ request }) => {

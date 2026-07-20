@@ -9,6 +9,7 @@ import { defineConfig, devices } from '@playwright/test';
  * 排除的测试文件（有副作用）：
  *   - e2e/auth/login.spec.ts      ← 触发真实短信发送
  *   - e2e/payment/pay.spec.ts     ← 创建支付订单
+ *   - e2e/consult/flow.spec.ts     ← 创建咨询订单
  *   - e2e/security/rate-limit.spec.ts  ← 触发生产限流
  *   - e2e/lawyer/admin-smoke.spec.ts   ← POST/PUT 操作
  */
@@ -22,6 +23,7 @@ export default defineConfig({
   testIgnore: [
     '**/auth/login.spec.ts',
     '**/payment/pay.spec.ts',
+    '**/consult/flow.spec.ts',
     '**/security/rate-limit.spec.ts',
     '**/lawyer/admin-smoke.spec.ts',
   ],
@@ -48,7 +50,7 @@ export default defineConfig({
 
   use: {
     // 直接连接生产环境
-    baseURL: 'https://bangbangwenfa.com',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://bangbangwenfa.com',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'off',

@@ -25,7 +25,7 @@ COPY legacy-next-static ./legacy-next-static
 RUN rm -rf .next dist && \
     pnpm exec next build --webpack && \
     mkdir -p .next/static && \
-    cp -Rn legacy-next-static/. .next/static/ && \
+    find legacy-next-static -type f -exec sh -c 'for source_file do target_file=".next/static/${source_file#legacy-next-static/}"; if [ ! -e "$target_file" ]; then mkdir -p "$(dirname "$target_file")" && cp "$source_file" "$target_file"; fi; done' sh {} + && \
     css_file=$(find .next/static/css -maxdepth 1 -type f -name '*.css' | head -n 1) && \
     test -n "$css_file" && cp "$css_file" public/legacy.css
 
