@@ -57,7 +57,7 @@ export function usePosterGenerator() {
         width: QR_SIZE,
         margin: 0,
         color: {
-          dark: '#1a1a2e',
+          dark: '#3F3028',
           light: '#FFFFFF',
         },
       });

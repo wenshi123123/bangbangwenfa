@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, Copy, Download, Users, Wallet, TrendingUp, Gift, ChevronRight, CheckCircle, X, AlertCircle, RefreshCw, Info, Clock, Banknote, Shield, Upload, Image, Share2, Loader2, LogIn } from 'lucide-react';
+import { ArrowLeft, Download, Wallet, CheckCircle, X, AlertCircle, RefreshCw, Info, Clock, Banknote, Shield, Upload, Share2, Loader2, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getGuardianUrl } from '@/lib/site';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,6 +12,8 @@ import { usePosterGenerator } from '@/hooks/use-poster';
 import { getGuardianInviteRegistrationPath } from '@/lib/guardian/invite-contract';
 import { apiRequest, getToken } from '@/lib/api/request';
 import { GuardianLoginForm } from '@/components/guardian/guardian-login-form';
+import { GuardianIdentityHero } from '@/components/guardian/guardian-identity-hero';
+import { GuardianShareDrawer } from '@/components/guardian/guardian-share-drawer';
 
 interface WithdrawConfig {
   minAmount: number;      // 最低提现金额（分）
@@ -62,10 +64,9 @@ interface WithdrawalRecord {
 export default function GuardianCenterPage() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab');
-  const hasToken = typeof window !== 'undefined' ? !!localStorage.getItem('token') : false;
-  const [isLoggedIn, setIsLoggedIn] = useState(hasToken);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [guardian, setGuardian] = useState<GuardianData | null>(null);
-  const [isLoading, setIsLoading] = useState(hasToken); // 合并 loading 和 isChecking
+  const [isLoading, setIsLoading] = useState(true); // 合并 loading 和 isChecking
   const [commissions, setCommissions] = useState<CommissionRecord[]>([]);
   const [invitees, setInvitees] = useState<InviteeRecord[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRecord[]>([]);
@@ -75,7 +76,6 @@ export default function GuardianCenterPage() {
       : 'overview'
   );
   const [refreshing, setRefreshing] = useState(false);
-  const [showCopied, setShowCopied] = useState(false);
   const [qrcodeUrl, setQrcodeUrl] = useState<string>('');
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState<string>('');
@@ -96,6 +96,8 @@ export default function GuardianCenterPage() {
   });
   const [showPosterModal, setShowPosterModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showShareSheet, setShowShareSheet] = useState(false);
+  const [completedShareAction, setCompletedShareAction] = useState<'link' | 'qr' | 'poster' | null>(null);
   const { posterUrl, generating, generatePoster, downloadPoster } = usePosterGenerator();
   const [hasPendingWithdraw, setHasPendingWithdraw] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -108,7 +110,7 @@ export default function GuardianCenterPage() {
       const url = await QRCode.toDataURL(inviteUrl, {
         width: 200,
         margin: 2,
-        color: { dark: '#7C3AED', light: '#ffffff' }
+        color: { dark: '#3F3028', light: '#ffffff' }
       });
       setQrcodeUrl(url);
     } catch (error) {
@@ -178,6 +180,7 @@ export default function GuardianCenterPage() {
   // 检查登录状态并初始化守护者
   useEffect(() => {
     const checkAndInit = async () => {
+      const hasToken = !!localStorage.getItem('token');
       if (!hasToken) {
         setIsLoggedIn(false);
         setIsLoading(false);
@@ -230,13 +233,13 @@ export default function GuardianCenterPage() {
     return () => {
       window.removeEventListener('user-logged-in', handleLoginSuccess);
     };
-  }, [fetchData, generateQRCode, hasToken]);
+  }, [fetchData, generateQRCode]);
 
   const copyInviteLink = () => {
     const inviteUrl = `${window.location.origin}${getGuardianInviteRegistrationPath(guardian?.invite_code || '')}`;
     navigator.clipboard.writeText(inviteUrl);
-    setShowCopied(true);
-    setTimeout(() => setShowCopied(false), 2000);
+    setCompletedShareAction('link');
+    setTimeout(() => setCompletedShareAction(null), 1600);
   };
 
   const downloadQRCode = () => {
@@ -245,7 +248,18 @@ export default function GuardianCenterPage() {
       link.download = `守护者邀请码_${guardian?.invite_code}.png`;
       link.href = qrcodeUrl;
       link.click();
+      setCompletedShareAction('qr');
+      setTimeout(() => setCompletedShareAction(null), 1600);
     }
+  };
+
+  const openPosterFromShare = () => {
+    if (!guardian) return;
+    setCompletedShareAction('poster');
+    setShowShareSheet(false);
+    setShowPosterModal(true);
+    void generatePoster({ inviteCode: guardian.invite_code, nickname: guardian.nickname });
+    setTimeout(() => setCompletedShareAction(null), 1600);
   };
 
   const formatMoney = (cents: number) => (cents / 100).toFixed(2);
@@ -542,16 +556,16 @@ export default function GuardianCenterPage() {
                 <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-rose-100 flex items-center justify-center">
                   <Shield className="w-10 h-10 text-rose-600" />
                 </div>
-                <h2 className="text-xl font-bold mb-3">成为守护者</h2>
-                <p className="text-muted-foreground mb-6">
-                  登录后自动入驻守护者计划，开始守护你爱的人
+                <h2 className="font-serif text-xl font-bold mb-3 text-[#3F3028]">成为守护者</h2>
+                <p className="text-[#7A5E4F] mb-6 leading-6">
+                  让亲友在需要时，更快找到可靠的法律帮助。
                 </p>
                 <button
                   onClick={() => setShowLoginModal(true)}
                   className="w-full py-3 px-6 bg-gradient-to-r from-rose-500 to-rose-600 text-white font-semibold rounded-xl hover:from-rose-600 hover:to-rose-700 transition-all"
                 >
                   <LogIn className="w-4 h-4 inline mr-2" />
-                  去登录
+                  登录后成为守护者
                 </button>
               </div>
             </div>
@@ -592,10 +606,9 @@ export default function GuardianCenterPage() {
               <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-rose-100 to-orange-100 flex items-center justify-center">
                 <Shield className="w-12 h-12 text-rose-600" />
               </div>
-              <h2 className="text-2xl font-bold mb-3">欢迎加入守护者计划</h2>
-              <p className="text-muted-foreground mb-6 leading-relaxed">
-                成为守护者后，您可以通过邀请好友获得佣金奖励，<br />
-                每次被邀请用户消费，您都能获得相应佣金
+              <h2 className="font-serif text-2xl font-bold mb-3 text-[#3F3028]">欢迎加入守护者计划</h2>
+              <p className="text-[#7A5E4F] mb-6 leading-relaxed">
+                把可靠的法律服务，分享给真正需要帮助的亲友。
               </p>
               
               {/* 守护者权益 */}
@@ -604,15 +617,15 @@ export default function GuardianCenterPage() {
                 <ul className="space-y-2 text-sm text-rose-600">
                   <li className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4" />
-                    邀请好友获得佣金奖励
+                    邀请亲友获得法律帮助
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4" />
-                    佣金实时到账，随时提现
+                    守护回馈清晰可见
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4" />
-                    专属邀请二维码和链接
+                    专属邀请凭证与分享通道
                   </li>
                 </ul>
               </div>
@@ -621,11 +634,11 @@ export default function GuardianCenterPage() {
                 onClick={handleRegisterGuardian}
                 className="w-full py-4 px-6 bg-gradient-to-r from-rose-500 to-rose-600 text-white font-semibold rounded-xl hover:from-rose-600 hover:to-rose-700 transition-all shadow-lg shadow-rose-200"
               >
-                立即入驻守护者计划
+                成为守护者
               </button>
               
               <p className="text-xs text-muted-foreground mt-4">
-                点击上方按钮，使用当前账号入驻守护者计划
+                点击后将使用当前账号开通守护者身份。
               </p>
             </div>
           </div>
@@ -662,69 +675,23 @@ export default function GuardianCenterPage() {
         </div>
       </div>
 
-      {/* 用户信息卡片 */}
-      <div className="bg-gradient-to-r from-rose-500 to-rose-600 text-white py-8 px-4">
-    <div className="container mx-auto">
-      {guardian ? (
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl">
-            {guardian.avatar_url ? (
-              <img src={guardian.avatar_url} alt="" className="w-full h-full rounded-full" />
-            ) : (
-              '👤'
-            )}
-          </div>
-          <div>
-            <h2 className="text-xl font-bold">{guardian.nickname}</h2>
-            <p className="text-rose-100 text-sm">守护者 · {guardian.invite_code}</p>
-          </div>
-        </div>
-      ) : (
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl">
-            {'👤'}
-          </div>
-          <div>
-            <h2 className="text-xl font-bold">加载中...</h2>
-          </div>
-        </div>
+      {guardian && (
+        <GuardianIdentityHero
+          guardian={{
+            nickname: guardian.nickname,
+            avatarUrl: guardian.avatar_url,
+            inviteCode: guardian.invite_code,
+            totalInvites: guardian.total_invites,
+            validInvites: guardian.valid_invites,
+            totalCommission: guardian.total_commission,
+            availableCommission: guardian.available_commission,
+          }}
+          onInvite={() => setShowShareSheet(true)}
+        />
       )}
-    </div>
-      </div>
 
-      {/* 数据统计卡片 */}
-      <div className="container mx-auto px-4 -mt-4">
-    <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="text-center">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 mx-auto mb-2">
-            <Users className="w-5 h-5 text-blue-600" />
-          </div>
-          <p className="text-2xl font-bold text-foreground">{guardian?.total_invites ?? 0}</p>
-          <p className="text-xs text-muted-foreground">邀请人数</p>
-        </div>
-      <div className="text-center">
-        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-green-100 mx-auto mb-2">
-          <TrendingUp className="w-5 h-5 text-green-600" />
-        </div>
-        <p className="text-2xl font-bold text-foreground">{guardian?.valid_invites ?? 0}</p>
-        <p className="text-xs text-muted-foreground">有效用户</p>
-      </div>
-      <div className="text-center">
-        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-orange-100 mx-auto mb-2">
-          <Gift className="w-5 h-5 text-orange-600" />
-        </div>
-        <p className="text-2xl font-bold text-orange-600">¥{formatMoney(guardian?.total_commission ?? 0)}</p>
-        <p className="text-xs text-muted-foreground">累计分成</p>
-      </div>
-      <div className="text-center">
-        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-rose-100 mx-auto mb-2">
-          <Wallet className="w-5 h-5 text-rose-600" />
-        </div>
-        <p className="text-2xl font-bold text-rose-600">¥{formatMoney(guardian?.available_commission ?? 0)}</p>
-        <p className="text-xs text-muted-foreground">可提现</p>
-      </div>
-      </div>
+      <div className="container mx-auto px-4 mt-6">
+    <div className="bg-white rounded-2xl shadow-[0_10px_28px_rgba(102,68,43,0.08)] p-4 sm:p-6">
 
       {/* 提现说明卡片 */}
       <div className="mt-6 bg-gradient-to-r from-rose-50 to-rose-100/50 rounded-xl p-4 border border-rose-200/50">
@@ -806,7 +773,7 @@ export default function GuardianCenterPage() {
               onClick={openWithdrawModal}
               className="w-full bg-white text-rose-600 hover:bg-rose-50 py-5 text-base font-semibold rounded-xl shadow-lg"
             >
-              {(guardian?.available_commission ?? 0) >= withdrawConfig.minAmount ? '立即提现到微信零钱' : '查看提现详情'}
+              {(guardian?.available_commission ?? 0) >= withdrawConfig.minAmount ? '提取守护回馈' : '查看守护回馈'}
             </Button>
           </div>
         )}
@@ -858,73 +825,6 @@ export default function GuardianCenterPage() {
         </div>
       )}
       </div>
-      </div>
-
-      {/* 邀请推广区 */}
-      <div className="container mx-auto px-4 mt-6">
-    <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6">
-      <h3 className="text-lg font-bold mb-4">专属邀请链接</h3>
-      
-      {/* 邀请码 */}
-      <div className="bg-rose-50 rounded-xl p-4 mb-4">
-        <p className="text-sm text-muted-foreground mb-1">邀请码</p>
-        <p className="text-2xl font-bold text-rose-600 tracking-wider">{guardian?.invite_code || ''}</p>
-      </div>
-
-      {/* 二维码 */}
-      <div className="flex flex-col items-center mb-4">
-        {qrcodeUrl ? (
-          <div className="bg-white p-2 rounded-xl border border-rose-100">
-            <img src={qrcodeUrl} alt="邀请二维码" className="w-48 h-48" />
-          </div>
-        ) : (
-          <div className="w-48 h-48 bg-gray-100 rounded-xl flex items-center justify-center">
-            <p className="text-sm text-muted-foreground">生成中...</p>
-          </div>
-        )}
-        <p className="text-sm text-muted-foreground mt-2">扫描二维码即可注册</p>
-      </div>
-
-      {/* 操作按钮 */}
-      <div className="grid grid-cols-3 gap-3">
-        <Button variant="outline" onClick={copyInviteLink} className="border-rose-200 text-rose-600">
-          {showCopied ? (
-            <>
-              <CheckCircle className="w-4 h-4 mr-1" />
-              已复制
-            </>
-          ) : (
-            <>
-              <Copy className="w-4 h-4 mr-1" />
-              复制链接
-            </>
-          )}
-        </Button>
-        <Button variant="outline" onClick={downloadQRCode} className="border-rose-200 text-rose-600">
-          <Download className="w-4 h-4 mr-1" />
-          保存二维码
-        </Button>
-        <Button variant="default" onClick={() => {
-          setShowPosterModal(true);
-          if (guardian) {
-            generatePoster({
-              inviteCode: guardian.invite_code,
-              nickname: guardian.nickname,
-            });
-          }
-        }} className="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600">
-          <Image className="w-4 h-4 mr-1" />
-          生成海报
-        </Button>
-      </div>
-
-      {/* 分享提示 */}
-      <div className="mt-4 p-3 bg-orange-50 rounded-xl">
-        <p className="text-sm text-orange-700">
-          💡 分享到微信群、朋友圈，好友注册后您即可获得永久分成
-        </p>
-      </div>
-    </div>
       </div>
 
       {/* Tab切换 */}
@@ -1118,6 +1018,19 @@ export default function GuardianCenterPage() {
       </div>
     </div>
       </div>
+
+      {guardian && (
+        <GuardianShareDrawer
+          open={showShareSheet}
+          onOpenChange={setShowShareSheet}
+          inviteCode={guardian.invite_code}
+          qrCodeUrl={qrcodeUrl}
+          completedAction={completedShareAction}
+          onCopyLink={copyInviteLink}
+          onDownloadQrCode={downloadQRCode}
+          onGeneratePoster={openPosterFromShare}
+        />
+      )}
 
       {/* 提现弹窗 */}
       {showWithdrawModal && (
@@ -1531,12 +1444,7 @@ export default function GuardianCenterPage() {
             
             <Button
               variant="outline"
-              onClick={() => {
-                const inviteUrl = window.location.origin + getGuardianInviteRegistrationPath(guardian?.invite_code || '');
-                navigator.clipboard.writeText(inviteUrl);
-                setShowCopied(true);
-                setTimeout(() => setShowCopied(false), 2000);
-              }}
+              onClick={copyInviteLink}
               className="w-full border-rose-200 text-rose-600 py-5 text-base font-medium rounded-xl"
             >
               <Share2 className="w-5 h-5 mr-2" />

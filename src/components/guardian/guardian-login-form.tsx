@@ -203,7 +203,7 @@ export function GuardianLoginForm({ onSuccess, onCancel }: GuardianLoginFormProp
             </div>
             <div>
               <h2 className="text-xl font-bold text-white">守护者登录</h2>
-              <p className="text-white/80 text-xs">登录后自动入驻守护者计划</p>
+              <p className="text-white/80 text-xs">登录后即可开通守护者身份</p>
             </div>
           </div>
         </div>
