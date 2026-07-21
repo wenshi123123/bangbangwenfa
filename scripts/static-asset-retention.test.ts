@@ -6,22 +6,25 @@ async function main() {
   const dockerfile = await fs.readFile(path.join(process.cwd(), 'Dockerfile'), 'utf8');
   const buildScript = await fs.readFile(path.join(process.cwd(), 'scripts', 'build.sh'), 'utf8');
 
-  assert.match(dockerfile, /legacy-next-static/, 'Docker build must include retained legacy static assets');
-  assert.match(dockerfile, /cp -R[nf]? .*legacy-next-static|legacy-next-static.*\.next\/static/, 'build must merge retained assets into the active Next static directory');
-  assert.match(dockerfile, /public\/legacy\.css/, 'legacy CSS must have a stable public fallback path');
-  assert.match(dockerfile, /COPY --from=base \/app\/.next \.\/.next/, 'runtime image must include the merged static directory');
+  assert.doesNotMatch(dockerfile, /legacy-next-static/, 'a container must not silently serve stale assets from an unmanaged archive');
+  assert.match(dockerfile, /write-static-release-manifest\.mjs --write/, 'Docker build must create a release manifest');
+  assert.match(dockerfile, /COPY --from=base \/app\/.next \.\/\.next/, 'runtime image must include the manifest alongside the built assets');
 
-  assert.match(buildScript, /legacy-next-static/, 'local build must retain legacy static assets just like the container build');
-  assert.match(buildScript, /public\/legacy\.css/, 'local build must generate the same stable CSS fallback as the container build');
+  assert.doesNotMatch(buildScript, /legacy-next-static/, 'local build must not merge unrelated build hashes');
+  assert.match(buildScript, /write-static-release-manifest\.mjs --write/, 'local build must create the same release manifest as Docker');
+  assert.match(buildScript, /NEXT_PUBLIC_STATIC_ASSET_ORIGIN/, 'production build must require a static asset origin');
+  assert.match(buildScript, /NEXT_PUBLIC_DEPLOYMENT_ID/, 'production build must require an explicit deployment id');
+  assert.match(dockerfile, /ARG NEXT_PUBLIC_STATIC_ASSET_ORIGIN/, 'Docker must accept the static asset origin at build time');
+  assert.match(dockerfile, /ARG NEXT_PUBLIC_DEPLOYMENT_ID/, 'Docker must accept the deployment id at build time');
+  assert.match(dockerfile, /static-release\.env/, 'Docker must support the checked-in public release manifest for CloudBase source builds');
+  assert.match(dockerfile, /test -n "\$NEXT_PUBLIC_STATIC_ASSET_ORIGIN"/, 'Docker build must fail without a static asset origin');
+  assert.match(dockerfile, /test -n "\$NEXT_PUBLIC_DEPLOYMENT_ID"/, 'Docker build must fail without a deployment id');
 
-  const archive = path.join(process.cwd(), 'legacy-next-static');
-  const entries = await fs.readdir(archive);
-  assert.ok(entries.length > 0, 'retained static asset archive must not be empty');
-
-  console.log('static asset retention test passed');
+  await fs.access(path.join(process.cwd(), 'scripts', 'write-static-release-manifest.mjs'));
+  console.log('static asset release contract test passed');
 }
 
-main().catch((error) => {
+main().catch(error => {
   console.error(error);
   process.exitCode = 1;
 });

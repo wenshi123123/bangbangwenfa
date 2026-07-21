@@ -1,6 +1,13 @@
 #!/bin/bash
 set -e
 
+# 镜像构建期写入的公开发布清单也必须用于运行期响应头，避免动态文档的
+# X-BBWV-Deployment-Id 与客户端内联的静态资源版本不一致。
+if [ -f "./static-release.env" ]; then
+  # shellcheck source=/dev/null
+  . "./static-release.env"
+fi
+
 COZE_WORKSPACE_PATH="${COZE_WORKSPACE_PATH:-$(pwd)}"
 
 # 加载 .env.production（自定义服务器需要手动加载）

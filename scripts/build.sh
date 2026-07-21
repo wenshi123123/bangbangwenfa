@@ -9,6 +9,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 cd "${COZE_WORKSPACE_PATH}"
 
+# 版本化静态资产的公开发布清单用于 CloudBase 的源码构建。显式传入的
+# 环境变量优先；只有两者都没有设置时才读取该文件，避免覆盖 CI 参数。
+if [ -z "${NEXT_PUBLIC_STATIC_ASSET_ORIGIN:-}" ] && [ -z "${NEXT_PUBLIC_DEPLOYMENT_ID:-}" ] && [ -f "./static-release.env" ]; then
+  # shellcheck source=/dev/null
+  . "./static-release.env"
+fi
+
 echo "Cleaning previous build artifacts..."
 rm -rf .next dist
 
@@ -70,6 +77,8 @@ if [ "${DEPLOY_ENV:-}" = "PROD" ] || [ "${NODE_ENV:-}" = "production" ]; then
     "WEIXIN_SERIAL_NO"
     "WEIXIN_APIV3_KEY"
     "JWT_SECRET"
+    "NEXT_PUBLIC_STATIC_ASSET_ORIGIN"
+    "NEXT_PUBLIC_DEPLOYMENT_ID"
   )
   
   for var in "${REQUIRED_VARS[@]}"; do
@@ -109,22 +118,8 @@ fi
 echo "Building the Next.js project..."
 "${NODE_BIN}" "${NEXT_BIN}" build --webpack
 
-echo "Preparing retained static assets and CSS fallback..."
-mkdir -p .next/static
-while IFS= read -r -d '' SOURCE_FILE; do
-  RELATIVE_PATH="${SOURCE_FILE#legacy-next-static/}"
-  TARGET_FILE=".next/static/${RELATIVE_PATH}"
-  if [ ! -e "${TARGET_FILE}" ]; then
-    mkdir -p "$(dirname "${TARGET_FILE}")"
-    cp "${SOURCE_FILE}" "${TARGET_FILE}"
-  fi
-done < <(find legacy-next-static -type f -print0)
-CSS_FILE=$(find .next/static/css -maxdepth 1 -type f -name '*.css' | head -n 1)
-if [ -z "${CSS_FILE}" ]; then
-  echo "Unable to locate a built CSS asset for the legacy fallback."
-  exit 1
-fi
-cp "${CSS_FILE}" public/legacy.css
+echo "Writing immutable static release manifest..."
+"${NODE_BIN}" scripts/write-static-release-manifest.mjs --write
 
 echo "Bundling server with tsup..."
 "${NODE_BIN}" "${TSUP_BIN}" src/server.mts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify

@@ -37,7 +37,7 @@ function useScrollAnimation(options = {}) {
 }
 
 // 首屏主题区 - 不需要滚动触发
-function HeroSection({ onStartJoin }: { onStartJoin: () => void }) {
+function HeroSection({ centerHref }: { centerHref: string }) {
   const [loaded, setLoaded] = useState(false);
   
   useEffect(() => {
@@ -114,14 +114,16 @@ function HeroSection({ onStartJoin }: { onStartJoin: () => void }) {
           
           {/* CTA按钮 */}
           <div className={`transition-all duration-700 delay-800 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            <Button 
-              onClick={onStartJoin}
+            <Button
+              asChild
               size="lg"
               className="w-full sm:w-auto bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 text-white rounded-full px-10 py-6 text-lg font-semibold shadow-xl shadow-rose-200/50 transition-all duration-300 active:scale-95 sm:hover:scale-105 sm:hover:shadow-2xl sm:hover:shadow-rose-300/30 group"
             >
-              <Heart className="mr-2 h-5 w-5 group-hover:animate-warm-pulse" />
-              传递守护
-              <ChevronRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              <Link prefetch={false} href={centerHref}>
+                <Heart className="mr-2 h-5 w-5 group-hover:animate-warm-pulse" />
+                传递守护
+                <ChevronRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              </Link>
             </Button>
           </div>
         </div>
@@ -414,7 +416,7 @@ function TestimonialsSection() {
 }
 
 // 底部CTA
-function BottomCTA({ onStartJoin }: { onStartJoin: () => void }) {
+function BottomCTA({ centerHref }: { centerHref: string }) {
   const { ref, isVisible, animationKey } = useScrollAnimation();
   
   return (
@@ -428,14 +430,16 @@ function BottomCTA({ onStartJoin }: { onStartJoin: () => void }) {
             发送给在乎的人，让他们知道你在乎
           </p>
           
-          <Button 
-            onClick={onStartJoin}
+          <Button
+            asChild
             size="lg"
             className="w-full sm:w-auto bg-white text-rose-600 hover:bg-white/95 rounded-full px-12 py-7 text-xl font-bold shadow-2xl transition-all duration-300 active:scale-95 sm:hover:scale-105 sm:hover:shadow-white/30 group"
           >
-            <Heart className="mr-3 h-6 w-6 group-hover:animate-warm-pulse" />
-            立即传递守护
-            <ChevronRight className="ml-3 h-6 w-6 group-hover:translate-x-1 transition-transform" />
+            <Link prefetch={false} href={centerHref}>
+              <Heart className="mr-3 h-6 w-6 group-hover:animate-warm-pulse" />
+              立即传递守护
+              <ChevronRight className="ml-3 h-6 w-6 group-hover:translate-x-1 transition-transform" />
+            </Link>
           </Button>
         </div>
       </div>
@@ -444,7 +448,7 @@ function BottomCTA({ onStartJoin }: { onStartJoin: () => void }) {
 }
 
 // FAQ区
-function FAQSection({ onStartJoin }: { onStartJoin: () => void }) {
+function FAQSection({ centerHref }: { centerHref: string }) {
   const { ref, isVisible, animationKey } = useScrollAnimation();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   
@@ -492,13 +496,15 @@ function FAQSection({ onStartJoin }: { onStartJoin: () => void }) {
           {/* 底部CTA */}
           <div className={`text-center mt-12 sm:mt-16 transition-all duration-700 delay-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             <p className="text-muted-foreground mb-5 text-lg">准备好了吗？</p>
-            <Button 
-              onClick={onStartJoin}
+            <Button
+              asChild
               size="lg"
               className="w-full sm:w-auto bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 text-white rounded-full px-10 py-6 text-lg font-semibold shadow-xl shadow-rose-200/50 transition-all duration-300 active:scale-95 sm:hover:scale-105 group"
             >
-              <Heart className="mr-2 h-5 w-5 group-hover:animate-warm-pulse" />
-              传递守护
+              <Link prefetch={false} href={centerHref}>
+                <Heart className="mr-2 h-5 w-5 group-hover:animate-warm-pulse" />
+                传递守护
+              </Link>
             </Button>
           </div>
         </div>
@@ -578,21 +584,19 @@ function AnimationStyles() {
 
 // 主页面
 export default function GuardianPage() {
-  const handleStartJoin = () => {
-    window.location.href = getGuardianCenterUrl();
-  };
+  const centerHref = getGuardianCenterUrl();
   
   return (
     <>
       <AnimationStyles />
       <div className="min-h-screen bg-white">
-        <HeroSection onStartJoin={handleStartJoin} />
+        <HeroSection centerHref={centerHref} />
         <GuardianScenesSection />
         <HowToProtectSection />
         <MeaningSection />
         <TestimonialsSection />
-        <BottomCTA onStartJoin={handleStartJoin} />
-        <FAQSection onStartJoin={handleStartJoin} />
+        <BottomCTA centerHref={centerHref} />
+        <FAQSection centerHref={centerHref} />
       </div>
     </>
   );

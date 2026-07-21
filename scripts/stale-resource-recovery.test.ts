@@ -5,13 +5,11 @@ import path from 'node:path';
 async function main() {
   const layout = await fs.readFile(path.join(process.cwd(), 'src/app/layout.tsx'), 'utf8');
 
-  assert.match(layout, /__bbStaleResourceGuardInstalled/, 'layout must install the stale-resource guard early');
-  assert.match(layout, /__bbwv_resource_retry/, 'recovery must have a one-time URL marker');
-  assert.match(layout, /addEventListener\('error'/, 'guard must observe resource loading errors');
-  assert.match(layout, /window\.location\.replace/, 'guard must hard-navigate to fresh HTML');
-  assert.match(layout, /hasRetried/, 'guard must stop after one recovery attempt');
+  assert.doesNotMatch(layout, /__bbStaleResourceGuardInstalled/, 'layout must not install a resource-error refresh guard');
+  assert.doesNotMatch(layout, /__bbwv_resource_retry/, 'layout must not add resource retry query parameters');
+  assert.doesNotMatch(layout, /window\.location\.replace/, 'layout must not hard-navigate after a resource error');
 
-  console.log('stale resource recovery test passed');
+  console.log('stale resource failure contract test passed');
 }
 
 main().catch(error => {

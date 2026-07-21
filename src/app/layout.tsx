@@ -68,25 +68,18 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `;(function () {
-  if (window.__bbStaleResourceGuardInstalled) return;
-  window.__bbStaleResourceGuardInstalled = true;
-  var retryKey = '__bbwv_resource_retry';
-  var currentUrl = window.location.href;
-  var hasRetried = currentUrl.indexOf(retryKey + '=1') !== -1;
-  var recoveryStarted = false;
-  function isRecoverableResource(target) {
-    if (!target || !target.tagName) return false;
-    var tag = target.tagName.toLowerCase();
-    if (tag === 'script' || tag === 'img') return true;
-    return tag === 'link' && (target.rel || '').toLowerCase().split(/\\s+/).indexOf('stylesheet') !== -1;
-  }
-  window.addEventListener('error', function (event) {
+  if (window.__bbwvDocumentNavigationGuardInstalled) return;
+  window.__bbwvDocumentNavigationGuardInstalled = true;
+  window.addEventListener('click', function (event) {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     var target = event.target;
-    if (recoveryStarted || hasRetried || !isRecoverableResource(target)) return;
-    recoveryStarted = true;
-    var separator = currentUrl.indexOf('?') === -1 ? '?' : '&';
-    var freshUrl = currentUrl + separator + retryKey + '=1&__bbwv_recover=' + Date.now();
-    window.location.replace(freshUrl);
+    if (!target || !target.closest) return;
+    var anchor = target.closest('a[href]');
+    if (!anchor || anchor.target && anchor.target !== '_self' || anchor.hasAttribute('download')) return;
+    if (anchor.origin !== window.location.origin || anchor.protocol !== window.location.protocol) return;
+    if (anchor.hash && anchor.pathname === window.location.pathname && anchor.search === window.location.search) return;
+    event.preventDefault();
+    window.location.assign(anchor.href);
   }, true);
 })();`,
           }}

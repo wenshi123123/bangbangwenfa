@@ -9,9 +9,7 @@ import {
 function applySecurityHeaders(
   response: NextResponse,
   isProd: boolean,
-  clearBrowserCache = false,
   preserveCacheControl = false,
-  _cacheHomeDocument = false
 ) {
   // 隐藏技术栈信息
   response.headers.delete('X-Powered-By');
@@ -33,10 +31,6 @@ function applySecurityHeaders(
     response.headers.set('Pragma', 'no-cache');
     response.headers.set('Expires', '0');
   }
-  if (clearBrowserCache) {
-    response.headers.set('Clear-Site-Data', '"cache"');
-  }
-
   if (isProd) {
     response.headers.set(
       'Strict-Transport-Security',
@@ -72,15 +66,8 @@ export async function middleware(request: NextRequest) {
   const hostname = getRequestHostname(request.headers, request.nextUrl.hostname);
   const { pathname } = request.nextUrl;
   const preserveCacheControl = pathname === '/api/price';
-  const buildVersion = process.env.BUILD_CACHE_BUST_VALUE || 'unknown';
-  const seenBuildVersion = request.cookies.get('bb_build_version')?.value;
-  const isDocumentRequest = !pathname.startsWith('/api/') && !pathname.startsWith('/_next/');
-  // 微信内置浏览器在收到 Clear-Site-Data 的同时加载页面资源时，部分版本会中断
-  // CSS/图片请求，导致用户看到“只有文字、没有样式”的半加载页面。微信自身的
-  // WebView 不走这次主动清缓存，仍保留 no-store 与 pageshow 刷新防止旧文档恢复。
-  const isWechatBrowser = /MicroMessenger/i.test(request.headers.get('user-agent') ?? '');
-  const shouldClearBrowserCache =
-    isProd && isDocumentRequest && !isWechatBrowser && seenBuildVersion !== buildVersion;
+  const deploymentId =
+    process.env.NEXT_PUBLIC_DEPLOYMENT_ID || process.env.BUILD_CACHE_BUST_VALUE || 'unknown';
 
   if (isProd && shouldRedirectToCanonicalHost(hostname)) {
     const redirectUrl = request.nextUrl.clone();
@@ -88,12 +75,8 @@ export async function middleware(request: NextRequest) {
     redirectUrl.protocol = canonicalUrl.protocol;
     redirectUrl.hostname = canonicalUrl.hostname;
     redirectUrl.port = canonicalUrl.port;
-    const response = applySecurityHeaders(NextResponse.redirect(redirectUrl, 307), isProd, shouldClearBrowserCache);
-    if (shouldClearBrowserCache) {
-      response.cookies.set('bb_build_version', buildVersion, {
-        path: '/', maxAge: 31536000, httpOnly: true, secure: true, sameSite: 'lax',
-      });
-    }
+    const response = applySecurityHeaders(NextResponse.redirect(redirectUrl, 307), isProd);
+    response.headers.set('X-BBWV-Deployment-Id', deploymentId);
     return response;
   }
 
@@ -101,16 +84,9 @@ export async function middleware(request: NextRequest) {
   const response = applySecurityHeaders(
     NextResponse.next(),
     isProd,
-    false,
     preserveCacheControl,
-    false
   );
-  if (shouldClearBrowserCache) {
-    response.headers.set('Clear-Site-Data', '"cache"');
-    response.cookies.set('bb_build_version', buildVersion, {
-      path: '/', maxAge: 31536000, httpOnly: true, secure: true, sameSite: 'lax',
-    });
-  }
+  response.headers.set('X-BBWV-Deployment-Id', deploymentId);
   return response;
 }
 

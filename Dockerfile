@@ -2,6 +2,13 @@
 # 使用 Node.js 20 镜像（与 CloudBase 运行时一致）
 FROM node:20-alpine AS base
 
+# Next.js 将 NEXT_PUBLIC_* 写入客户端构建产物；它们必须在 `next build`
+# 之前进入镜像，而不能只在 CloudBase 容器启动后再设置。
+ARG NEXT_PUBLIC_STATIC_ASSET_ORIGIN
+ARG NEXT_PUBLIC_DEPLOYMENT_ID
+ENV NEXT_PUBLIC_STATIC_ASSET_ORIGIN=${NEXT_PUBLIC_STATIC_ASSET_ORIGIN}
+ENV NEXT_PUBLIC_DEPLOYMENT_ID=${NEXT_PUBLIC_DEPLOYMENT_ID}
+
 # 安装 pnpm 和 bash
 RUN corepack enable && corepack prepare pnpm@9 --activate
 RUN apk add --no-cache bash
@@ -17,17 +24,15 @@ RUN pnpm install --prefer-frozen-lockfile --prefer-offline --prod=false
 # 复制所有源码（.dockerignore 会过滤掉不需要的文件）
 COPY . .
 
-# 保留上一批发布的 Next 静态资源，避免旧 HTML 因资源被删除而变成无样式页面。
-# 新资源优先，旧资源仅作为兼容回退，后续可按发布周期定期清理归档。
-COPY legacy-next-static ./legacy-next-static
-
 # 构建应用。线上显式使用 webpack，保持与本地构建一致。
-RUN rm -rf .next dist && \
+RUN if [ -z "$NEXT_PUBLIC_STATIC_ASSET_ORIGIN" ] || [ -z "$NEXT_PUBLIC_DEPLOYMENT_ID" ]; then \
+      test -f ./static-release.env && . ./static-release.env; \
+    fi && \
+    test -n "$NEXT_PUBLIC_STATIC_ASSET_ORIGIN" && \
+    test -n "$NEXT_PUBLIC_DEPLOYMENT_ID" && \
+    rm -rf .next dist && \
     pnpm exec next build --webpack && \
-    mkdir -p .next/static && \
-    find legacy-next-static -type f -exec sh -c 'for source_file do target_file=".next/static/${source_file#legacy-next-static/}"; if [ ! -e "$target_file" ]; then mkdir -p "$(dirname "$target_file")" && cp "$source_file" "$target_file"; fi; done' sh {} + && \
-    css_file=$(find .next/static/css -maxdepth 1 -type f -name '*.css' | head -n 1) && \
-    test -n "$css_file" && cp "$css_file" public/legacy.css
+    node scripts/write-static-release-manifest.mjs --write
 
 # 构建 server bundle
 RUN pnpm exec tsup src/server.mts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
@@ -45,18 +50,24 @@ RUN rm -rf /root/.local/share/pnpm/store /root/.npm /tmp/*
 # 运行阶段
 FROM node:20-alpine AS runner
 
+ARG NEXT_PUBLIC_STATIC_ASSET_ORIGIN
+ARG NEXT_PUBLIC_DEPLOYMENT_ID
+ENV NEXT_PUBLIC_STATIC_ASSET_ORIGIN=${NEXT_PUBLIC_STATIC_ASSET_ORIGIN}
+ENV NEXT_PUBLIC_DEPLOYMENT_ID=${NEXT_PUBLIC_DEPLOYMENT_ID}
+
 RUN apk add --no-cache bash curl
 
 WORKDIR /app
 
 # 从构建阶段复制必要文件
-COPY --from=base /app/next.config.ts ./
+COPY --from=base /app/next.config.mjs ./
 COPY --from=base /app/package.json ./
 COPY --from=base /app/node_modules ./node_modules
 COPY --from=base /app/.next ./.next
 COPY --from=base /app/public ./public
 COPY --from=base /app/dist ./dist
 COPY --from=base /app/scripts ./scripts
+COPY --from=base /app/static-release.env ./static-release.env
 
 # 修复 Windows CRLF 换行符问题
 RUN sed -i 's/\r$//' ./scripts/start.sh && chmod +x ./scripts/start.sh

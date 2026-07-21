@@ -1,7 +1,5 @@
 import { createServer, IncomingMessage, ServerResponse, request as httpRequest } from 'http';
 import { parse } from 'url';
-import { readFile, stat } from 'node:fs/promises';
-import path from 'node:path';
 import next from 'next';
 
 const dev = process.env.DEPLOY_ENV !== 'PROD';
@@ -78,92 +76,6 @@ function handleHealthCheck(req: IncomingMessage, res: ServerResponse) {
 }
 
 /**
- * 旧标签页可能持有已经被新版本删除的 Next 静态 chunk。
- * 这类页面不会执行新 HTML 里的恢复脚本，因此对缺失的旧 JS chunk 返回一个
- * 一次性刷新脚本，让它重新请求最新 HTML，而不是把错误的 404 留在页面里。
- */
-async function handleMissingLegacyStaticAsset(
-  req: IncomingMessage,
-  res: ServerResponse,
-): Promise<boolean> {
-  if (req.method !== 'GET' && req.method !== 'HEAD') return false;
-
-  const pathname = parse(req.url || '').pathname || '';
-
-  // 首页轮播图曾使用 hero-1.jpg 至 hero-5.jpg。保留旧地址到当前
-  // 图片的映射，避免缓存中的旧 HTML 在恢复前先出现图片 404。
-  const legacyHeroMatch = pathname.match(/^\/hero-([1-5])\.jpg$/);
-  if (legacyHeroMatch) {
-    try {
-      const image = await readFile(
-        path.join(process.cwd(), 'public', `hero-photo-${legacyHeroMatch[1]}.jpg`),
-      );
-      res.writeHead(200, {
-        'Content-Type': 'image/jpeg',
-        'Cache-Control': 'public, max-age=31536000, immutable',
-        'X-BBWV-Legacy-Asset-Recovery': '1',
-      });
-      if (req.method === 'HEAD') res.end();
-      else res.end(image);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  if (!pathname.startsWith('/_next/static/')) return false;
-
-  const assetPath = path.join(process.cwd(), '.next', pathname.replace(/^\/_next\//, ''));
-  try {
-    await stat(assetPath);
-    return false;
-  } catch {
-    const isScript = /\.(?:js|mjs)$/.test(pathname);
-    const isStylesheet = /\.css$/.test(pathname);
-    if (!isScript && !isStylesheet) return false;
-
-    if (isStylesheet) {
-      const retainedCssPath = path.join(process.cwd(), 'public', pathname);
-      const fallbackCssPath = path.join(process.cwd(), 'public', 'legacy.css');
-      try {
-        const css = await readFile(retainedCssPath).catch(() => readFile(fallbackCssPath));
-        res.writeHead(200, {
-          'Content-Type': 'text/css; charset=utf-8',
-          'Cache-Control': 'public, max-age=31536000, immutable',
-          'X-BBWV-Legacy-Asset-Recovery': '1',
-        });
-        if (req.method === 'HEAD') res.end();
-        else res.end(css);
-        return true;
-      } catch {
-        return false;
-      }
-    }
-
-    const recoveryScript = `;(function () {
-  try {
-    var key = '__bbwv_legacy_asset_retry';
-    if (sessionStorage.getItem(key)) return;
-    sessionStorage.setItem(key, '1');
-  } catch (error) {}
-  var url = new URL(window.location.href);
-  url.searchParams.set('__bbwv_legacy_asset_retry', '1');
-  url.searchParams.set('__bbwv_recover', String(Date.now()));
-  window.location.replace(url.toString());
-})();`;
-
-    res.writeHead(200, {
-      'Content-Type': 'application/javascript; charset=utf-8',
-      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
-      'X-BBWV-Legacy-Asset-Recovery': '1',
-    });
-    if (req.method === 'HEAD') res.end();
-    else res.end(recoveryScript);
-    return true;
-  }
-}
-
-/**
  * Probe 服务器请求处理 — 智能分流
  * - 健康检查请求：直接返回 200
  * - 其他请求：反向代理到主应用，确保业务不中断
@@ -199,10 +111,6 @@ app.prepare().then(() => {
     try {
       if (probePort === appPort && isHealthCheck(req)) {
         handleHealthCheck(req, res);
-        return;
-      }
-
-      if (await handleMissingLegacyStaticAsset(req, res)) {
         return;
       }
 
