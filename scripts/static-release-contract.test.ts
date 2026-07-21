@@ -17,34 +17,14 @@ async function main() {
   };
   assert.equal(
     nextConfig.assetPrefix,
-    'https://assets.example.test/next/canary-001',
-    'a deployment must emit every Next static URL from its immutable asset directory',
+    undefined,
+    'the container that renders a document must also serve its matching hashed Next assets',
   );
   assert.equal(
     nextConfig.env?.NEXT_PUBLIC_BUILD_CACHE_BUST_VALUE,
     'canary-001',
     'a fixed deployment id must also make client build metadata deterministic across local and CloudBase builds',
   );
-  const releaseVerifier = await fs.readFile(
-    path.join(ROOT, 'scripts', 'verify-static-release.mjs'),
-    'utf8',
-  );
-  assert.match(
-    releaseVerifier,
-    /next\/\$\{expectedDeploymentId\}\/_next\/static\//,
-    'the release verifier must follow Next assetPrefix URLs through /_next/static',
-  );
-  assert.match(
-    releaseVerifier,
-    /access-control-allow-origin/,
-    'the release verifier must validate CORS for cross-origin font assets',
-  );
-  assert.match(
-    releaseVerifier,
-    /encodeURIComponent/,
-    'the release verifier must request dynamic route asset paths with browser-safe URL encoding',
-  );
-
   const { createStaticReleaseManifest } = await import('./write-static-release-manifest.mjs');
   const staticDir = await fs.mkdtemp(path.join(os.tmpdir(), 'bbwv-static-'));
   const assetPath = path.join(staticDir, 'chunks', 'app.js');

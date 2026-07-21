@@ -15,7 +15,6 @@ function getBuildCacheBustValue() {
   }
 }
 
-const staticAssetOrigin = process.env.NEXT_PUBLIC_STATIC_ASSET_ORIGIN?.replace(/\/$/, '');
 const deploymentId =
   process.env.NEXT_PUBLIC_DEPLOYMENT_ID ||
   process.env.BUILD_CACHE_BUST_VALUE ||
@@ -28,7 +27,6 @@ const buildCacheBustValue =
   process.env.BUILD_CACHE_BUST_VALUE ||
   process.env.NEXT_PUBLIC_BUILD_CACHE_BUST_VALUE ||
   deploymentId;
-const assetPrefix = staticAssetOrigin ? `${staticAssetOrigin}/next/${deploymentId}` : undefined;
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -39,7 +37,6 @@ const nextConfig = {
     NEXT_PUBLIC_BUILD_CACHE_BUST_VALUE: buildCacheBustValue,
     NEXT_PUBLIC_DEPLOYMENT_ID: deploymentId,
   },
-  assetPrefix,
   allowedDevOrigins: ['localhost:5000', 'localhost:3000', 'localhost', 'localhost:3007'],
   images: {
     remotePatterns: [
