@@ -1,4 +1,5 @@
 import { createServer, IncomingMessage, ServerResponse, request as httpRequest } from 'http';
+import fs from 'fs';
 import { parse } from 'url';
 import next from 'next';
 
@@ -8,6 +9,13 @@ const hostname = process.env.HOSTNAME || '0.0.0.0';
 const appPort = parseInt(process.env.APP_PORT || process.env.PORT || '5000', 10);
 // 健康检查端口（CloudBase 可能仍默认探测 3000）
 const probePort = parseInt(process.env.PROBE_PORT || '3000', 10);
+
+console.log('CWD', process.cwd());
+console.log('DIR', __dirname);
+console.log('NEXT STATIC EXISTS', fs.existsSync('/app/.next/static'));
+if (fs.existsSync('/app/.next/static')) {
+  console.log('NEXT STATIC DIR', fs.readdirSync('/app/.next/static'));
+}
 
 // Create Next.js app
 const app = next({ dev, hostname, port: appPort });
