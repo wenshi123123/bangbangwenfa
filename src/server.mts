@@ -109,7 +109,7 @@ app.prepare().then(() => {
   */
   const appServer = createServer(async (req, res) => {
     if (req.url?.startsWith('/_next')) {
-      console.log('NEXT STATIC REQUEST:', req.url);
+      console.log('[STATIC REQUEST]', req.url);
     }
 
     try {
