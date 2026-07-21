@@ -116,7 +116,12 @@ app.prepare().then(() => {
    * 直接使用 Next.js 的请求处理器，包含 API 路由、页面渲染、认证中间件等
   */
   const appServer = createServer(async (req, res) => {
-    console.log('[REQUEST]', req.method, req.url);
+    console.log('[REQUEST]', {
+      method: req.method,
+      url: req.url,
+      incomingDeploymentId: req.headers['x-bbwv-deployment-id'] ?? 'absent',
+      cwd: process.cwd(),
+    });
 
     if (req.url?.startsWith('/_next')) {
       console.log('[STATIC REQUEST]', req.url);

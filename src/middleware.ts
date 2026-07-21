@@ -73,6 +73,12 @@ export async function middleware(request: NextRequest) {
   const deploymentId =
     process.env.NEXT_PUBLIC_DEPLOYMENT_ID || process.env.BUILD_CACHE_BUST_VALUE || 'unknown';
 
+  console.log('[MIDDLEWARE REQUEST]', {
+    path: pathname,
+    deploymentId,
+    incomingDeploymentId: request.headers.get('x-bbwv-deployment-id') ?? 'absent',
+  });
+
   if (isProd && shouldRedirectToCanonicalHost(hostname)) {
     const redirectUrl = request.nextUrl.clone();
     const canonicalUrl = new URL(getCanonicalSiteUrl());
