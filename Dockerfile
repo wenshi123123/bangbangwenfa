@@ -34,6 +34,9 @@ RUN if [ -z "$NEXT_PUBLIC_STATIC_ASSET_ORIGIN" ] || [ -z "$NEXT_PUBLIC_DEPLOYMEN
     pnpm exec next build --webpack && \
     node scripts/write-static-release-manifest.mjs --write
 
+# 静态文件是 Next 页面可用的必要条件；缺失时不要产出一个会返回裸 HTML 的镜像。
+RUN test -d .next/static && test -n "$(find .next/static -type f -print -quit)"
+
 # 构建 server bundle
 RUN pnpm exec tsup src/server.mts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
 
@@ -68,6 +71,9 @@ COPY --from=base /app/public ./public
 COPY --from=base /app/dist ./dist
 COPY --from=base /app/scripts ./scripts
 COPY --from=base /app/static-release.env ./static-release.env
+
+# 多阶段复制后的运行镜像必须同时拥有 Next 哈希资源和 public 资源。
+RUN test -d ./.next/static && test -d ./public
 
 # 修复 Windows CRLF 换行符问题
 RUN sed -i 's/\r$//' ./scripts/start.sh && chmod +x ./scripts/start.sh

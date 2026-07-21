@@ -8,7 +8,17 @@ async function main() {
 
   assert.doesNotMatch(dockerfile, /legacy-next-static/, 'a container must not silently serve stale assets from an unmanaged archive');
   assert.match(dockerfile, /write-static-release-manifest\.mjs --write/, 'Docker build must create a release manifest');
+  assert.match(
+    dockerfile,
+    /test -d \.next\/static && test -n "\$\(find \.next\/static -type f -print -quit\)"/,
+    'Docker build must fail when Next emits no static files',
+  );
   assert.match(dockerfile, /COPY --from=base \/app\/.next \.\/\.next/, 'runtime image must include the manifest alongside the built assets');
+  assert.match(
+    dockerfile,
+    /RUN test -d \.\/\.next\/static && test -d \.\/public/,
+    'runtime image must fail to build when static assets or public files are absent',
+  );
 
   assert.doesNotMatch(buildScript, /legacy-next-static/, 'local build must not merge unrelated build hashes');
   assert.match(buildScript, /write-static-release-manifest\.mjs --write/, 'local build must create the same release manifest as Docker');
