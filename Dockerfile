@@ -75,6 +75,11 @@ COPY --from=base /app/static-release.env ./static-release.env
 # 多阶段复制后的运行镜像必须同时拥有 Next 哈希资源和 public 资源。
 RUN test -d ./.next/static && test -d ./public
 
+# 临时诊断：在 CloudBase 构建日志中确认运行镜像内的 Next 静态目录结构。
+RUN echo "=== CHECK NEXT STATIC ===" && \
+    ls -la .next && \
+    find .next -maxdepth 3 -type d | head -50
+
 # 修复 Windows CRLF 换行符问题
 RUN sed -i 's/\r$//' ./scripts/start.sh && chmod +x ./scripts/start.sh
 
