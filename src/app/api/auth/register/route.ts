@@ -164,23 +164,17 @@ export async function POST(request: NextRequest) {
     // === 更新守护者邀请计数 + 创建邀请关系记录 ===
     if (inviterId) {
       try {
-        // 1. 递增 total_invites
+        // valid_invites 定义：已成功完成邀请码注册绑定、且 guardian_invitees.is_valid=true 的用户数。
+        // 先持久化关系，关系写入成功后再递增汇总，避免失败时产生孤立统计。
         const { data: guardianData } = await supabase
           .from('guardian_users')
-          .select('total_invites')
+          .select('id')
           .eq('id', inviterId)
           .single();
 
         if (guardianData) {
-          await supabase
-            .from('guardian_users')
-            .update({
-              total_invites: (guardianData.total_invites || 0) + 1,
-            })
-            .eq('id', inviterId);
-
-          // 2. 写入 guardian_invitees（佣金分成依赖此表匹配邀请关系）
-          await supabase
+          // 写入 guardian_invitees（佣金分成依赖此表匹配邀请关系）
+          const { error: inviteeError } = await supabase
             .from('guardian_invitees')
             .upsert({
               guardian_id: inviterId,
@@ -190,6 +184,19 @@ export async function POST(request: NextRequest) {
               bind_source: 'register',
               is_valid: true,
             }, { onConflict: 'invitee_user_id,guardian_id' });
+
+          if (inviteeError) {
+            throw inviteeError;
+          }
+
+          // 关系成功后用数据库原子递增同步两个统计字段，避免并发注册丢计数。
+          const { error: statsError } = await supabase.rpc('increment_guardian_invite_stats', {
+            p_guardian_id: inviterId,
+          });
+
+          if (statsError) {
+            throw statsError;
+          }
         }
       } catch (updateError) {
         console.error('更新守护者邀请计数失败:', updateError);

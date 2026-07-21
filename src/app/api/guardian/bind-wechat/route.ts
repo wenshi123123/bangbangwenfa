@@ -20,11 +20,16 @@ export async function POST(request: NextRequest) {
       return unauthorizedResponse(auth.error);
     }
 
-    // 确定守护者ID：优先使用 body 传入的，其次使用 JWT 中的
-    const guardianId = guardian_id || auth.guardianId;
-    if (!guardianId) {
-      return NextResponse.json({ success: false, error: '无法确定守护者身份' }, { status: 400 });
+    if (auth.userType !== 'guardian' || !auth.guardianId) {
+      return NextResponse.json({ success: false, error: '非守护者账号' }, { status: 403 });
     }
+
+    if (guardian_id !== undefined && String(guardian_id) !== String(auth.guardianId)) {
+      return NextResponse.json({ success: false, error: '无权操作其他守护者数据' }, { status: 403 });
+    }
+
+    // 身份边界以 JWT 为准，客户端字段仅用于兼容旧调用方并经过一致性校验。
+    const guardianId = auth.guardianId;
 
     const supabase = getSupabaseAdmin();
 

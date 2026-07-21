@@ -13,16 +13,18 @@ export async function POST(request: NextRequest) {
       return unauthorizedResponse(auth.error);
     }
 
+    if (auth.userType !== 'guardian' || !auth.guardianId) {
+      return NextResponse.json({ success: false, error: '非守护者账号' }, { status: 403 });
+    }
+
     const formData = await request.formData();
     const qrcodeFile = formData.get('qrcode') as File | null;
     const wechatAccount = formData.get('wechatAccount') as string | null;
     const guardianIdRaw = formData.get('guardianId') as string | null;
-
-    // 确定守护者ID
-    const guardianId = guardianIdRaw || auth.guardianId?.toString();
-    if (!guardianId) {
-      return NextResponse.json({ success: false, error: '无法确定守护者身份' }, { status: 400 });
+    if (guardianIdRaw !== null && String(guardianIdRaw) !== String(auth.guardianId)) {
+      return NextResponse.json({ success: false, error: '无权操作其他守护者数据' }, { status: 403 });
     }
+    const guardianId = auth.guardianId.toString();
 
     if (!qrcodeFile && !wechatAccount) {
       return NextResponse.json({ success: false, error: '请上传收款码或填写微信号' }, { status: 400 });

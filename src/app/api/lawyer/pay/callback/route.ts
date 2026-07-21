@@ -1,275 +1,164 @@
-/**
- * 律师入驻支付回调
- * 微信支付完成后会通知此接口
- */
-
+/** 微信律师入驻支付回调：新订单优先，历史申请订单仅作兼容回退。 */
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { verifyWechatPaySignature } from '@/lib/payment/wechat-cert';
 import { notifyOrder } from '@/lib/notify/webhook';
 import crypto from 'crypto';
 
-function decryptNotifyData(
-  ciphertext: string,
-  associatedData: string,
-  nonce: string,
-  apiV3Key: string
-): string {
-  const key = Buffer.from(apiV3Key, 'utf8');
-  const iv = Buffer.from(nonce, 'utf8');
-  const authTag = Buffer.from(ciphertext.slice(-16), 'base64');
-  const data = Buffer.from(ciphertext.slice(0, -16), 'base64');
+function failure(message: string, status = 200) {
+  return NextResponse.json({ code: 'FAIL', message }, { status });
+}
 
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-  decipher.setAuthTag(authTag);
+function success() {
+  return NextResponse.json({ code: 'SUCCESS', message: 'OK' }, { status: 200 });
+}
+
+function decryptNotifyData(ciphertext: string, associatedData: string, nonce: string, apiV3Key: string): string {
+  const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(apiV3Key, 'utf8'), Buffer.from(nonce, 'utf8'));
+  decipher.setAuthTag(Buffer.from(ciphertext.slice(-16), 'base64'));
   decipher.setAAD(Buffer.from(associatedData, 'utf8'));
+  return decipher.update(Buffer.from(ciphertext.slice(0, -16), 'base64'), undefined, 'utf8') + decipher.final('utf8');
+}
 
-  let decrypted = decipher.update(data, undefined, 'utf8');
-  decrypted += decipher.final('utf8');
+async function parseVerifiedPayment(request: NextRequest) {
+  const body = await request.text();
+  const authorization = request.headers.get('authorization') || '';
+  const signature = authorization.match(/signature="([^"]+)"/)?.[1] || '';
+  const timestamp = request.headers.get('wechatpay-timestamp') || '';
+  const nonce = request.headers.get('wechatpay-nonce') || '';
+  const serial = request.headers.get('wechatpay-serial') || '';
+  if (!signature || !serial) return { error: failure('缺少签名信息', 401) };
 
-  return decrypted;
+  const verified = await verifyWechatPaySignature(signature, timestamp, nonce, body, serial);
+  if (!verified.valid) return { error: failure('签名验证失败', 401) };
+
+  const apiV3Key = process.env.WEIXIN_APIV3_KEY || '';
+  if (!apiV3Key) return { error: failure('配置错误', 500) };
+  try {
+    const notification = JSON.parse(body);
+    const paymentResult = notification.resource?.ciphertext
+      ? JSON.parse(decryptNotifyData(notification.resource.ciphertext, notification.resource.associated_data || '', notification.resource.nonce || '', apiV3Key))
+      : notification;
+    return { paymentResult };
+  } catch {
+    return { error: failure('Invalid notification', 400) };
+  }
+}
+
+async function notifyRegistration(application: any, orderNo: string) {
+  await notifyOrder({
+    type: 'Registration',
+    userName: application.name || application.phone || '未知',
+    phone: application.phone || undefined,
+    amount: application.package_price,
+    detail: `套餐：${application.package_type || '律师入驻'}`,
+    orderId: orderNo,
+    status: 'Paid',
+    event: 'paid',
+  });
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.text();
-    const headers = request.headers;
-    
-    // ========== 签名验证（防止伪造回调）==========
-    // 微信支付 APIv3 回调签名在 Authorization 头中
-    // 格式: WECHATPAY2-SHA256-RSA2048 signature="xxx",serial_no="yyy",nonce_str="...",timestamp="..."
-    const authorization = headers.get('authorization') || '';
-    const signature = authorization.match(/signature="([^"]+)"/)?.[1] || '';
-    const timestamp = headers.get('wechatpay-timestamp') || '';
-    const nonce = headers.get('wechatpay-nonce') || '';
-    const serial = headers.get('wechatpay-serial') || '';
+    const parsed = await parseVerifiedPayment(request);
+    if ('error' in parsed) return parsed.error;
+    const paymentResult = parsed.paymentResult;
+    if (paymentResult.trade_state !== 'SUCCESS') return failure('Payment not successful');
 
-    if (!signature || !serial) {
-      console.error('律师入驻支付回调缺少签名信息');
-      return NextResponse.json(
-        { code: 'FAIL', message: '缺少签名信息' },
-        { status: 401 }
-      );
-    }
-
-    // 注意：verifyWechatPaySignature 参数顺序为 (signature, timestamp, nonce, body, serialNo)
-    const verifyResult = await verifyWechatPaySignature(
-      signature,
-      timestamp,
-      nonce,
-      body,
-      serial
-    );
-
-    if (!verifyResult.valid) {
-      console.error('律师入驻支付回调签名验证失败:', verifyResult.reason);
-      return NextResponse.json(
-        { code: 'FAIL', message: '签名验证失败' },
-        { status: 401 }
-      );
-    }
-    console.log('律师入驻支付回调签名验证通过');
-
-    const apiV3Key = process.env.WEIXIN_APIV3_KEY || '';
-    if (!apiV3Key) {
-      console.error('未配置APIv3密钥，无法解密律师入驻支付回调');
-      return NextResponse.json(
-        { code: 'FAIL', message: '配置错误' },
-        { status: 500 }
-      );
-    }
-
-    let paymentResult: any;
-    try {
-      const notifyData = JSON.parse(body);
-      if (notifyData.resource?.ciphertext) {
-        paymentResult = JSON.parse(
-          decryptNotifyData(
-            notifyData.resource.ciphertext,
-            notifyData.resource.associated_data || '',
-            notifyData.resource.nonce || '',
-            apiV3Key
-          )
-        );
-      } else {
-        paymentResult = notifyData;
-      }
-    } catch (parseError) {
-      console.error('律师入驻支付回调解析失败:', parseError);
-      return NextResponse.json(
-        { code: 'FAIL', message: 'Invalid notification' },
-        { status: 400 }
-      );
-    }
-
-    console.log('收到律师入驻支付回调:', {
-      transactionId: paymentResult.transaction_id,
-      outTradeNo: paymentResult.out_trade_no,
-      tradeState: paymentResult.trade_state,
-    });
-
-    if (paymentResult.trade_state !== 'SUCCESS') {
-      console.log('支付未成功:', paymentResult.trade_state);
-      return NextResponse.json(
-        { code: 'FAIL', message: 'Payment not successful' },
-        { status: 200 }
-      );
-    }
-
-    const transactionId = paymentResult.transaction_id;
     const outTradeNo = paymentResult.out_trade_no;
+    const transactionId = paymentResult.transaction_id;
+    if (!outTradeNo || !transactionId || !paymentResult.amount?.total) return failure('支付通知缺少订单或金额');
 
     const supabase = getSupabaseAdmin();
-
-    // 通过订单号查找律师申请
-    const { data: application, error: appError } = await supabase
-      .from('lawyer_applications')
-      .select('*')
+    // 新订单优先：所有新入驻支付必须先命中独立订单表。
+    const { data: paymentOrder, error: paymentOrderError } = await supabase
+      .from('lawyer_application_payment_orders')
+      .select('application_id, user_id, order_no, amount, status, paid_at, wechat_transaction_id')
       .eq('order_no', outTradeNo)
-      .single();
-
-    if (appError || !application) {
-      console.error('未找到对应的律师申请:', outTradeNo);
-      return NextResponse.json(
-        { code: 'FAIL', message: 'Application not found' },
-        { status: 200 }
-      );
+      .maybeSingle();
+    if (paymentOrderError) {
+      console.error('[Lawyer/Pay/Callback] 查询新订单失败:', paymentOrderError);
+      return failure('Order lookup failed', 500);
     }
 
-    // 检查是否已处理过
+    if (paymentOrder) {
+      if (paymentOrder.amount !== paymentResult.amount.total) return failure('支付金额不一致');
+      if (paymentOrder.status === 'paid') {
+        if (paymentOrder.wechat_transaction_id && paymentOrder.wechat_transaction_id !== transactionId) return failure('微信交易号不一致');
+        return success();
+      }
+      if (!['creating', 'pending'].includes(paymentOrder.status)) return failure('订单状态不允许支付完成');
+
+      const { data: application, error: applicationError } = await supabase
+        .from('lawyer_applications')
+        .select('id, user_id, payment_status, order_no, wechat_transaction_id, paid_at, name, phone, package_price, package_type')
+        .eq('id', paymentOrder.application_id)
+        .maybeSingle();
+      if (applicationError || !application) return failure('Application not found');
+      if (String(paymentOrder.user_id) !== String(application.user_id)) return failure('订单归属不一致');
+      if (application.wechat_transaction_id && application.wechat_transaction_id !== transactionId) return failure('申请已有不同微信交易号');
+
+      const paidAt = new Date().toISOString();
+      // 原子状态跃迁，重复回调不会将 paid 覆盖或降级。
+      const { data: paidOrder, error: updateOrderError } = await supabase
+        .from('lawyer_application_payment_orders')
+        .update({ status: 'paid', paid_at: paidAt, wechat_transaction_id: transactionId, updated_at: paidAt })
+        .eq('order_no', outTradeNo)
+        .in('status', ['creating', 'pending'])
+        .select('order_no')
+        .maybeSingle();
+      if (updateOrderError) return failure('Order update failed', 500);
+      if (!paidOrder) {
+        const { data: latestOrder } = await supabase
+          .from('lawyer_application_payment_orders')
+          .select('status, wechat_transaction_id')
+          .eq('order_no', outTradeNo)
+          .maybeSingle();
+        return latestOrder?.status === 'paid' && (!latestOrder.wechat_transaction_id || latestOrder.wechat_transaction_id === transactionId)
+          ? success() : failure('订单状态冲突');
+      }
+
+      const { data: updatedApplication, error: updateApplicationError } = await supabase
+        .from('lawyer_applications')
+        .update({ payment_status: 'paid', order_no: outTradeNo, wechat_transaction_id: transactionId, paid_at: paidAt })
+        .eq('id', application.id)
+        .neq('payment_status', 'paid')
+        .select('id')
+        .maybeSingle();
+      if (updateApplicationError) return failure('Application update failed', 500);
+      if (updatedApplication) await notifyRegistration(application, outTradeNo);
+      return success();
+    }
+
+    // 历史订单兼容：新表上线前的二维码仍通过申请表 order_no 完成支付。
+    const { data: application, error: legacyError } = await supabase
+      .from('lawyer_applications')
+      .select('id, user_id, payment_status, order_no, wechat_transaction_id, paid_at, name, phone, package_price, package_type')
+      .eq('order_no', outTradeNo)
+      .maybeSingle();
+    if (legacyError || !application) return failure('Application not found');
+    if (application.package_price !== paymentResult.amount.total) return failure('支付金额不一致');
     if (application.payment_status === 'paid') {
-      console.log('订单已支付，跳过处理:', outTradeNo);
-      return NextResponse.json(
-        { code: 'SUCCESS', message: 'OK' },
-        { status: 200 }
-      );
+      return application.wechat_transaction_id && application.wechat_transaction_id !== transactionId ? failure('微信交易号不一致') : success();
     }
 
-    // 更新申请状态为已支付
+    const paidAt = new Date().toISOString();
     const { data: updatedApplication, error: updateError } = await supabase
       .from('lawyer_applications')
-      .update({
-        payment_status: 'paid',
-        paid_at: new Date().toISOString(),
-        wechat_transaction_id: transactionId,
-        order_no: outTradeNo,
-      })
+      .update({ payment_status: 'paid', order_no: outTradeNo, wechat_transaction_id: transactionId, paid_at: paidAt })
       .eq('id', application.id)
-      // 回调和前端补偿查询可能同时抵达；只有第一个成功更新者发送支付通知。
       .neq('payment_status', 'paid')
       .select('id')
       .maybeSingle();
-
-    if (updateError) {
-      console.error('更新支付状态失败:', updateError);
-      return NextResponse.json(
-        { code: 'FAIL', message: 'Update failed' },
-        { status: 500 }
-      );
-    }
-
-    if (!updatedApplication) {
-      return NextResponse.json({ code: 'SUCCESS', message: 'OK' });
-    }
-
-    await notifyOrder({
-      type: 'Registration',
-      userName: application.name || application.phone || '未知',
-      phone: application.phone || undefined,
-      amount: application.package_price,
-      detail: `套餐：${application.package_type || '律师入驻'}`,
-      orderId: outTradeNo,
-      status: 'Paid',
-      event: 'paid',
-    });
-
-    // 计算会员到期时间（套餐固定18个月）
-    const calculateMemberExpiry = (baseDate: Date, months: number): Date => {
-      const result = new Date(baseDate);
-      result.setMonth(result.getMonth() + months);
-      return result;
-    };
-
-    // 获取律师信息（检查是否已存在）
-    const applicationUserId = application.user_id ? String(application.user_id) : null;
-    let existingLawyer = null;
-    if (applicationUserId) {
-      const { data: found } = await supabase
-        .from('lawyers')
-        .select('id, member_expires_at')
-        .eq('user_id', applicationUserId)
-        .maybeSingle();
-      existingLawyer = found;
-    }
-
-    // 套餐时长固定18个月
-    const PACKAGE_MONTHS = 18;
-
-    if (existingLawyer) {
-      // 律师已存在，执行续费：叠加18个月
-      let newExpiryDate = new Date();
-      
-      // 如果有有效到期时间，从到期时间开始计算；否则从现在开始
-      if (existingLawyer.member_expires_at) {
-        const currentExpiry = new Date(existingLawyer.member_expires_at);
-        if (currentExpiry > new Date()) {
-          // 会员未过期，从当前到期日开始计算
-          newExpiryDate = calculateMemberExpiry(currentExpiry, PACKAGE_MONTHS);
-        } else {
-          // 会员已过期，从今天开始计算
-          newExpiryDate = calculateMemberExpiry(new Date(), PACKAGE_MONTHS);
-        }
-      } else {
-        // 无到期时间记录，从今天开始计算
-        newExpiryDate = calculateMemberExpiry(new Date(), PACKAGE_MONTHS);
-      }
-
-      // 更新律师到期时间
-      await supabase
-        .from('lawyers')
-        .update({ 
-          member_expires_at: newExpiryDate.toISOString(),
-          membership_status: 'normal'
-        })
-        .eq('id', existingLawyer.id);
-
-      console.log('律师续费成功:', {
-        userId: application.user_id,
-        previousExpiry: existingLawyer.member_expires_at,
-        newExpiry: newExpiryDate.toISOString(),
-      });
-    } else {
-      // 新入驻律师：仅记录支付完成，等待管理员审核后再创建正式律师账号
-      console.log('律师入驻支付已完成，等待管理员审核创建律师账号:', {
-        userId: application.user_id,
-        name: application.name,
-      });
-    }
-
-    console.log('律师入驻支付处理成功:', {
-      applicationId: application.id,
-      transactionId,
-      outTradeNo,
-    });
-
-    // 返回成功响应
-    return NextResponse.json(
-      { code: 'SUCCESS', message: 'OK' },
-      { status: 200 }
-    );
+    if (updateError) return failure('Update failed', 500);
+    if (updatedApplication) await notifyRegistration(application, outTradeNo);
+    return success();
   } catch (error) {
-    console.error('处理律师入驻支付回调失败:', error);
-    return NextResponse.json(
-      { code: 'FAIL', message: 'Internal error' },
-      { status: 500 }
-    );
+    console.error('[Lawyer/Pay/Callback] 处理失败:', error);
+    return failure('Internal error', 500);
   }
 }
 
-// 处理微信支付验证回调（GET 请求）
 export async function GET() {
-  return NextResponse.json(
-    { code: 'SUCCESS', message: 'OK' },
-    { status: 200 }
-  );
+  return success();
 }

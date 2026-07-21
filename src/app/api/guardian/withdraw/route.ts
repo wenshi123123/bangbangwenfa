@@ -167,111 +167,33 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { amount } = body;
 
-    if (!amount) {
+    if (!Number.isFinite(amount) || !Number.isInteger(amount) || amount <= 0) {
       return NextResponse.json({ success: false, error: '缺少提现金额' }, { status: 400 });
     }
 
     const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase.rpc('create_guardian_withdrawal', {
+      p_guardian_id: guardianId,
+      p_amount: amount,
+    });
 
-    // 使用原子操作：在更新余额时同时检查条件，避免竞态
-    // 先创建提现记录
-    const { data: withdrawal, error: insertError } = await supabase
-      .from('guardian_withdrawals')
-      .insert({
-        guardian_id: guardianId,
-        amount: amount,
-        fee: 0,
-        actual_amount: amount,
-        status: 'pending'
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error('创建提现记录失败:', insertError);
-      return NextResponse.json({ success: false, error: '创建提现记录失败' }, { status: 500 });
-    }
-
-    // 重新查询守护者信息（避免脏读）
-    const { data: guardian, error: guardianError } = await supabase
-      .from('guardian_users')
-      .select('*')
-      .eq('id', guardianId)
-      .single();
-
-    if (guardianError || !guardian) {
-      await supabase.from('guardian_withdrawals').delete().eq('id', withdrawal.id);
-      return NextResponse.json({ success: false, error: '用户不存在' }, { status: 404 });
-    }
-
-    if (guardian.status === 'banned') {
-      await supabase.from('guardian_withdrawals').delete().eq('id', withdrawal.id);
-      return NextResponse.json({ success: false, error: '账号已被封禁，无法提现' }, { status: 403 });
-    }
-
-    // 检查是否有待处理的提现申请
-    const { data: pendingWithdrawal } = await supabase
-      .from('guardian_withdrawals')
-      .select('id')
-      .eq('guardian_id', guardianId)
-      .in('status', ['pending', 'processing'])
-      .neq('id', withdrawal.id)  // 排除刚创建的这条
-      .maybeSingle();
-
-    if (pendingWithdrawal) {
-      await supabase.from('guardian_withdrawals').delete().eq('id', withdrawal.id);
-      return NextResponse.json({
-        success: false,
-        error: '您有正在处理中的提现申请，请等待完成后再申请',
-        code: 'PENDING_EXISTS'
-      }, { status: 400 });
-    }
-
-    // 检查可提现金额
-    if (guardian.available_commission < MIN_WITHDRAW_AMOUNT) {
-      await supabase.from('guardian_withdrawals').delete().eq('id', withdrawal.id);
-      return NextResponse.json({
-        success: false,
-        error: `可提现金额不足，最低提现金额为${MIN_WITHDRAW_AMOUNT / 100}元`
-      }, { status: 400 });
-    }
-
-    if (amount < MIN_WITHDRAW_AMOUNT) {
-      await supabase.from('guardian_withdrawals').delete().eq('id', withdrawal.id);
-      return NextResponse.json({
-        success: false,
-        error: `提现金额不能低于${MIN_WITHDRAW_AMOUNT / 100}元`
-      }, { status: 400 });
-    }
-
-    if (amount > guardian.available_commission) {
-      await supabase.from('guardian_withdrawals').delete().eq('id', withdrawal.id);
-      return NextResponse.json({
-        success: false,
-        error: '提现金额超过可提现余额'
-      }, { status: 400 });
-    }
-
-    // 扣除可用余额（此操作与提现记录创建之间极小窗口，且已做多重检查）
-    const { error: balanceUpdateError } = await supabase
-      .from('guardian_users')
-      .update({
-        available_commission: guardian.available_commission - amount
-      })
-      .eq('id', guardianId)
-      .gte('available_commission', amount);  // 条件更新防竞态
-
-    if (balanceUpdateError) {
-      console.error('更新余额失败:', balanceUpdateError);
-      await supabase.from('guardian_withdrawals').delete().eq('id', withdrawal.id);
-      return NextResponse.json({ success: false, error: '提现申请失败' }, { status: 500 });
+    if (error || !data) {
+      const code = error?.message?.match(/PENDING_EXISTS|AMOUNT_BELOW_MINIMUM|INVALID_AMOUNT|INSUFFICIENT_BALANCE_OR_GUARDIAN/)?.[0];
+      const message = code === 'PENDING_EXISTS'
+        ? '您有正在处理中的提现申请，请等待完成后再申请'
+        : code === 'AMOUNT_BELOW_MINIMUM'
+          ? `提现金额不能低于${MIN_WITHDRAW_AMOUNT / 100}元`
+          : code === 'INSUFFICIENT_BALANCE_OR_GUARDIAN'
+            ? '可提现金额不足或账号不可用'
+            : '提现申请失败，请稍后重试';
+      return NextResponse.json({ success: false, error: message, code }, { status: 400 });
     }
 
     return NextResponse.json({
       success: true,
       data: {
-        withdrawalId: withdrawal.id,
-        amount: amount,
+        withdrawalId: data.withdrawalId,
+        amount: data.amount,
         status: 'pending',
         message: '提现申请已提交，预计1-3个工作日到账'
       }

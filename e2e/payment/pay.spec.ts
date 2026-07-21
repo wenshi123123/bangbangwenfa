@@ -107,15 +107,16 @@ test.describe('律师入驻支付页面 (/lawyer/pay)', () => {
     expect(hasContent).toBeTruthy();
   });
 
-  test('/lawyer/pay 页面应包含律师登录相关 UI', async ({ page }) => {
+  test('/lawyer/pay 页面应展示登录引导和正确的支付页回跳', async ({ page }) => {
     const response = await page.goto('/lawyer/pay?applicationId=test_ui_1', { timeout: 15000 });
     expect(response?.status()).toBe(200);
 
     await waitForPageReady(page);
 
     const bodyText = (await page.textContent('body')) ?? '';
-    // 未登录显示律师登录页
-    expect(bodyText).toContain('手机号登录');
+    expect(bodyText).toContain('请先登录');
+    const loginLink = page.getByRole('link', { name: '前往登录' });
+    await expect(loginLink).toHaveAttribute('href', '/lawyer/login?redirect=%2Flawyer%2Fpay');
   });
 
   test('/lawyer/pay 不应崩溃（特殊字符 applicationId）', async ({ page }) => {
@@ -290,68 +291,77 @@ test.describe('支付回调 API (POST /api/pay/callback)', () => {
   });
 });
 
+test.describe('律师入驻支付回调 API (POST /api/lawyer/pay/callback)', () => {
+  test('签名缺失时返回 401 且不进入订单处理', async ({ request }) => {
+    const response = await request.post('/api/lawyer/pay/callback', {
+      data: { trade_state: 'SUCCESS', out_trade_no: 'LAW-UNTRUSTED', transaction_id: 'TX-UNTRUSTED' },
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(response.status()).toBe(401);
+    await expect(response.json()).resolves.toMatchObject({ code: 'FAIL' });
+  });
+});
+
 // ============================================================
 // 第六部分：律师支付 API 测试
 // ============================================================
 test.describe('律师支付 API (/api/lawyer/pay/create)', () => {
-  test('POST 无 applicationId 应返回 401（无认证）或 400', async ({ request }) => {
+  test('POST 未登录时无论是否携带 applicationId 都返回 401', async ({ request }) => {
     const response = await request.post('/api/lawyer/pay/create', {
       data: {},
       headers: { 'Content-Type': 'application/json' },
     });
-    // 路由先检查认证，无 auth 时返回 401
-    expect([400, 401]).toContain(response.status());
+    expect(response.status()).toBe(401);
     const body = await response.json();
     expect(body.success).toBe(false);
   });
 
-  test('POST 空请求体应返回 500 或 401', async ({ request }) => {
+  test('POST 空请求体在认证前返回 401', async ({ request }) => {
     const response = await request.post('/api/lawyer/pay/create', {
       data: null,
       headers: { 'Content-Type': 'application/json' },
     });
-    // null body → request.json() 抛出异常 → catch 返回 500
-    // 或者 auth 中间件先拦截返回 401
-    expect([401, 500]).toContain(response.status());
+    expect(response.status()).toBe(401);
   });
 
-  test('POST 无效 applicationId 应返回 404（申请不存在）', async ({ request }) => {
+  test('POST 客户端 applicationId 不能替代登录身份', async ({ request }) => {
     const response = await request.post('/api/lawyer/pay/create', {
       data: { applicationId: '99999999' },
       headers: { 'Content-Type': 'application/json' },
     });
-    // 路由查询数据库无结果返回 404
-    expect(response.status()).toBe(404);
+    expect(response.status()).toBe(401);
     const body = await response.json();
     expect(body.success).toBe(false);
-    expect(body.error).toContain('申请不存在');
+    expect(body.error).toBeTruthy();
   });
 
-  test('POST SQL 注入尝试应被安全处理（parseInt 过滤）', async ({ request }) => {
+  test('POST 对 applicationId 注入字符串不产生授权效果', async ({ request }) => {
     const response = await request.post('/api/lawyer/pay/create', {
       data: { applicationId: "1' OR '1'='1" },
       headers: { 'Content-Type': 'application/json' },
     });
-    // parseInt("1' OR '1'='1") = 1 → 走到数据库查询，不存在返回 404
-    // 但不会执行 SQL 注入，不会返回 500 服务器错误
-    expect([200, 400, 401, 403, 404]).toContain(response.status());
-    expect(response.status()).not.toBe(500);
+    expect(response.status()).toBe(401);
   });
 });
 
 test.describe('律师支付状态 API (GET /api/lawyer/pay/status)', () => {
+  test('GET 本人支付上下文在未登录时返回 401', async ({ request }) => {
+    const response = await request.get('/api/lawyer/payment-context');
+    expect(response.status()).toBe(401);
+    await expect(response.json()).resolves.toMatchObject({ success: false });
+  });
+
   test('GET 无 orderId 应返回 400', async ({ request }) => {
     const response = await request.get('/api/lawyer/pay/status');
     expect(response.status()).toBe(400);
   });
 
-  test('GET 无效 orderId 应返回 404', async ({ request }) => {
+  test('GET 入驻订单状态在未登录时返回 401', async ({ request }) => {
     const response = await request.get('/api/lawyer/pay/status?orderId=99999999');
-    // 数据库查不到对应记录，返回 404
-    expect(response.status()).toBe(404);
+    expect(response.status()).toBe(401);
     const body = await response.json();
     expect(body.success).toBe(false);
-    expect(body.error).toContain('订单不存在');
+    expect(body.error).toBeTruthy();
   });
 });
 

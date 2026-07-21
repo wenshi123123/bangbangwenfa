@@ -26,8 +26,24 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    if (!inviteCode || typeof inviteCode !== 'string') {
+      return NextResponse.json({ success: false, error: '缺少有效邀请码' }, { status: 400 });
+    }
+
     const supabase = getSupabaseAdmin();
     const userIdStr = String(userId);
+
+    // 邀请码是邀请关系的授权凭据：客户端 guardianId 必须与邀请码实际归属一致。
+    const { data: guardian, error: guardianError } = await supabase
+      .from('guardian_users')
+      .select('id, nickname, invite_code, status')
+      .eq('invite_code', inviteCode.trim().toUpperCase())
+      .eq('status', 'active')
+      .single();
+
+    if (guardianError || !guardian || String(guardian.id) !== String(guardianId)) {
+      return NextResponse.json({ success: false, error: '邀请码与守护者不匹配' }, { status: 403 });
+    }
 
     // 优先通过 user_id 查找，如果找到则更新 openid
     const { data: existingByUserId } = await supabase
@@ -78,13 +94,6 @@ export async function POST(request: NextRequest) {
         });
       }
     }
-
-    // 获取守护者信息
-    const { data: guardian } = await supabase
-      .from('guardian_users')
-      .select('nickname')
-      .eq('id', guardianId)
-      .single();
 
     // 创建邀请关系，同时保存 user_id 和 openid（如果都有）
     const { data: newInvitee, error } = await supabase

@@ -63,18 +63,14 @@ interface WithdrawalRecord {
 
 export default function GuardianCenterPage() {
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get('tab');
+  const [mounted, setMounted] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [guardian, setGuardian] = useState<GuardianData | null>(null);
   const [isLoading, setIsLoading] = useState(true); // 合并 loading 和 isChecking
   const [commissions, setCommissions] = useState<CommissionRecord[]>([]);
   const [invitees, setInvitees] = useState<InviteeRecord[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRecord[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'commissions' | 'invitees' | 'withdrawals'>(
-    initialTab === 'commissions' || initialTab === 'invitees' || initialTab === 'withdrawals'
-      ? initialTab
-      : 'overview'
-  );
+  const [activeTab, setActiveTab] = useState<'overview' | 'commissions' | 'invitees' | 'withdrawals'>('overview');
   const [refreshing, setRefreshing] = useState(false);
   const [qrcodeUrl, setQrcodeUrl] = useState<string>('');
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
@@ -101,6 +97,16 @@ export default function GuardianCenterPage() {
   const { posterUrl, generating, generatePoster, downloadPoster } = usePosterGenerator();
   const [hasPendingWithdraw, setHasPendingWithdraw] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Keep the server render and the first client render deterministic. URL and
+  // localStorage state are applied only after hydration has completed.
+  useEffect(() => {
+    setMounted(true);
+    const tab = searchParams.get('tab');
+    if (tab === 'commissions' || tab === 'invitees' || tab === 'withdrawals') {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   // 生成邀请二维码
   const generateQRCode = useCallback(async (invite_code: string) => {
@@ -179,6 +185,7 @@ export default function GuardianCenterPage() {
 
   // 检查登录状态并初始化守护者
   useEffect(() => {
+    if (!mounted) return;
     const checkAndInit = async () => {
       const hasToken = !!localStorage.getItem('token');
       if (!hasToken) {
@@ -233,7 +240,7 @@ export default function GuardianCenterPage() {
     return () => {
       window.removeEventListener('user-logged-in', handleLoginSuccess);
     };
-  }, [fetchData, generateQRCode]);
+  }, [fetchData, generateQRCode, mounted]);
 
   const copyInviteLink = () => {
     const inviteUrl = `${window.location.origin}${getGuardianInviteRegistrationPath(guardian?.invite_code || '')}`;
@@ -517,7 +524,7 @@ export default function GuardianCenterPage() {
   };
 
   // 加载中状态
-  if (isLoading) {
+  if (!mounted || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2]">
         <div className="text-center space-y-4">
