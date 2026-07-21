@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 
 process.env.DEPLOY_ENV = 'PROD';
 process.env.NEXT_PUBLIC_DEPLOYMENT_ID = 'test-deployment';
+process.env.NEXT_PUBLIC_STATIC_ASSET_ORIGIN = 'https://assets.example.test';
 async function main() {
   const { NextRequest } = await import('next/server');
   const { middleware } = await import('../src/middleware');
@@ -53,6 +54,14 @@ async function main() {
   assert.match(normalResponse.headers.get('cache-control') ?? '', /no-store/);
   assert.equal(normalResponse.headers.get('set-cookie'), null);
   assert.equal(normalResponse.headers.get('x-bbwv-deployment-id'), 'test-deployment');
+  const contentSecurityPolicy = normalResponse.headers.get('content-security-policy') ?? '';
+  for (const directive of ['script-src', 'style-src', 'font-src']) {
+    assert.match(
+      contentSecurityPolicy,
+      new RegExp(`${directive}[^;]*https://assets\\.example\\.test`),
+      `versioned cross-origin static assets must be allowed by ${directive}`,
+    );
+  }
 
   const rscResponse = await middleware(
     new NextRequest('https://www.bangbangwenfa.com/guardian/center?_rsc=build', {

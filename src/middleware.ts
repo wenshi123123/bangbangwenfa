@@ -11,6 +11,10 @@ function applySecurityHeaders(
   isProd: boolean,
   preserveCacheControl = false,
 ) {
+  // Next 的 JS/CSS/字体由版本化的 CloudBase 静态域名提供；CSP 必须显式
+  // 放行该来源，否则浏览器会只渲染 HTML，表现为页面完全丢失样式。
+  const staticAssetOrigin = process.env.NEXT_PUBLIC_STATIC_ASSET_ORIGIN?.replace(/\/$/, '');
+  const staticAssetSource = staticAssetOrigin ? ` ${staticAssetOrigin}` : '';
   // 隐藏技术栈信息
   response.headers.delete('X-Powered-By');
 
@@ -40,10 +44,10 @@ function applySecurityHeaders(
       'Content-Security-Policy',
       [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline'",
-        "style-src 'self' 'unsafe-inline'",
+        `script-src 'self' 'unsafe-inline'${staticAssetSource}`,
+        `style-src 'self' 'unsafe-inline'${staticAssetSource}`,
         "img-src 'self' data: https:",
-        "font-src 'self' data:",
+        `font-src 'self' data:${staticAssetSource}`,
         "connect-src 'self' https://bangbangwenfa.com https://www.bangbangwenfa.com https://api.mch.weixin.qq.com https://*.supabase.co",
         "frame-ancestors 'none'",
         "base-uri 'self'",
