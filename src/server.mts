@@ -106,8 +106,12 @@ app.prepare().then(() => {
   /**
    * 主应用服务器 — 处理所有用户请求
    * 直接使用 Next.js 的请求处理器，包含 API 路由、页面渲染、认证中间件等
-   */
+  */
   const appServer = createServer(async (req, res) => {
+    if (req.url?.startsWith('/_next')) {
+      console.log('NEXT STATIC REQUEST:', req.url);
+    }
+
     try {
       if (probePort === appPort && isHealthCheck(req)) {
         handleHealthCheck(req, res);
