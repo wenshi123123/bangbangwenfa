@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
+import { resolveGuardianId } from '@/lib/auth/guardian-identity';
 
 // GET /api/guardian/invites - 获取邀请列表（需要JWT认证）
 export async function GET(request: NextRequest) {
@@ -9,10 +10,11 @@ export async function GET(request: NextRequest) {
   if (!auth.success) {
     return unauthorizedResponse(auth.error);
   }
-  if (auth.userType !== 'guardian') {
+  const supabase = getSupabaseAdmin();
+  const guardianId = await resolveGuardianId(auth, supabase);
+  if (!guardianId) {
     return NextResponse.json({ success: false, error: '非守护者账号' }, { status: 403 });
   }
-  const guardianId = auth.guardianId!;
   
   const { searchParams } = new URL(request.url);
 
@@ -20,8 +22,6 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get('limit') || '20');
 
   try {
-    const supabase = getSupabaseAdmin();
-
     const { data: invitees, error, count } = await supabase
       .from('guardian_invitees')
       .select('*', { count: 'exact' })

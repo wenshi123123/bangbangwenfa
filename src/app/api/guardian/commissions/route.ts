@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
+import { resolveGuardianId } from '@/lib/auth/guardian-identity';
 
 // GET /api/guardian/commissions - 获取分成记录（需要JWT认证）
 export async function GET(request: NextRequest) {
@@ -10,19 +11,18 @@ export async function GET(request: NextRequest) {
     if (!auth.success) {
       return unauthorizedResponse(auth.error);
     }
-    if (auth.userType !== 'guardian') {
+    const supabase = getSupabaseAdmin();
+    const guardianId = await resolveGuardianId(auth, supabase);
+    if (!guardianId) {
       return NextResponse.json({ success: false, error: '非守护者账号' }, { status: 403 });
     }
-    const guardianId = auth.guardianId!;
-    
+
     const { searchParams } = new URL(request.url);
     
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
     const offset = (page - 1) * limit;
-
-    const supabase = getSupabaseAdmin();
 
     // 查询分成记录（不含关联查询，避免外键缺失问题）
     const { data: commissions, error, count } = await supabase

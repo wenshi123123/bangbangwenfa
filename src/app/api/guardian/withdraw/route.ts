@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
+import { resolveGuardianId } from '@/lib/auth/guardian-identity';
 
 // 提现 API 限流：每分钟 5 次
 const WITHDRAW_RATE_LIMIT = 5;
@@ -42,12 +43,11 @@ export async function GET(request: NextRequest) {
     if (!auth.success) {
       return unauthorizedResponse(auth.error);
     }
-    if (auth.userType !== 'guardian') {
+    const supabase = getSupabaseAdmin();
+    const guardianId = await resolveGuardianId(auth, supabase);
+    if (!guardianId) {
       return NextResponse.json({ success: false, error: '非守护者账号' }, { status: 403 });
     }
-    const guardianId = auth.guardianId!;
-
-    const supabase = getSupabaseAdmin();
 
     // 检查待处理的提现申请
     if (action === 'check-pending') {
@@ -132,15 +132,14 @@ export async function POST(request: NextRequest) {
       return unauthorizedResponse(auth.error);
     }
     
-    // 检查是否是守护者类型
-    if (auth.userType !== 'guardian') {
+    const supabase = getSupabaseAdmin();
+    const guardianId = await resolveGuardianId(auth, supabase);
+    if (!guardianId) {
       return NextResponse.json({ 
         success: false, 
         error: '非守护者账号' 
       }, { status: 403 });
     }
-    
-    const guardianId = auth.guardianId!;
 
     // 限流检查
     const clientIP = getClientIP(request);
@@ -171,7 +170,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '缺少提现金额' }, { status: 400 });
     }
 
-    const supabase = getSupabaseAdmin();
     const { data, error } = await supabase.rpc('create_guardian_withdrawal', {
       p_guardian_id: guardianId,
       p_amount: amount,

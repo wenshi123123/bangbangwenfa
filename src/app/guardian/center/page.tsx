@@ -134,7 +134,7 @@ export default function GuardianCenterPage() {
   }, []);
 
   // 获取守护者数据
-  const fetchData = useCallback(async (guardianId: number) => {
+  const fetchData = useCallback(async () => {
     setRefreshing(true);
     setIsLoading(true);
     setLoadError('');
@@ -145,23 +145,25 @@ export default function GuardianCenterPage() {
     }, UI_LOAD_TIMEOUT_MS);
     try {
       // 先获取最新的守护者资料（包含统计数据）
-      const profileRes = await apiRequest(`/api/guardian/profile?guardianId=${guardianId}`);
+      // Guardian identity is resolved from the authenticated token on the server.
+      // Do not use the cached/client guardian id as an authorization input.
+      const profileRes = await apiRequest('/api/guardian/profile');
       const profileData = await readSuccessfulJson(profileRes);
       setGuardian(profileData.data);
       // 同时更新 localStorage 中的数据
       localStorage.setItem('guardian_user', JSON.stringify(profileData.data));
       // 获取分成记录
-      const commRes = await apiRequest(`/api/guardian/commissions?guardianId=${guardianId}`);
+      const commRes = await apiRequest('/api/guardian/commissions');
       const commData = await readSuccessfulJson(commRes);
       setCommissions(commData.data);
 
       // 获取邀请列表
-      const inviteRes = await apiRequest(`/api/guardian/invites?guardianId=${guardianId}`);
+      const inviteRes = await apiRequest('/api/guardian/invites');
       const inviteData = await readSuccessfulJson(inviteRes);
       setInvitees(inviteData.data);
 
       // 获取提现记录
-      const withdrawRes = await apiRequest(`/api/guardian/withdrawals?guardianId=${guardianId}`);
+      const withdrawRes = await apiRequest('/api/guardian/withdrawals');
       const withdrawData = await readSuccessfulJson(withdrawRes);
       setWithdrawals(withdrawData.data);
       // 检查是否有待处理的提现
@@ -224,7 +226,7 @@ export default function GuardianCenterPage() {
           const guardianData = JSON.parse(savedGuardian);
           setGuardian(guardianData);
           generateQRCode(guardianData.invite_code);
-          fetchData(guardianData.id);
+          fetchData();
           setIsLoading(false);
           return;
         } catch (e) {
@@ -421,7 +423,7 @@ export default function GuardianCenterPage() {
       if (result.success) {
         setWithdrawSuccess(true);
         // 刷新数据
-        fetchData(guardian.id);
+        fetchData();
         setTimeout(() => {
           setShowWithdrawModal(false);
           setWithdrawSuccess(false);
@@ -555,7 +557,7 @@ export default function GuardianCenterPage() {
           <AlertCircle className="mx-auto mb-4 h-10 w-10 text-amber-500" />
           <h2 className="text-lg font-semibold text-[#3F3028]">加载失败</h2>
           <p className="mt-2 text-sm text-[#8C7B6E]">{loadError}</p>
-          <Button className="mt-6" onClick={() => guardian && fetchData(guardian.id)}>重试</Button>
+          <Button className="mt-6" onClick={() => guardian && fetchData()}>重试</Button>
         </div>
       </div>
     );
@@ -689,7 +691,7 @@ export default function GuardianCenterPage() {
             <h1 className="text-base font-semibold text-foreground">守护者中心</h1>
             <div className="flex items-center gap-2">
               <button 
-                onClick={() => guardian && fetchData(guardian.id)} 
+                onClick={() => guardian && fetchData()}
                 disabled={refreshing}
                 className="p-1 hover:bg-rose-100 rounded-full transition-colors disabled:opacity-50"
                 title="刷新数据"
