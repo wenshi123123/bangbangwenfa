@@ -11,6 +11,7 @@ import QRCode from 'qrcode';
 import { usePosterGenerator } from '@/hooks/use-poster';
 import { getGuardianInviteRegistrationPath } from '@/lib/guardian/invite-contract';
 import { apiRequest, getToken } from '@/lib/api/request';
+import { UI_LOAD_TIMEOUT_MS } from '@/lib/ui/with-timeout';
 import { GuardianLoginForm } from '@/components/guardian/guardian-login-form';
 import { GuardianIdentityHero } from '@/components/guardian/guardian-identity-hero';
 import { GuardianShareDrawer } from '@/components/guardian/guardian-share-drawer';
@@ -61,12 +62,20 @@ interface WithdrawalRecord {
   processed_at?: string;
 }
 
+async function readSuccessfulJson(response: Response): Promise<any> {
+  if (!response.ok) throw new Error(`请求失败（${response.status}）`);
+  const data = await response.json();
+  if (!data?.success) throw new Error(data?.error || '接口返回异常');
+  return data;
+}
+
 export default function GuardianCenterPage() {
   const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [guardian, setGuardian] = useState<GuardianData | null>(null);
   const [isLoading, setIsLoading] = useState(true); // 合并 loading 和 isChecking
+  const [loadError, setLoadError] = useState<string>('');
   const [commissions, setCommissions] = useState<CommissionRecord[]>([]);
   const [invitees, setInvitees] = useState<InviteeRecord[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRecord[]>([]);
@@ -127,39 +136,37 @@ export default function GuardianCenterPage() {
   // 获取守护者数据
   const fetchData = useCallback(async (guardianId: number) => {
     setRefreshing(true);
+    setIsLoading(true);
+    setLoadError('');
+    const timeoutId = window.setTimeout(() => {
+      setLoadError('数据加载超时，请检查网络后重试');
+      setIsLoading(false);
+      setRefreshing(false);
+    }, UI_LOAD_TIMEOUT_MS);
     try {
       // 先获取最新的守护者资料（包含统计数据）
       const profileRes = await apiRequest(`/api/guardian/profile?guardianId=${guardianId}`);
-      const profileData = await profileRes.json();
-      if (profileData.success) {
-        setGuardian(profileData.data);
-        // 同时更新 localStorage 中的数据
-        localStorage.setItem('guardian_user', JSON.stringify(profileData.data));
-      }
-
+      const profileData = await readSuccessfulJson(profileRes);
+      setGuardian(profileData.data);
+      // 同时更新 localStorage 中的数据
+      localStorage.setItem('guardian_user', JSON.stringify(profileData.data));
       // 获取分成记录
       const commRes = await apiRequest(`/api/guardian/commissions?guardianId=${guardianId}`);
-      const commData = await commRes.json();
-      if (commData.success) {
-        setCommissions(commData.data);
-      }
+      const commData = await readSuccessfulJson(commRes);
+      setCommissions(commData.data);
 
       // 获取邀请列表
       const inviteRes = await apiRequest(`/api/guardian/invites?guardianId=${guardianId}`);
-      const inviteData = await inviteRes.json();
-      if (inviteData.success) {
-        setInvitees(inviteData.data);
-      }
+      const inviteData = await readSuccessfulJson(inviteRes);
+      setInvitees(inviteData.data);
 
       // 获取提现记录
       const withdrawRes = await apiRequest(`/api/guardian/withdrawals?guardianId=${guardianId}`);
-      const withdrawData = await withdrawRes.json();
-      if (withdrawData.success) {
-        setWithdrawals(withdrawData.data);
-        // 检查是否有待处理的提现
-        const hasPending = withdrawData.data.some((w: WithdrawalRecord) => w.status === 'pending');
-        setHasPendingWithdraw(hasPending);
-      }
+      const withdrawData = await readSuccessfulJson(withdrawRes);
+      setWithdrawals(withdrawData.data);
+      // 检查是否有待处理的提现
+      const hasPending = withdrawData.data.some((w: WithdrawalRecord) => w.status === 'pending');
+      setHasPendingWithdraw(hasPending);
 
       // 获取提现配置
       try {
@@ -177,7 +184,9 @@ export default function GuardianCenterPage() {
       }
     } catch (error) {
       console.error('获取数据失败:', error);
+      setLoadError('数据加载失败，请检查网络后重试');
     } finally {
+      window.clearTimeout(timeoutId);
       setIsLoading(false);
       setRefreshing(false);
     }
@@ -534,6 +543,19 @@ export default function GuardianCenterPage() {
             <div className="h-2 w-24 bg-[#EBE3D8]/40 rounded-full animate-pulse mx-auto" />
           </div>
           <p className="text-sm text-[#8C7B6E] font-sans">加载中…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2] px-4">
+        <div className="max-w-md rounded-2xl bg-white p-8 text-center shadow-lg">
+          <AlertCircle className="mx-auto mb-4 h-10 w-10 text-amber-500" />
+          <h2 className="text-lg font-semibold text-[#3F3028]">加载失败</h2>
+          <p className="mt-2 text-sm text-[#8C7B6E]">{loadError}</p>
+          <Button className="mt-6" onClick={() => guardian && fetchData(guardian.id)}>重试</Button>
         </div>
       </div>
     );

@@ -92,9 +92,11 @@ const ORDER_NOTIFICATION_TYPES = new Set([
 export default function MessagesPage() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const hasToken = typeof window !== 'undefined' ? !!localStorage.getItem('token') : false;
-  const [loading, setLoading] = useState(hasToken);
-  const [needsAuth, setNeedsAuth] = useState(!hasToken);
+  const [hasToken, setHasToken] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [needsAuth, setNeedsAuth] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
   const [markingRead, setMarkingRead] = useState<number | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -102,8 +104,18 @@ export default function MessagesPage() {
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [page, setPage] = useState(1);
 
+  useEffect(() => {
+    setHasToken(!!localStorage.getItem('token'));
+    setAuthReady(true);
+  }, []);
+
   const fetchNotifications = useCallback(async (uid: string, pageNum: number = 1, filterType?: string) => {
     setLoading(pageNum === 1);
+    setLoadError('');
+    const timeoutId = window.setTimeout(() => {
+      setLoadError('消息加载超时，请稍后重试');
+      setLoading(false);
+    }, 8000);
     try {
       let url = `/api/notifications/list?page=${pageNum}`;
       if (filterType && filterType !== 'all') {
@@ -111,40 +123,45 @@ export default function MessagesPage() {
       }
       const response = await apiRequest(url);
       const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || '通知接口返回异常');
+      }
       
-      if (result.success) {
-        const list = Array.isArray(result.data?.list)
-          ? result.data.list
-          : Array.isArray(result.data)
-            ? result.data
-            : [];
-        const total = Number(result.data?.total ?? list.length ?? 0);
-        const pageSize = Number(result.data?.pageSize ?? 20);
-        if (pageNum === 1) {
-          setNotifications(list);
-        } else {
-          setNotifications(prev => [...prev, ...list]);
-        }
-        setPagination({
-          page: Number(result.data?.page ?? pageNum),
-          page_size: pageSize,
-          total,
-          total_pages: Math.max(1, Math.ceil(total / pageSize)),
-        });
-        const unreadRes = await apiRequest('/api/user/notifications?unreadOnly=true&limit=1');
-        const unreadResult = await unreadRes.json();
-        if (unreadResult.success) {
-          setUnreadCount(Number(unreadResult.unreadCount || 0));
-        }
+      const list = Array.isArray(result.data?.list)
+        ? result.data.list
+        : Array.isArray(result.data)
+          ? result.data
+          : [];
+      const total = Number(result.data?.total ?? list.length ?? 0);
+      const pageSize = Number(result.data?.pageSize ?? 20);
+      if (pageNum === 1) {
+        setNotifications(list);
+      } else {
+        setNotifications(prev => [...prev, ...list]);
+      }
+      setPagination({
+        page: Number(result.data?.page ?? pageNum),
+        page_size: pageSize,
+        total,
+        total_pages: Math.max(1, Math.ceil(total / pageSize)),
+      });
+      const unreadRes = await apiRequest('/api/user/notifications?unreadOnly=true&limit=1');
+      const unreadResult = await unreadRes.json();
+      if (unreadResult.success) {
+        setUnreadCount(Number(unreadResult.unreadCount || 0));
       }
     } catch (error) {
       console.error('获取通知失败:', error);
+      setLoadError('消息加载失败，请稍后重试');
     } finally {
+      window.clearTimeout(timeoutId);
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    if (!authReady) return;
     if (!hasToken) {
       setNeedsAuth(true);
       setLoading(false);
@@ -170,7 +187,7 @@ export default function MessagesPage() {
 
     setUserId(user.id);
     fetchNotifications(user.id, 1);
-  }, [router, fetchNotifications, hasToken]);
+  }, [router, fetchNotifications, hasToken, authReady]);
 
   useEffect(() => {
     if (!needsAuth) return;
@@ -328,6 +345,18 @@ export default function MessagesPage() {
         <div className="text-center">
           <Loader2 className="w-8 h-8 text-rose-500 animate-spin mx-auto mb-4" />
           <p className="text-muted-foreground">加载中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center px-4">
+        <div className="rounded-2xl bg-white p-8 text-center shadow-lg">
+          <h1 className="text-xl font-semibold text-[#3D322D]">加载失败</h1>
+          <p className="mt-2 text-sm text-[#8C7B6E]">{loadError}</p>
+          <button onClick={() => userId && fetchNotifications(userId, 1, filter)} className="mt-5 rounded-full bg-rose-500 px-5 py-2.5 text-sm font-medium text-white">重试</button>
         </div>
       </div>
     );

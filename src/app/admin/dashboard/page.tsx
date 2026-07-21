@@ -110,19 +110,19 @@ export default function AdminDashboard() {
     availableCommission: 0
   });
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
-  const [loading, setLoading] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return !!localStorage.getItem('admin_info') && !!localStorage.getItem('admin_token');
-  });
-  const [needsLogin, setNeedsLogin] = useState(() => {
-    if (typeof window === 'undefined') return true;
-    return !localStorage.getItem('admin_info') || !localStorage.getItem('admin_token');
-  });
+  const [loading, setLoading] = useState(true);
+  const [needsLogin, setNeedsLogin] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [period, setPeriod] = useState(30);
   const pathname = usePathname();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
+    const timeoutId = window.setTimeout(() => {
+      setLoadError('数据加载失败，请检查网络后重试');
+      setLoading(false);
+    }, 8000);
     try {
       const adminInfo = localStorage.getItem('admin_info');
       if (!adminInfo) {
@@ -145,6 +145,10 @@ export default function AdminDashboard() {
         withdrawRes.json(),
         analyticsRes.json()
       ]);
+
+      if (![lawyerData, orderData, withdrawData, analyticsData].every((item) => item?.success)) {
+        throw new Error('后台统计接口返回异常');
+      }
 
       // 更新统计数据
       if (lawyerData.success) {
@@ -185,13 +189,18 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error('获取统计数据失败:', error);
+      setLoadError('数据加载失败，请检查网络后重试');
     } finally {
+      window.clearTimeout(timeoutId);
       setLoading(false);
     }
   }, [period]);
 
   useEffect(() => {
-    fetchData();
+    const hasAdminSession = !!localStorage.getItem('admin_info') && !!localStorage.getItem('admin_token');
+    setNeedsLogin(!hasAdminSession);
+    if (hasAdminSession) fetchData();
+    else setLoading(false);
   }, [fetchData]);
 
   // 手动刷新
@@ -245,6 +254,18 @@ export default function AdminDashboard() {
               前往登录
             </Link>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center px-4">
+        <div className="rounded-2xl bg-white p-8 text-center shadow-lg">
+          <h1 className="text-xl font-semibold text-slate-800">数据加载失败</h1>
+          <p className="mt-2 text-sm text-slate-500">{loadError}</p>
+          <Button className="mt-5" onClick={fetchData}>重试</Button>
         </div>
       </div>
     );

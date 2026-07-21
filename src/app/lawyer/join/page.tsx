@@ -1,5 +1,3 @@
-"use client";
-
 import { LawyerPromoSection } from '@/components/lawyer/lawyer-promo-section';
 import { getLawyerJoinApplyUrl } from '@/lib/site';
 

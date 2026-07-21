@@ -49,6 +49,7 @@ interface CivilConsultationWizardProps {
 export function CivilConsultationWizard({ onBack }: CivilConsultationWizardProps) {
   const router = useRouter();
   const { isLoggedIn, isLoading } = useAuth();
+  const [authLoadTimedOut, setAuthLoadTimedOut] = useState(false);
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     caseType: '',
@@ -58,6 +59,15 @@ export function CivilConsultationWizard({ onBack }: CivilConsultationWizardProps
   });
   const [priceConfigs, setPriceConfigs] = useState<PriceConfig[]>([]);
   const [pricesLoading, setPricesLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setAuthLoadTimedOut(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setAuthLoadTimedOut(true), 8000);
+    return () => window.clearTimeout(timer);
+  }, [isLoading]);
 
   // 获取价格配置
   useEffect(() => {
@@ -90,7 +100,7 @@ export function CivilConsultationWizard({ onBack }: CivilConsultationWizardProps
   };
 
   // 未登录提示
-  if (!isLoading && !isLoggedIn) {
+  if ((!isLoading || authLoadTimedOut) && !isLoggedIn) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#FAF7F2] to-white">
         <div className="max-w-lg mx-auto px-4 py-16">
@@ -98,7 +108,7 @@ export function CivilConsultationWizard({ onBack }: CivilConsultationWizardProps
             <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-[#FAF7F2] flex items-center justify-center">
               <Lock className="w-8 h-8 text-[#C47353]" />
             </div>
-            <h2 className="text-xl font-bold mb-3">需要登录</h2>
+            <h2 className="text-xl font-bold mb-3">{authLoadTimedOut ? '登录状态加载超时' : '需要登录'}</h2>
             <p className="text-muted-foreground mb-6">
               咨询前请先登录，以便律师能够联系到您
             </p>
@@ -116,7 +126,7 @@ export function CivilConsultationWizard({ onBack }: CivilConsultationWizardProps
   }
 
   // 加载中
-  if (isLoading) {
+  if (isLoading && !authLoadTimedOut) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#FAF7F2] to-white flex items-center justify-center">
         <div className="text-center">
