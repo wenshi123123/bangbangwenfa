@@ -88,11 +88,19 @@ async function main() {
     'current hashed CSS must reach Next directly so its immutable cache policy remains effective',
   );
 
-  const legacyFontResponse = await middleware(
+  const fontResponse = await middleware(
     new NextRequest('https://www.bangbangwenfa.com/_next/static/media/old-font.woff2'),
   );
-  assert.equal(legacyFontResponse.status, 204);
-  assert.equal(legacyFontResponse.headers.get('x-bbwv-legacy-font-recovery'), '1');
+  assert.equal(
+    fontResponse.status,
+    200,
+    'font requests must reach Next so current hashed fonts return their real binary content',
+  );
+  assert.equal(
+    fontResponse.headers.get('x-bbwv-legacy-font-recovery'),
+    null,
+    'missing legacy fonts must not be disguised as a successful empty response',
+  );
   console.log('middleware runtime test passed');
 }
 
