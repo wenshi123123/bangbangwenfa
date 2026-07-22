@@ -13,7 +13,9 @@ export default function AboutPage() {
     setMounted(true);
   }, []);
 
-  // 名校数据 - 平台律师毕业于以下顶尖法学院等众多国内知名院校
+
+
+  // 名校数据 - 平台律师毕业于以下顶尖法学院等众多国内知名院校(测试提交)
   const universities = [
     { name: '清华大学', src: '/tsinghua.png', alt: '清华大学' },
     { name: '北京大学', src: '/pku.png', alt: '北京大学' },
