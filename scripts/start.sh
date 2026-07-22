@@ -41,7 +41,7 @@ echo "COZE_ mapping complete."
 # - 当两者一致时，只需一个服务器
 # - 当不同时，server.mts 会自动启动健康检查服务器
 # ============================================
-APP_PORT="${PORT:-${APP_PORT:-3000}}"
+APP_PORT="${PORT:-5000}"  # 直接使用 PORT 或默认 5000
 PROBE_PORT="${PROBE_PORT:-3000}"
 HOSTNAME=0.0.0.0
 

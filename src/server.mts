@@ -1,5 +1,6 @@
 import { createServer, IncomingMessage, ServerResponse, request as httpRequest } from 'http';
 import fs from 'fs';
+import path from 'path';
 import { parse } from 'url';
 import next from 'next';
 
@@ -110,6 +111,62 @@ if (probePort !== appPort) {
   });
 }
 
+function handleStaticFile(req: IncomingMessage, res: ServerResponse): boolean {
+  const url = req.url || '';
+  const parsedUrl = parse(url, true);
+  const pathname = parsedUrl.pathname || '';
+
+  if (pathname.startsWith('/_next/static/')) {
+    const staticFilePath = path.join(
+      process.cwd(),
+      '.next',
+      'static',
+      pathname.replace('/_next/static/', ''),
+    );
+
+    console.log('[STATIC] Trying to serve:', staticFilePath);
+
+    if (fs.existsSync(staticFilePath) && fs.statSync(staticFilePath).isFile()) {
+      const ext = path.extname(staticFilePath);
+      const contentType = getContentType(ext);
+
+      res.writeHead(200, {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=31536000, immutable',
+      });
+
+      fs.createReadStream(staticFilePath).pipe(res);
+      console.log('[STATIC] Served successfully:', pathname);
+      return true;
+    } else {
+      console.log('[STATIC] File not found:', staticFilePath);
+    }
+  }
+
+  return false;
+}
+
+function getContentType(ext: string): string {
+  const mimeTypes: { [key: string]: string } = {
+    '.js': 'application/javascript',
+    '.mjs': 'application/javascript',
+    '.css': 'text/css',
+    '.json': 'application/json',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
+    '.ttf': 'font/ttf',
+    '.eot': 'font/eot',
+  };
+
+  return mimeTypes[ext.toLowerCase()] || 'application/octet-stream';
+}
+
 app.prepare().then(() => {
   /**
    * 主应用服务器 — 处理所有用户请求
@@ -130,6 +187,10 @@ app.prepare().then(() => {
     try {
       if (probePort === appPort && isHealthCheck(req)) {
         handleHealthCheck(req, res);
+        return;
+      }
+
+      if (handleStaticFile(req, res)) {
         return;
       }
 
