@@ -79,8 +79,11 @@ RUN test -d ./.next/static && test -d ./public
 RUN sed -i 's/\r$//' ./scripts/start.sh && chmod +x ./scripts/start.sh
 
 # 端口配置
+# CloudBase 当前服务流量端口为 3000，但运行平台的存活/就绪探针会访问
+# 容器 80 端口。主应用继续监听 3000，server.mts 在 80 端口提供健康检查
+# 并将非健康请求转发到主应用。
 ENV APP_PORT=5000
-ENV PROBE_PORT=3000
+ENV PROBE_PORT=80
 ENV NODE_ENV=production
 ENV DEPLOY_ENV=PROD
 
@@ -88,7 +91,7 @@ ENV DEPLOY_ENV=PROD
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD curl -f "http://localhost:${PORT:-5000}/health" || exit 1
 
-EXPOSE 3000 5000
+EXPOSE 80 3000 5000
 
 # 使用 bash 运行启动脚本
 CMD ["bash", "./scripts/start.sh"]
