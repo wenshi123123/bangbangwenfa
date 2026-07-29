@@ -5,6 +5,7 @@ import { AlertCircle, ArrowLeft, CheckCircle, Loader2, Smartphone } from 'lucide
 import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
 import { getLawyerUrl } from '@/lib/site';
+import { WechatExternalBrowserGuide } from '@/components/payment/wechat-external-browser-guide';
 
 type PaymentContext = {
   status: 'payable' | 'paid' | 'no_payable_application' | 'manual_review_required';
@@ -18,6 +19,7 @@ function getPaymentRequestHeaders(): Record<string, string> {
   return {
     'Content-Type': 'application/json',
     'x-client-device': /Android|iPhone|iPad|iPod/i.test(ua) ? 'mobile' : 'web',
+    'x-user-agent': ua.toLowerCase(),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
@@ -42,6 +44,8 @@ export default function LawyerPayPage() {
   const [paid, setPaid] = useState(false);
   const [qrCodeValue, setQrCodeValue] = useState<string | null>(null);
   const [h5Url, setH5Url] = useState<string | null>(null);
+  const [deviceReady, setDeviceReady] = useState(false);
+  const [isWechat, setIsWechat] = useState(false);
   const loginUrl = `/lawyer/login?redirect=${encodeURIComponent('/lawyer/pay')}`;
 
   useEffect(() => {
@@ -66,6 +70,11 @@ export default function LawyerPayPage() {
       }
     };
     loadContext();
+  }, []);
+
+  useEffect(() => {
+    setIsWechat(/MicroMessenger/i.test(navigator.userAgent || ''));
+    setDeviceReady(true);
   }, []);
 
   useEffect(() => {
@@ -137,6 +146,7 @@ export default function LawyerPayPage() {
     </div>
   );
 
+  if (deviceReady && isWechat) return <WechatExternalBrowserGuide />;
   if (loading) return shell(<><Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-green-600" /><p>正在加载支付信息...</p></>);
   if (authRequired) return shell(<><AlertCircle className="mx-auto mb-4 h-10 w-10 text-amber-500" /><h1 className="mb-2 text-xl font-bold">请先登录</h1><p className="mb-6 text-sm text-muted-foreground">登录后将继续验证您本人的入驻支付申请。</p><Link href={loginUrl} className="block rounded-xl bg-[#C47353] px-5 py-3 font-semibold text-white">前往登录</Link></>);
   if (paid) return shell(<><CheckCircle className="mx-auto mb-4 h-12 w-12 text-green-600" /><h1 className="mb-2 text-xl font-bold">支付已完成</h1><p className="text-sm text-muted-foreground">您的入驻申请已支付，等待平台审核。</p></>);

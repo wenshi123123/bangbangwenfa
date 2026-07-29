@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { notifyOrder } from '@/lib/notify/webhook';
+import { LAWYER_ONBOARDING_PACKAGES, validateUploadRequirements } from '@/lib/lawyer/package-config';
+import { loadLawyerPackagePrices } from '@/lib/lawyer/price-config';
+import { resolveUserNickname } from '@/lib/user/resolve-nickname';
 
 /**
  * 律师入驻申请 API
@@ -23,8 +26,6 @@ export async function POST(request: NextRequest) {
       licenseImages,
       idCardImages,
       educationImages,
-      packageType,
-      packagePrice,
       selectedPackages,
       userId: bodyUserId,
     } = body;
@@ -66,7 +67,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!Array.isArray(selectedPackages) || selectedPackages.some((item) => typeof item !== 'string')) {
+      return NextResponse.json(
+        { success: false, error: '套餐选择格式不正确' },
+        { status: 400 },
+      );
+    }
+
+    if (!validateUploadRequirements({ licenseImages, idCardImages, educationImages })) {
+      return NextResponse.json(
+        { success: false, error: '请按要求补齐律师执业证 2 张、身份证照片 3 张、学历证明 1 张' },
+        { status: 400 },
+      );
+    }
+
+    const validPackageIds = new Set(LAWYER_ONBOARDING_PACKAGES.map((item) => item.id));
+    if (selectedPackages.some((item) => !validPackageIds.has(item as typeof LAWYER_ONBOARDING_PACKAGES[number]['id']))) {
+      return NextResponse.json(
+        { success: false, error: '套餐选择无效' },
+        { status: 400 },
+      );
+    }
+
     const supabase = getSupabaseAdmin();
+    let packagePrices;
+    try {
+      packagePrices = await loadLawyerPackagePrices(supabase, selectedPackages);
+    } catch (priceError) {
+      return NextResponse.json(
+        { success: false, error: '律师入驻套餐价格尚未配置，请联系管理员' },
+        { status: 503 },
+      );
+    }
+    const packageType = selectedPackages[0];
+    const packagePrice = selectedPackages.reduce((total, packageId) => total + packagePrices.get(packageId)!.price, 0);
 
     // 检查是否已是正式律师（在 lawyers 表中）
     if (userId) {
@@ -169,7 +203,7 @@ export async function POST(request: NextRequest) {
       // Webhook 通知
       notifyOrder({
         type: 'Registration',
-        userName: name || phone || '未知',
+        userName: await resolveUserNickname(supabase, userId),
         phone,
         amount: packagePrice,
         detail: `套餐：${(selectedPackages || []).map((p: string) => p === 'civil_premium' ? '民事臻选' : '刑事臻选').join(' + ') || '未知'}`,

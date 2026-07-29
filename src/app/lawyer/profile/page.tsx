@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { getLawyerUrl } from '@/lib/site';
+import { getLawyerCachedData, invalidateLawyerCachedData } from '@/lib/lawyer/client-data-cache';
 import {
   ArrowLeft,
   User,
@@ -156,8 +157,10 @@ export default function LawyerProfilePage() {
   const fetchProfile = useCallback(async () => {
     try {
       const headers = getAuthHeaders();
-      const response = await fetch('/api/lawyer/profile', { headers });
-      const result = await response.json();
+      const result = await getLawyerCachedData(`lawyer:${user?.id || lawyerId || 'current'}:profile`, async () => {
+        const response = await fetch('/api/lawyer/profile', { headers });
+        return response.json();
+      });
       if (result.success && result.data) {
         const lawyer = result.data;
         setProfile(lawyer);
@@ -189,7 +192,7 @@ export default function LawyerProfilePage() {
     } finally {
       setLoading(false);
     }
-  }, [getAuthHeaders]);
+  }, [getAuthHeaders, lawyerId, user?.id]);
 
   const fetchPendingRevisions = useCallback(async () => {
     if (!lawyerId) return;
@@ -327,6 +330,7 @@ export default function LawyerProfilePage() {
       }
       setSubmitSuccess(true);
       setShowSuccessModal(true);
+      invalidateLawyerCachedData(`lawyer:${user?.id || lawyerId || 'current'}:profile`);
       fetchPendingRevisions();
     } catch {
       setError('提交失败，请重试');

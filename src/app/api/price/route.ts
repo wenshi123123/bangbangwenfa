@@ -13,8 +13,6 @@ const defaultPrices = [
   { category: 'criminal', plan_id: 'basic', plan_name: '基础咨询', price: 9900 },
   { category: 'criminal', plan_id: 'standard', plan_name: '标准方案', price: 24900 },
   { category: 'criminal', plan_id: 'advanced', plan_name: '深度服务', price: 37900 },
-  { category: 'lawyer', plan_id: 'civil_premium', plan_name: '民事律师（臻选）', price: 500000 },
-  { category: 'lawyer', plan_id: 'criminal_premium', plan_name: '刑事律师（臻选）', price: 800000 },
 ];
 
 // GET /api/price - 获取所有价格配置（公开）
@@ -28,6 +26,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('price_configs')
       .select('category, plan_id, plan_name, price')
+      .eq('is_active', true)
       .order('category', { ascending: true })
       .order('price', { ascending: true });
 
@@ -40,6 +39,12 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Error fetching price configs:', error);
+      if (category === 'lawyer' || category === 'lawyer_renewal') {
+        return NextResponse.json(
+          { success: false, error: '律师套餐价格配置暂不可用' },
+          { status: 503 },
+        );
+      }
       return NextResponse.json(
         {
           success: true,
@@ -59,6 +64,12 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error('Error fetching price configs:', error);
+    if (category === 'lawyer' || category === 'lawyer_renewal') {
+      return NextResponse.json(
+        { success: false, error: '律师套餐价格配置暂不可用' },
+        { status: 503 },
+      );
+    }
     return NextResponse.json(
       {
         success: true,

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { verifyWechatPaySignature } from '@/lib/payment/wechat-cert';
 import { notifyOrder } from '@/lib/notify/webhook';
+import { resolveUserNickname } from '@/lib/user/resolve-nickname';
 import crypto from 'crypto';
 
 function failure(message: string, status = 200) {
@@ -46,9 +47,10 @@ async function parseVerifiedPayment(request: NextRequest) {
 }
 
 async function notifyRegistration(application: any, orderNo: string) {
+  const supabase = getSupabaseAdmin();
   await notifyOrder({
     type: 'Registration',
-    userName: application.name || application.phone || '未知',
+    userName: await resolveUserNickname(supabase, application.user_id),
     phone: application.phone || undefined,
     amount: application.package_price,
     detail: `套餐：${application.package_type || '律师入驻'}`,

@@ -4,6 +4,9 @@ import { getWechatPayClient } from '@/lib/payment/wechat-pay';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
 import { notifyOrder } from '@/lib/notify/webhook';
 import { getSiteUrl } from '@/lib/site';
+import { RENEWAL_PACKAGE_META, RenewalPackageId } from '@/lib/lawyer/package-config';
+import { loadRenewalPackagePrice } from '@/lib/lawyer/price-config';
+import { resolveUserNickname } from '@/lib/user/resolve-nickname';
 
 const SITE_URL = getSiteUrl();
 
@@ -27,14 +30,6 @@ function calculateExpiry(baseDate: Date, months: number): Date {
   }
   return result;
 }
-
-// 套餐配置
-const PACKAGE_CONFIG: Record<string, { price: number; months: number; type: 'civil' | 'criminal' }> = {
-  'civil_renew_6': { price: 200000, months: 6, type: 'civil' },       // 2000元/6个月
-  'civil_renew_18': { price: 500000, months: 18, type: 'civil' },     // 5000元/18个月
-  'criminal_renew_6': { price: 320000, months: 6, type: 'criminal' }, // 3200元/6个月
-  'criminal_renew_18': { price: 800000, months: 18, type: 'criminal' }, // 8000元/18个月
-};
 
 export async function POST(request: NextRequest) {
   // 认证检查
@@ -63,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 获取套餐配置
-    const packageConfig = PACKAGE_CONFIG[package_id];
+    const packageConfig = RENEWAL_PACKAGE_META[package_id as RenewalPackageId];
     if (!packageConfig) {
       return NextResponse.json(
         { success: false, error: '无效的套餐ID' },
@@ -108,8 +103,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 校验律师类型与套餐类型匹配
-    const lawyerType = lawyer.specialization?.toLowerCase().includes('刑事') ? 'criminal' : 'civil';
+    const { data: application } = await supabase
+      .from('lawyer_applications')
+      .select('package_type')
+      .eq('user_id', lawyer.user_id || userId)
+      .eq('review_status', 'approved')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // 优先按入驻套餐确定律师类型；存量数据才回退到专业领域。
+    const lawyerType = application?.package_type === 'criminal_premium'
+      ? 'criminal'
+      : lawyer.specialization?.toLowerCase().includes('刑事') ? 'criminal' : 'civil';
     if (lawyerType !== packageConfig.type) {
       return NextResponse.json(
         { success: false, error: `律师类型不匹配：您是${lawyerType === 'criminal' ? '刑事' : '民事'}律师，无法购买${packageConfig.type === 'criminal' ? '刑事' : '民事'}续费套餐` },
@@ -117,7 +123,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { price, months } = packageConfig;
+    let priceConfig;
+    try {
+      priceConfig = await loadRenewalPackagePrice(supabase, package_id);
+    } catch {
+      return NextResponse.json(
+        { success: false, error: '续费套餐价格尚未在后台配置，请联系管理员' },
+        { status: 503 },
+      );
+    }
+    const price = priceConfig.price;
+    const { months } = packageConfig;
 
     // 检查是否有未支付的续费订单（防止重复创建）
     const { data: pendingOrder } = await supabase
@@ -187,7 +203,7 @@ export async function POST(request: NextRequest) {
     // 调用微信支付 Native API 创建订单
     const wechatPay = getWechatPayClient();
     const payResult = await wechatPay.createNativeOrder({
-      description: `律师会员续费 - ${months}个月`,
+      description: `律师会员续费 - ${packageConfig.name}`,
       outTradeNo: orderNo,
       amount: price,
       notifyUrl: `${SITE_URL}/api/lawyer/renew/callback`,
@@ -203,9 +219,9 @@ export async function POST(request: NextRequest) {
     // Webhook 通知
     notifyOrder({
       type: 'Renew',
-      userName: lawyer.name || `律师 #${lawyer.id}`,
+      userName: await resolveUserNickname(supabase, userId),
       amount: price,
-      detail: `${packageConfig.type === 'civil' ? '民事' : '刑事'}臻选 × ${months}个月`,
+      detail: `${packageConfig.name} × ${months}个月`,
       orderId: orderNo,
       status: 'Pending Payment',
     });

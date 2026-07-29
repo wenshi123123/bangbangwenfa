@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
 import { notifyOrder } from '@/lib/notify/webhook';
 import { createConsultPaymentHandoff } from '@/lib/payment/payment-handoff';
+import { resolveUserNickname } from '@/lib/user/resolve-nickname';
 
 function generateOrderNo(): string {
   const timestamp = Date.now();
@@ -50,7 +51,8 @@ export async function POST(request: NextRequest) {
     const finalCaseDescription = caseDescription || case_description || '';
     const finalServiceType = Array.isArray(serviceType) ? serviceType.join(',') : (service_type || 'consult');
     const finalServicePrice = servicePrice || service_price || 0;
-    const finalContactName = contactName || contact_name || '匿名用户';
+    const supabase = getSupabaseAdmin();
+    const finalContactName = await resolveUserNickname(supabase, userId);
     // 默认使用 token 中的手机号，如果没有则使用请求中的
     const finalContactPhone = contactPhone || contact_phone || userPhone || '';
     const finalContactWechat = contactWechat || contact_wechat || '';
@@ -92,7 +94,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = getSupabaseClient();
     const orderNo = generateOrderNo();
 
     // 插入订单

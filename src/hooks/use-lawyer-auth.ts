@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './use-auth';
 import { getFallbackFromStorage } from '@/lib/auth/lawyer-auth-storage';
 
+const ACCOUNT_STATUS_CACHE_TTL = 30_000;
+const accountStatusCache = new Map<string, { status: string; expiresAt: number }>();
+
 /**
  * 律师后台统一的认证检查 Hook
  *
@@ -30,6 +33,12 @@ export function useLawyerAuth() {
    */
   const checkAccountStatus = useCallback(async (uid: string) => {
     if (statusCheckRef.current) return;
+    const cached = accountStatusCache.get(uid);
+    if (cached && cached.expiresAt > Date.now()) {
+      setAccountStatus(cached.status);
+      setStatusChecked(true);
+      return;
+    }
     statusCheckRef.current = true;
 
     try {
@@ -39,11 +48,14 @@ export function useLawyerAuth() {
       const result = await res.json();
       if (result.success && result.data?.status) {
         setAccountStatus(result.data.status);
+        accountStatusCache.set(uid, { status: result.data.status, expiresAt: Date.now() + ACCOUNT_STATUS_CACHE_TTL });
       } else {
         setAccountStatus('approved');
+        accountStatusCache.set(uid, { status: 'approved', expiresAt: Date.now() + ACCOUNT_STATUS_CACHE_TTL });
       }
     } catch {
       setAccountStatus('approved');
+      accountStatusCache.set(uid, { status: 'approved', expiresAt: Date.now() + ACCOUNT_STATUS_CACHE_TTL });
     } finally {
       setStatusChecked(true);
       statusCheckRef.current = false;

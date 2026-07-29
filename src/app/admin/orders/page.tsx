@@ -27,7 +27,9 @@ interface TrendData {
 }
 
 interface Order {
-  id: number;
+  id: string | number;
+  order_type: 'consult' | 'lawyer_application';
+  order_no: string | null;
   contact_name: string;
   contact_phone: string;
   case_type: string;
@@ -48,6 +50,7 @@ const paymentStatusMap = {
 const categoryMap = {
   criminal: { label: '刑事案件', color: 'text-red-600' },
   civil: { label: '民事案件', color: 'text-blue-600' },
+  lawyer_application: { label: '律师入驻订单', color: 'text-violet-600' },
 };
 
 export const dynamic = 'force-dynamic';
@@ -170,7 +173,7 @@ export default function OrderListPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">订单管理</h1>
-          <p className="text-slate-500 mt-1">管理所有咨询订单，处理退款等操作</p>
+          <p className="text-slate-500 mt-1">管理咨询订单与律师入驻订单</p>
         </div>
       </div>
 
@@ -275,6 +278,7 @@ export default function OrderListPage() {
               <option value="">全部</option>
               <option value="criminal">刑事案件</option>
               <option value="civil">民事案件</option>
+              <option value="lawyer_application">律师入驻订单</option>
             </select>
           </div>
         </div>
@@ -332,12 +336,12 @@ export default function OrderListPage() {
                 orders.map((order) => {
                   const paymentStatus = paymentStatusMap[order.payment_status as keyof typeof paymentStatusMap] || paymentStatusMap.pending;
                   const catInfo = categoryMap[order.category as keyof typeof categoryMap] || { label: order.category };
-                  const serviceLabel = getAdminOrderServiceLabel(order.service_type);
+                  const serviceLabel = order.order_type === 'lawyer_application' ? '律师入驻订单' : getAdminOrderServiceLabel(order.service_type);
 
                   return (
                     <tr key={order.id} className="hover:bg-slate-50">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="font-medium text-slate-800">#{order.id}</span>
+                        <span className="font-medium text-slate-800">{order.order_no || `#${order.id}`}</span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="font-medium text-slate-800">{order.contact_name}</div>
@@ -367,11 +371,11 @@ export default function OrderListPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <Link
-                          href={`/admin/orders/${order.id}`}
+                          href={order.order_type === 'lawyer_application' ? `/admin/lawyer/${order.id}` : `/admin/orders/${order.id}`}
                           className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors"
                         >
                           <Eye className="w-4 h-4" />
-                          查看详情
+                          {order.order_type === 'lawyer_application' ? '查看入驻申请' : '查看详情'}
                         </Link>
                       </td>
                     </tr>

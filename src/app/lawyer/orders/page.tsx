@@ -16,6 +16,7 @@ import { useLawyerAuth } from '@/hooks/use-lawyer-auth';
 import { LawyerBottomNav } from '@/components/lawyer/lawyer-bottom-nav';
 import { getLawyerOrderResponseText } from '@/lib/lawyer/order-detail-presenter';
 import { getLawyerUrl } from '@/lib/site';
+import { getLawyerCachedData } from '@/lib/lawyer/client-data-cache';
 
 interface Order {
   id: number;
@@ -59,7 +60,7 @@ const serviceTypeMap: Record<string, { label: string; color: string }> = {
 type TabType = 'all' | 'pending' | 'accepted';
 
 export default function LawyerOrdersPage() {
-  const { isAuthorized, isLoading: authLoading, getAuthHeaders } = useLawyerAuth();
+  const { user, isAuthorized, isLoading: authLoading, getAuthHeaders } = useLawyerAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('all');
@@ -67,8 +68,10 @@ export default function LawyerOrdersPage() {
   const fetchOrders = useCallback(async () => {
     try {
       const headers = getAuthHeaders();
-      const response = await fetch('/api/lawyer/orders', { headers });
-      const result = await response.json();
+      const result = await getLawyerCachedData(`lawyer:${user?.id || 'current'}:orders`, async () => {
+        const response = await fetch('/api/lawyer/orders', { headers });
+        return response.json();
+      });
       if (result.success) {
         setOrders(result.orders || []);
       }
@@ -77,7 +80,7 @@ export default function LawyerOrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [getAuthHeaders]);
+  }, [getAuthHeaders, user?.id]);
 
   useEffect(() => {
     if (!authLoading && isAuthorized) {

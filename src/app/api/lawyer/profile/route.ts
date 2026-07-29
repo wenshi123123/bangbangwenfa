@@ -66,22 +66,25 @@ export async function GET(request: NextRequest) {
     console.log('[Profile API] ✅ 返回律师数据:', { id: data.id, memberExp: data.member_expires_at, memberStart: data.member_starting_at });
     
     // 查询统计数据
-    const { count: totalCount } = await supabase
-      .from('consult_orders')
-      .select('*', { count: 'exact', head: true })
-      .eq('assigned_lawyer_id', lawyerIdFilter);
-    
-    const { count: pendingCount } = await supabase
-      .from('consult_orders')
-      .select('*', { count: 'exact', head: true })
-      .eq('assigned_lawyer_id', lawyerIdFilter)
-      .eq('assignment_status', 'pending');
-    
-    const { count: confirmedCount } = await supabase
-      .from('consult_orders')
-      .select('*', { count: 'exact', head: true })
-      .eq('assigned_lawyer_id', lawyerIdFilter)
-      .in('assignment_status', ['confirmed', 'accepted']);
+    const [totalResult, pendingResult, confirmedResult] = await Promise.all([
+      supabase
+        .from('consult_orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('assigned_lawyer_id', lawyerIdFilter),
+      supabase
+        .from('consult_orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('assigned_lawyer_id', lawyerIdFilter)
+        .eq('assignment_status', 'pending'),
+      supabase
+        .from('consult_orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('assigned_lawyer_id', lawyerIdFilter)
+        .in('assignment_status', ['confirmed', 'accepted']),
+    ]);
+    const totalCount = totalResult.count;
+    const pendingCount = pendingResult.count;
+    const confirmedCount = confirmedResult.count;
     
     const total = totalCount || 0;
     const pending = pendingCount || 0;

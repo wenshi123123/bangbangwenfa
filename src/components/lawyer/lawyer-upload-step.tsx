@@ -9,6 +9,7 @@ import { useState, useRef } from 'react';
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { LawyerFormData } from './lawyer-join-wizard';
 import Image from 'next/image';
+import { getMissingRequirements } from '@/lib/lawyer/package-config';
 
 interface LawyerUploadStepProps {
   formData: LawyerFormData;
@@ -176,12 +177,10 @@ export function LawyerUploadStep({ formData, onUpdate, onNext, onBack }: LawyerU
       return true;
     }
 
-    return (
-      formData.licenseImages.length >= 1 &&
-      formData.idCardImages.length >= 1 &&
-      formData.educationImages.length >= 1
-    );
+    return getMissingRequirements(formData).length === 0;
   };
+
+  const missingRequirements = getMissingRequirements(formData);
 
   const getProgressText = (section: UploadSection) => {
     const current = formData[section.key] as string[];
@@ -202,6 +201,12 @@ export function LawyerUploadStep({ formData, onUpdate, onNext, onBack }: LawyerU
           请上传清晰、完整的资质证明材料
         </p>
       </div>
+
+      {missingRequirements.length > 0 && (
+        <p className="-mt-3 mb-5 text-sm text-amber-700" role="status">
+          还缺：{missingRequirements.map((item) => `${item.title} ${item.missing} 张`).join('，')}
+        </p>
+      )}
 
       {/* Upload Sections */}
       <div className="space-y-6 mb-6">
@@ -331,7 +336,7 @@ export function LawyerUploadStep({ formData, onUpdate, onNext, onBack }: LawyerU
             }
           `}
         >
-          下一步，选择套餐
+          {isFormValid() ? '下一步，选择套餐' : '请先补齐资料'}
         </button>
       </div>
     </div>

@@ -17,6 +17,7 @@ import {
 import { useLawyerAuth } from '@/hooks/use-lawyer-auth';
 import { LawyerBottomNav } from '@/components/lawyer/lawyer-bottom-nav';
 import { getVersionedPath } from '@/lib/site';
+import { getLawyerCachedData, invalidateLawyerCachedData } from '@/lib/lawyer/client-data-cache';
 
 interface LawyerProfile {
   id: number;
@@ -227,13 +228,17 @@ export default function LawyerPage() {
   const fetchLawyerData = useCallback(async () => {
     try {
       const headers = getAuthHeaders();
-      const [profileRes, ordersRes] = await Promise.all([
-        fetch('/api/lawyer/profile', { headers, cache: 'no-store' }),
-        fetch('/api/lawyer/order/pending', { headers, cache: 'no-store' }),
+      const cachePrefix = `lawyer:${user?.id || lawyerId || 'current'}:`;
+      const [profileData, ordersData] = await Promise.all([
+        getLawyerCachedData(`${cachePrefix}profile`, async () => {
+          const response = await fetch('/api/lawyer/profile', { headers, cache: 'no-store' });
+          return response.json();
+        }),
+        getLawyerCachedData(`${cachePrefix}pending-orders`, async () => {
+          const response = await fetch('/api/lawyer/order/pending', { headers, cache: 'no-store' });
+          return response.json();
+        }),
       ]);
-
-      const profileData = await profileRes.json();
-      const ordersData = await ordersRes.json();
 
       if (profileData.success && profileData.data) {
         const rawData = profileData.data;
@@ -275,7 +280,7 @@ export default function LawyerPage() {
     } finally {
       setLoading(false);
     }
-  }, [getAuthHeaders]);
+  }, [getAuthHeaders, lawyerId, user?.id]);
 
   const loadFromLoginData = useCallback(async () => {
     try {
@@ -345,14 +350,6 @@ export default function LawyerPage() {
     }
   }, [authLoading, isAuthorized, loadFromLoginData, fetchLawyerData, hasLawyerIdentity]);
 
-  useEffect(() => {
-    if (initRef.current && !authLoading && !loading && !profile) {
-      if (hasLawyerIdentity() || isAuthorized) {
-        fetchLawyerData();
-      }
-    }
-  }, [authLoading, isAuthorized, loading, profile, hasLawyerIdentity, fetchLawyerData]);
-
   const executeOrderAction = async (orderId: number, action: 'accept' | 'reject') => {
     if (!lawyerId) {
       alert('未获取到律师身份信息，请刷新页面后重试');
@@ -381,6 +378,7 @@ export default function LawyerPage() {
           if (action === 'accept') result.confirmed = prev.confirmed + 1;
           return result;
         });
+        invalidateLawyerCachedData(`lawyer:${user?.id || lawyerId || 'current'}:`);
         fetchLawyerData();
       } else {
         console.error('[接单/拒单] 后端返回失败', { orderId, action, lawyerId, status: response.status, result });

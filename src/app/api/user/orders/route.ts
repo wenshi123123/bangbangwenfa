@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
+import { resolveUserNickname } from '@/lib/user/resolve-nickname';
 
 const lawyerPackageLabels: Record<string, string> = {
   civil_premium: '民事律师（臻选）',
@@ -20,7 +21,8 @@ export async function GET(request: NextRequest) {
     // 使用 token 中的用户 ID
     const userId = auth.userId!;
 
-    const supabase = getSupabaseClient();
+    const supabase = getSupabaseAdmin();
+    const nickname = await resolveUserNickname(supabase, userId);
 
     const orders: any[] = [];
 
@@ -52,6 +54,7 @@ export async function GET(request: NextRequest) {
           lawyerResponse: order.lawyer_response,
           lawyerWechat: order.lawyer_wechat,
           lawyerName: order.lawyer_name,
+          contactName: nickname,
           respondedAt: order.responded_at,
           createdAt: order.created_at,
           updatedAt: order.updated_at,
@@ -106,6 +109,7 @@ export async function GET(request: NextRequest) {
           paidAt: app.paid_at,
           refundAt: app.refund_at,
           name: app.name,
+          contactName: nickname,
           createdAt: app.created_at,
           updatedAt: app.updated_at,
         });

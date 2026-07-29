@@ -601,7 +601,13 @@ INSERT INTO price_configs (category, plan_id, plan_name, price, description) VAL
 ('criminal', 'criminal_consult', '刑事咨询基础套餐', 9900, '刑事案件咨询基础服务'),
 ('criminal', 'criminal_phone', '刑事电话咨询', 10000, '15分钟专业电话咨询'),
 ('civil', 'civil_consult', '民事咨询基础套餐', 6900, '民事纠纷咨询基础服务'),
-('civil', 'civil_phone', '民事电话咨询', 10000, '15分钟专业电话咨询')
+('civil', 'civil_phone', '民事电话咨询', 10000, '15分钟专业电话咨询'),
+('lawyer', 'civil_premium', '民事律师（臻选）', 500000, '律师入驻费用'),
+('lawyer', 'criminal_premium', '刑事律师（臻选）', 800000, '律师入驻费用'),
+('lawyer_renewal', 'civil_renew_quarter', '民事律师季卡', 1000000, '续费 3 个月'),
+('lawyer_renewal', 'civil_renew_year', '民事律师年卡', 1000000, '续费 12 个月'),
+('lawyer_renewal', 'criminal_renew_quarter', '刑事律师季卡', 1000000, '续费 3 个月'),
+('lawyer_renewal', 'criminal_renew_year', '刑事律师年卡', 1000000, '续费 12 个月')
 ON CONFLICT DO NOTHING;
 
 -- ============================================

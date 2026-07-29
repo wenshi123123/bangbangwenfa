@@ -15,6 +15,7 @@ import { UI_LOAD_TIMEOUT_MS } from '@/lib/ui/with-timeout';
 import { GuardianLoginForm } from '@/components/guardian/guardian-login-form';
 import { GuardianIdentityHero } from '@/components/guardian/guardian-identity-hero';
 import { GuardianShareDrawer } from '@/components/guardian/guardian-share-drawer';
+import { copyTextWithFallback } from '@/lib/browser/copy-to-clipboard';
 
 interface WithdrawConfig {
   minAmount: number;      // 最低提现金额（分）
@@ -103,6 +104,7 @@ export default function GuardianCenterPage() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [completedShareAction, setCompletedShareAction] = useState<'link' | 'qr' | 'poster' | null>(null);
+  const [shareError, setShareError] = useState('');
   const { posterUrl, generating, generatePoster, downloadPoster } = usePosterGenerator();
   const [hasPendingWithdraw, setHasPendingWithdraw] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -253,11 +255,16 @@ export default function GuardianCenterPage() {
     };
   }, [fetchData, generateQRCode, mounted]);
 
-  const copyInviteLink = () => {
+  const copyInviteLink = async () => {
     const inviteUrl = `${window.location.origin}${getGuardianInviteRegistrationPath(guardian?.invite_code || '')}`;
-    navigator.clipboard.writeText(inviteUrl);
-    setCompletedShareAction('link');
-    setTimeout(() => setCompletedShareAction(null), 1600);
+    const copied = await copyTextWithFallback(inviteUrl);
+    if (copied) {
+      setShareError('');
+      setCompletedShareAction('link');
+      setTimeout(() => setCompletedShareAction(null), 1600);
+      return;
+    }
+    setShareError('自动复制失败，请长按下方链接后选择复制。');
   };
 
   const downloadQRCode = () => {
@@ -1057,6 +1064,8 @@ export default function GuardianCenterPage() {
           inviteCode={guardian.invite_code}
           qrCodeUrl={qrcodeUrl}
           completedAction={completedShareAction}
+          inviteUrl={guardian ? `${window.location.origin}${getGuardianInviteRegistrationPath(guardian.invite_code)}` : ''}
+          shareError={shareError}
           onCopyLink={copyInviteLink}
           onDownloadQrCode={downloadQRCode}
           onGeneratePoster={openPosterFromShare}

@@ -8,12 +8,14 @@ import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerHeader, Dr
 
 type ShareAction = 'link' | 'qr' | 'poster' | null;
 
-export function GuardianShareDrawer({ open, onOpenChange, inviteCode, qrCodeUrl, completedAction, onCopyLink, onDownloadQrCode, onGeneratePoster }: {
+export function GuardianShareDrawer({ open, onOpenChange, inviteCode, qrCodeUrl, completedAction, inviteUrl, shareError, onCopyLink, onDownloadQrCode, onGeneratePoster }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   inviteCode: string;
   qrCodeUrl: string;
   completedAction: ShareAction;
+  inviteUrl: string;
+  shareError: string;
   onCopyLink: () => void;
   onDownloadQrCode: () => void;
   onGeneratePoster: () => void;
@@ -35,6 +37,7 @@ export function GuardianShareDrawer({ open, onOpenChange, inviteCode, qrCodeUrl,
           <button type="button" onClick={onGeneratePoster} className="flex min-h-11 w-full items-center justify-between rounded-xl bg-[#C47353] px-4 py-4 text-left text-white transition-[transform,background-color] duration-150 active:scale-[0.98] active:bg-[#A95E42]"><span className="flex items-center gap-3"><ImageIcon aria-hidden="true" className="h-5 w-5" /><span><span className="block font-semibold">分享守护海报</span><span className="mt-0.5 block text-xs text-white/80">适合发送给亲友或分享至社群</span></span></span></button>
           <button type="button" onClick={onDownloadQrCode} disabled={!qrCodeUrl} className="flex min-h-11 w-full items-center justify-between rounded-xl border border-[#DFC0AC] bg-white px-4 py-4 text-left text-[#3F3028] transition-[transform,background-color] duration-150 active:scale-[0.98] active:bg-[#F7EEE7] disabled:opacity-50"><span className="flex items-center gap-3"><Download aria-hidden="true" className="h-5 w-5 text-[#A96820]" /><span><span className="block font-semibold">保存专属二维码</span><span className="mt-0.5 block text-xs text-[#8C6C59]">适合线下和一对一分享</span></span></span></button>
           <button type="button" onClick={onCopyLink} className="flex min-h-11 w-full items-center justify-between rounded-xl border border-[#DFC0AC] bg-white px-4 py-4 text-left text-[#3F3028] transition-[transform,background-color] duration-150 active:scale-[0.98] active:bg-[#F7EEE7]"><span className="flex items-center gap-3"><Copy aria-hidden="true" className="h-5 w-5 text-[#A96820]" /><span><span className="block font-semibold">复制邀请链接</span><span className="mt-0.5 block text-xs text-[#8C6C59]">适合文字聊天和公众号发布</span></span></span></button>
+          {shareError && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-left"><p className="text-sm text-amber-800">{shareError}</p><textarea readOnly value={inviteUrl} aria-label="邀请链接，可长按复制" className="mt-2 min-h-20 w-full rounded-lg border border-amber-200 bg-white p-2 text-xs text-[#3F3028]" /></div>}
           <p aria-live="polite" className="min-h-5 text-center text-sm text-[#3F6A5A]">{completeLabel && <><Check aria-hidden="true" className="mr-1 inline h-4 w-4" />{completeLabel}</>}</p>
           <div className="flex items-start gap-2 rounded-xl bg-[#F2E2D2]/70 px-3 py-3 text-xs leading-5 text-[#7A5E4F]"><ShieldCheck aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-[#3F6A5A]" />平台会保护亲友的个人信息与咨询隐私。</div>
           <DrawerClose className="min-h-11 w-full rounded-xl py-3 text-sm font-medium text-[#7A5E4F] transition-colors duration-150 active:bg-[#F2E2D2]">暂不邀请</DrawerClose>

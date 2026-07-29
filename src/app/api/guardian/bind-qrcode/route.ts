@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
+import { resolveGuardianId } from '@/lib/auth/guardian-identity';
 
 const COOLDOWN_DAYS = 7;
 
@@ -13,30 +14,28 @@ export async function POST(request: NextRequest) {
       return unauthorizedResponse(auth.error);
     }
 
-    if (auth.userType !== 'guardian' || !auth.guardianId) {
-      return NextResponse.json({ success: false, error: '非守护者账号' }, { status: 403 });
-    }
+    const supabase = getSupabaseAdmin();
+    const guardianId = await resolveGuardianId(auth, supabase);
+    if (!guardianId) return NextResponse.json({ success: false, error: '非守护者账号' }, { status: 403 });
 
     const formData = await request.formData();
     const qrcodeFile = formData.get('qrcode') as File | null;
     const wechatAccount = formData.get('wechatAccount') as string | null;
     const guardianIdRaw = formData.get('guardianId') as string | null;
-    if (guardianIdRaw !== null && String(guardianIdRaw) !== String(auth.guardianId)) {
+    if (guardianIdRaw !== null && String(guardianIdRaw) !== String(guardianId)) {
       return NextResponse.json({ success: false, error: '无权操作其他守护者数据' }, { status: 403 });
     }
-    const guardianId = auth.guardianId.toString();
+    const guardianIdString = guardianId.toString();
 
     if (!qrcodeFile && !wechatAccount) {
       return NextResponse.json({ success: false, error: '请上传收款码或填写微信号' }, { status: 400 });
     }
 
-    const supabase = getSupabaseAdmin();
-
     // 查询当前守护者记录（检查冷却期）
     const { data: current, error: fetchError } = await supabase
       .from('guardian_users')
       .select('wechat_qrcode, wechat_qrcode_updated_at')
-      .eq('id', guardianId)
+      .eq('id', guardianIdString)
       .single();
 
     if (fetchError) {
@@ -68,8 +67,8 @@ export async function POST(request: NextRequest) {
     // 处理收款码文件上传
     if (qrcodeFile && qrcodeFile.size > 0) {
       const fileExt = qrcodeFile.name.split('.').pop();
-      const fileName = `guardian_qrcode_${guardianId}_${Date.now()}.${fileExt}`;
-      const filePath = `guardians/${guardianId}/${fileName}`;
+      const fileName = `guardian_qrcode_${guardianIdString}_${Date.now()}.${fileExt}`;
+      const filePath = `guardians/${guardianIdString}/${fileName}`;
 
       const buffer = Buffer.from(await qrcodeFile.arrayBuffer());
       const { error: uploadError } = await supabase.storage
@@ -100,7 +99,7 @@ export async function POST(request: NextRequest) {
     const { error: updateError } = await supabase
       .from('guardian_users')
       .update(updates)
-      .eq('id', guardianId);
+      .eq('id', guardianIdString);
 
     if (updateError) {
       console.error('更新失败:', updateError);

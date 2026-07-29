@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { getWechatPayClient } from '@/lib/payment/wechat-pay';
 import { notifyOrder } from '@/lib/notify/webhook';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
+import { resolveUserNickname } from '@/lib/user/resolve-nickname';
 
 function paymentResponse(order: any) {
   return NextResponse.json({
@@ -118,7 +119,7 @@ export async function GET(request: NextRequest) {
             paidAt = confirmedAt;
             transactionId = remote.transactionId || transactionId;
             await notifyOrder({
-              type: 'Registration', userName: application.name || application.phone || '未知', phone: application.phone || undefined,
+              type: 'Registration', userName: await resolveUserNickname(supabase, application.user_id), phone: application.phone || undefined,
               amount: application.package_price, detail: `套餐：${application.package_type || '律师入驻'}`,
               orderId: application.order_no, status: 'Paid', event: 'paid',
             });

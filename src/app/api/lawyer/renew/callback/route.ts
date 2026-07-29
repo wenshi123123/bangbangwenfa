@@ -46,7 +46,7 @@ function decryptNotifyData(
 }
 
 // 处理支付成功逻辑（幂等）
-async function handlePaymentSuccess(tradeNo: string, orderNo: string): Promise<{ success: boolean; error?: string }> {
+async function handlePaymentSuccess(tradeNo: string, orderNo: string, paidAmount: number): Promise<{ success: boolean; error?: string }> {
   const supabase = getSupabaseAdmin();
 
   // 查询续费订单
@@ -59,6 +59,11 @@ async function handlePaymentSuccess(tradeNo: string, orderNo: string): Promise<{
   if (orderError || !order) {
     console.error('续费订单不存在:', orderNo);
     return { success: false, error: '续费订单不存在' };
+  }
+
+  if (Number(order.package_price) !== paidAmount) {
+    console.error('续费订单支付金额不一致:', { orderNo, expected: order.package_price, actual: paidAmount });
+    return { success: false, error: '支付金额不一致' };
   }
 
   // 幂等检查：已支付则跳过
@@ -246,9 +251,13 @@ export async function POST(request: NextRequest) {
 
     const transactionId = paymentResult.transaction_id;
     const outTradeNo = paymentResult.out_trade_no;
+    const paidAmount = Number(paymentResult.amount?.total);
+    if (!Number.isFinite(paidAmount)) {
+      return NextResponse.json({ code: 'FAIL', message: '支付通知缺少金额' }, { status: 400 });
+    }
 
     // 处理支付成功
-    const result = await handlePaymentSuccess(transactionId, outTradeNo);
+    const result = await handlePaymentSuccess(transactionId, outTradeNo, paidAmount);
     if (!result.success) {
       console.error('处理支付成功失败:', result.error);
       return NextResponse.json(

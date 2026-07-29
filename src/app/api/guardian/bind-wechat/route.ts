@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
+import { resolveGuardianId } from '@/lib/auth/guardian-identity';
 
 const COOLDOWN_DAYS = 7;
 
@@ -20,18 +21,15 @@ export async function POST(request: NextRequest) {
       return unauthorizedResponse(auth.error);
     }
 
-    if (auth.userType !== 'guardian' || !auth.guardianId) {
-      return NextResponse.json({ success: false, error: '非守护者账号' }, { status: 403 });
-    }
+    const supabase = getSupabaseAdmin();
+    const guardianId = await resolveGuardianId(auth, supabase);
+    if (!guardianId) return NextResponse.json({ success: false, error: '非守护者账号' }, { status: 403 });
 
-    if (guardian_id !== undefined && String(guardian_id) !== String(auth.guardianId)) {
+    if (guardian_id !== undefined && String(guardian_id) !== String(guardianId)) {
       return NextResponse.json({ success: false, error: '无权操作其他守护者数据' }, { status: 403 });
     }
 
     // 身份边界以 JWT 为准，客户端字段仅用于兼容旧调用方并经过一致性校验。
-    const guardianId = auth.guardianId;
-
-    const supabase = getSupabaseAdmin();
 
     // 查询当前守护者记录（获取上次更新时间）
     const { data: current, error: fetchError } = await supabase

@@ -11,14 +11,19 @@ import { LawyerBottomNav } from '@/components/lawyer/lawyer-bottom-nav';
 import { useLawyerAuth } from '@/hooks/use-lawyer-auth';
 import { getLawyerLoginUrl, getLawyerUrl } from '@/lib/site';
 import { WechatExternalBrowserGuide } from '@/components/payment/wechat-external-browser-guide';
+import { RENEWAL_PACKAGE_META } from '@/lib/lawyer/package-config';
 
-// 套餐配置
-const renewalPackages = [
-  { id: 'civil_renew_6', name: '民事律师续费（6个月）', price: 200000, priceDisplay: '2000', duration: '6个月', type: 'civil' as const, features: ['继续接收民事类客户', '平台流量扶持', '专属认证标识'], description: '适合短期试用或刚入驻平台，快速体验接单流程。' },
-  { id: 'civil_renew_18', name: '民事律师续费（18个月）', price: 500000, priceDisplay: '5000', duration: '18个月', type: 'civil' as const, features: ['继续接收民事类客户', '平台流量扶持', '专属认证标识', '额外赠送1个月'], description: '性价比之选，平均每月仅 ¥277，比6个月套餐便宜约44%，适合长期执业。', recommended: true },
-  { id: 'criminal_renew_6', name: '刑事律师续费（6个月）', price: 320000, priceDisplay: '3200', duration: '6个月', type: 'criminal' as const, features: ['继续接收刑事类客户', '平台流量扶持', '专属认证标识'], description: '适合短期试用或刚入驻平台，快速体验接单流程。' },
-  { id: 'criminal_renew_18', name: '刑事律师续费（18个月）', price: 800000, priceDisplay: '8000', duration: '18个月', type: 'criminal' as const, features: ['继续接收刑事类客户', '平台流量扶持', '专属认证标识', '额外赠送1个月'], description: '性价比之选，平均每月仅 ¥444，比6个月套餐便宜约44%，适合长期执业。', recommended: true },
-];
+type RenewalPackage = {
+  id: keyof typeof RENEWAL_PACKAGE_META;
+  name: string;
+  price: number;
+  priceDisplay: string;
+  duration: string;
+  type: 'civil' | 'criminal';
+  features: string[];
+  description: string;
+  recommended?: boolean;
+};
 
 function RenewContent() {
   const router = useRouter();
@@ -32,10 +37,51 @@ function RenewContent() {
   const [paid, setPaid] = useState(false);
   const [isWechat, setIsWechat] = useState(false);
   const [deviceReady, setDeviceReady] = useState(false);
+  const [renewalPackages, setRenewalPackages] = useState<RenewalPackage[]>([]);
+  const [pricesLoading, setPricesLoading] = useState(true);
 
   useEffect(() => {
     setIsWechat(/MicroMessenger/i.test(navigator.userAgent || ''));
     setDeviceReady(true);
+  }, []);
+
+  useEffect(() => {
+    const loadRenewalPrices = async () => {
+      try {
+        const response = await fetch('/api/price?category=lawyer_renewal');
+        const result = await response.json();
+        if (!result.success || !Array.isArray(result.data)) {
+          throw new Error(result.error || '续费套餐价格暂不可用');
+        }
+
+        const configured = (Object.entries(RENEWAL_PACKAGE_META) as Array<[keyof typeof RENEWAL_PACKAGE_META, typeof RENEWAL_PACKAGE_META[keyof typeof RENEWAL_PACKAGE_META]]>)
+          .map(([id, meta]) => {
+            const price = Number(result.data.find((item: { plan_id: string; price: number | string }) => item.plan_id === id)?.price);
+            if (!Number.isFinite(price)) return null;
+            return {
+              id,
+              name: meta.name,
+              price,
+              priceDisplay: (price / 100).toFixed(0),
+              duration: meta.duration,
+              type: meta.type,
+              features: [`继续接收${meta.type === 'civil' ? '民事' : '刑事'}类客户`, '平台流量扶持', '专属认证标识'],
+              description: meta.months === 3 ? '适合需要短期续期的律师。' : '适合需要长期续期的律师。',
+              recommended: meta.months === 12,
+            };
+          });
+
+        if (configured.some((item) => item === null)) {
+          throw new Error('续费套餐价格尚未配置完整');
+        }
+        setRenewalPackages(configured as RenewalPackage[]);
+      } catch (loadError: any) {
+        setError(loadError?.message || '续费套餐价格暂不可用，请稍后重试');
+      } finally {
+        setPricesLoading(false);
+      }
+    };
+    loadRenewalPrices();
   }, []);
 
   useEffect(() => {
@@ -65,7 +111,7 @@ function RenewContent() {
   const handlePay = useCallback(async () => {
     if (!deviceReady) return;
     if (isWechat) return;
-    if (!selectedPackage || loading) return;
+    if (!selectedPackage || loading || pricesLoading) return;
     setLoading(true); setError(null);
     const pkg = renewalPackages.find(p => p.id === selectedPackage);
     if (!pkg) { setError('套餐信息异常'); setLoading(false); return; }
@@ -85,7 +131,7 @@ function RenewContent() {
       console.error('创建支付订单失败:', err);
       setError(err?.message || (typeof err === 'string' ? err : '网络错误，请检查连接后重试'));
     } finally { setLoading(false); }
-  }, [selectedPackage, loading, deviceReady, isWechat]);
+  }, [selectedPackage, loading, deviceReady, isWechat, pricesLoading, renewalPackages]);
 
   if (deviceReady && isWechat) {
     return <WechatExternalBrowserGuide />;
@@ -126,7 +172,7 @@ function RenewContent() {
   }
 
   if (qrcodeUrl) {
-    return (<div className="min-h-screen flex items-center justify-center p-4 bg-[#FAF7F2]"><div className="bg-white rounded-xl p-8 max-w-sm w-full text-center"><h2 className="text-xl font-serif text-[#3D322D] mb-2">微信扫码支付</h2><p className="text-sm text-[#8C7B6E] mb-6">请使用微信扫描下方二维码完成支付</p><div className="mb-6"><div className="inline-block p-4 bg-white rounded-xl border border-[rgba(196,115,83,0.2)]"><QRCodeSVG value={qrcodeUrl} size={220} level="M" includeMargin={true} /></div><p className="text-xs text-[#8C7B6E] mt-3">{selectedPackage ? `¥${renewalPackages.find(p => p.id === selectedPackage)?.priceDisplay}` : ''}</p></div><p className="text-xs text-[#8C7B6E] mb-4">支付完成后页面将自动跳转</p><div className="flex gap-3"><Button variant="outline" onClick={() => { setQrcodeUrl(null); setOrderId(null); }} className="flex-1 py-3 border-[rgba(196,115,83,0.3)] text-[#8C7B6E] hover:bg-[#FAF7F2] rounded-full font-serif">返回选择</Button><Button onClick={() => window.location.reload()} variant="outline" className="flex-1 py-3 border-[rgba(196,115,83,0.3)] text-[#8C7B6E] hover:bg-[#FAF7F2] rounded-full font-serif">刷新二维码</Button></div></div></div>);
+    return (<div className="min-h-screen flex items-center justify-center p-4 bg-[#FAF7F2]"><div className="bg-white rounded-xl p-8 max-w-sm w-full text-center"><h2 className="text-xl font-serif text-[#3D322D] mb-2">微信扫码支付</h2><p className="text-sm text-[#8C7B6E] mb-6">请使用微信扫描下方二维码完成支付</p><div className="mb-6"><div className="inline-block p-4 bg-white rounded-xl border border-[rgba(196,115,83,0.2)]"><QRCodeSVG value={qrcodeUrl} size={220} level="M" includeMargin={true} /></div><p className="text-xs text-[#8C7B6E] mt-3">{selectedPackage ? `¥${renewalPackages.find(p => p.id === selectedPackage)?.priceDisplay || ''}` : ''}</p></div><p className="text-xs text-[#8C7B6E] mb-4">支付完成后页面将自动跳转</p><div className="flex gap-3"><Button variant="outline" onClick={() => { setQrcodeUrl(null); setOrderId(null); }} className="flex-1 py-3 border-[rgba(196,115,83,0.3)] text-[#8C7B6E] hover:bg-[#FAF7F2] rounded-full font-serif">返回选择</Button><Button onClick={() => window.location.reload()} variant="outline" className="flex-1 py-3 border-[rgba(196,115,83,0.3)] text-[#8C7B6E] hover:bg-[#FAF7F2] rounded-full font-serif">刷新二维码</Button></div></div></div>);
   }
 
   return (
@@ -145,12 +191,13 @@ function RenewContent() {
           <CardContent className="pt-4">
             <div className="flex items-start gap-3">
               <Clock className="w-5 h-5 text-[#C47353] flex-shrink-0 mt-0.5" />
-              <div><p className="font-serif font-normal text-[#3D322D]">续费说明</p><ul className="text-sm text-[#8C7B6E] mt-2 space-y-1"><li>• 续费后会员有效期将在当前到期日基础上顺延</li><li>• 续费金额按所选套餐时长计算</li><li>• 18个月套餐平均每月费用更低，比6个月套餐便宜约44%</li><li>• 会员到期后未续费将自动降级，但仍可查看历史数据</li><li>• 如有问题请联系客服</li></ul></div>
+              <div><p className="font-serif font-normal text-[#3D322D]">续费说明</p><ul className="text-sm text-[#8C7B6E] mt-2 space-y-1"><li>• 续费后会员有效期将在当前到期日基础上顺延</li><li>• 季卡延长 3 个月，年卡延长 12 个月</li><li>• 续费金额由后台套餐配置确定</li><li>• 会员到期后未续费将自动降级，但仍可查看历史数据</li><li>• 如有问题请联系客服</li></ul></div>
             </div>
           </CardContent>
         </Card>
         <h3 className="text-xl font-serif text-[#3D322D] font-normal mb-6">选择续费套餐</h3>
         {error && (<div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2"><AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" /><p className="text-sm text-red-600">{error}</p></div>)}
+        {pricesLoading && <p className="text-sm text-[#8C7B6E] text-center">正在加载套餐价格...</p>}
         <div className="grid gap-4">
           {renewalPackages.map((pkg) => (
             <Card key={pkg.id} className={`cursor-pointer transition-all duration-250 shadow-none rounded-xl hover:-translate-y-[2px] ${selectedPackage === pkg.id ? 'border-[#C47353] ring-2 ring-[#C47353]/20' : 'border-[rgba(196,115,83,0.2)] hover:shadow-[0_4px_16px_rgba(61,50,45,0.08)]'}`} onClick={() => handleSelectPackage(pkg.id)}>
@@ -172,7 +219,7 @@ function RenewContent() {
           ))}
         </div>
         <div className="mt-6">
-          <Button onClick={handlePay} disabled={!selectedPackage || loading} className={`w-full py-6 text-lg font-serif rounded-full h-auto transition-all duration-250 ${selectedPackage && !loading ? 'bg-[#C47353] hover:bg-[#A85D40] text-white shadow-[0_4px_16px_rgba(196,115,83,0.3)] hover:-translate-y-[1px] active:scale-[0.98]' : 'bg-[#C47353]/40 text-white/70 cursor-not-allowed'}`}>
+          <Button onClick={handlePay} disabled={!selectedPackage || loading || pricesLoading || Boolean(error)} className={`w-full py-6 text-lg font-serif rounded-full h-auto transition-all duration-250 ${selectedPackage && !loading && !pricesLoading && !error ? 'bg-[#C47353] hover:bg-[#A85D40] text-white shadow-[0_4px_16px_rgba(196,115,83,0.3)] hover:-translate-y-[1px] active:scale-[0.98]' : 'bg-[#C47353]/40 text-white/70 cursor-not-allowed'}`}>
             {loading ? (<><Loader2 className="w-5 h-5 mr-2 animate-spin" />正在创建支付订单...</>) : (<><CreditCard className="w-5 h-5 mr-2" />{selectedPackage ? `立即支付 ¥${renewalPackages.find(p => p.id === selectedPackage)?.priceDisplay}` : '请选择续费套餐'}</>)}
           </Button>
         </div>

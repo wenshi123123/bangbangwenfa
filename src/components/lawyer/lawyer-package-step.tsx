@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Check, Loader2 } from 'lucide-react';
 import { LawyerFormData } from './lawyer-join-wizard';
+import { LAWYER_ONBOARDING_PACKAGES } from '@/lib/lawyer/package-config';
 
 interface LawyerPackageStepProps {
   formData: LawyerFormData;
@@ -15,43 +16,19 @@ interface Package {
   price: number;
   priceDisplay: string;
   duration: string;
-  features: string[];
+  features: readonly string[];
   color: string;
 }
 
 // 固定套餐配置（特征和服务内容）
-const PACKAGE_CONFIGS = [
-  {
-    id: 'civil_premium',
-    name: '民事律师（臻选）',
-    duration: '18个月',
-    features: [
-      '优先接收添加微信的民事客户',
-      '平台流量扶持',
-      '专属认证标识',
-      '专属客服服务',
-    ],
-    color: 'blue',
-  },
-  {
-    id: 'criminal_premium',
-    name: '刑事律师（臻选）',
-    duration: '18个月',
-    features: [
-      '优先接收添加微信的刑事客户',
-      '平台流量扶持',
-      '专属认证标识',
-      '专属客服服务',
-    ],
-    color: 'orange',
-  },
-];
+const PACKAGE_CONFIGS = LAWYER_ONBOARDING_PACKAGES;
 
 export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) {
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [priceError, setPriceError] = useState<string | null>(null);
 
   // 从 API 加载价格数据
   useEffect(() => {
@@ -64,9 +41,10 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
           // 将价格配置映射到套餐
           const packagesData = PACKAGE_CONFIGS.map(config => {
             const priceConfig = result.data.find((p: any) => p.plan_id === config.id);
-            // 兜底：如果 API 未返回匹配价格，使用默认值而非 0
-            const defaultPrice = config.id === 'civil_premium' ? 500000 : 800000;
-            const price = priceConfig?.price || defaultPrice;
+            const price = Number(priceConfig?.price);
+            if (!Number.isFinite(price)) {
+              throw new Error('律师套餐价格尚未配置');
+            }
             return {
               ...config,
               price,
@@ -75,21 +53,11 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
           });
           setPackages(packagesData);
         } else {
-          // 如果 API 失败，使用默认值
-          setPackages(PACKAGE_CONFIGS.map(config => ({
-            ...config,
-            price: config.id === 'civil_premium' ? 500000 : 800000,
-            priceDisplay: config.id === 'civil_premium' ? '5000' : '8000',
-          })));
+          setPriceError(result.error || '律师套餐价格暂不可用，请稍后重试');
         }
       } catch (error) {
         console.error('获取价格失败:', error);
-        // 使用默认值
-        setPackages(PACKAGE_CONFIGS.map(config => ({
-          ...config,
-          price: config.id === 'civil_premium' ? 500000 : 800000,
-          priceDisplay: config.id === 'civil_premium' ? '5000' : '8000',
-        })));
+        setPriceError('律师套餐价格暂不可用，请稍后重试');
       } finally {
         setLoading(false);
       }
@@ -117,6 +85,10 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
   };
 
   const handleSubmit = async () => {
+    if (priceError) {
+      alert(priceError);
+      return;
+    }
     if (selectedPackages.length === 0) {
       alert('请至少选择一个套餐');
       return;
@@ -162,7 +134,6 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
           idCardImages: formData.idCardImages,
           educationImages: formData.educationImages,
           packageType: primaryPkg?.id || selectedPackages[0],
-          packagePrice: totalPrice, // 使用总价格
           selectedPackages: selectedPackages, // 额外传递所有选中的套餐
         }),
       });
@@ -256,6 +227,11 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
       </div>
 
       {/* Multi-select Hint */}
+      {priceError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-center">
+          <p className="text-sm text-red-700">{priceError}</p>
+        </div>
+      )}
       {selectedPackages.length > 1 && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-3 mb-4 text-center">
           <p className="text-sm text-green-700">
@@ -402,10 +378,10 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
         </button>
         <button
           onClick={handleSubmit}
-          disabled={isSubmitting || selectedPackages.length === 0}
+          disabled={isSubmitting || selectedPackages.length === 0 || Boolean(priceError)}
           className={`
             flex-[2] py-3 sm:py-4 rounded-xl sm:rounded-2xl font-semibold text-sm sm:text-base transition-all duration-300
-            ${isSubmitting || selectedPackages.length === 0
+            ${isSubmitting || selectedPackages.length === 0 || priceError
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
               : 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 shadow-lg shadow-green-200'
             }
@@ -416,6 +392,8 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
               <Loader2 className="w-4 h-4 animate-spin" />
               提交中...
             </span>
+          ) : priceError ? (
+            '套餐价格暂不可用'
           ) : selectedPackages.length === 0 ? (
             '请选择套餐'
           ) : (
