@@ -11,7 +11,11 @@ import QRCode from 'qrcode';
 import { usePosterGenerator } from '@/hooks/use-poster';
 import { getGuardianInviteRegistrationPath } from '@/lib/guardian/invite-contract';
 import { apiRequest, getToken } from '@/lib/api/request';
-import { GuardianCenterLoadTimeoutError, loadGuardianCenterData } from '@/lib/guardian/load-center-data';
+import {
+  GuardianCenterLoadTimeoutError,
+  loadGuardianCenterData,
+  persistGuardianCache,
+} from '@/lib/guardian/load-center-data';
 import { GuardianLoginForm } from '@/components/guardian/guardian-login-form';
 import { GuardianIdentityHero } from '@/components/guardian/guardian-identity-hero';
 import { GuardianShareDrawer } from '@/components/guardian/guardian-share-drawer';
@@ -145,7 +149,7 @@ export default function GuardianCenterPage() {
       >(apiRequest);
       setGuardian(data.profile);
       // 同时更新 localStorage 中的数据
-      localStorage.setItem('guardian_user', JSON.stringify(data.profile));
+      persistGuardianCache(localStorage, data.profile);
       setCommissions(data.commissions);
       setInvitees(data.invitees);
       setWithdrawals(data.withdrawals);

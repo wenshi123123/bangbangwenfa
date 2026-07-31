@@ -5,10 +5,33 @@ type GuardianApiRequest = (
   options?: { signal?: AbortSignal },
 ) => Promise<Response>;
 
+interface GuardianCacheProfile {
+  id: number;
+  nickname: string;
+  invite_code: string;
+}
+
 export class GuardianCenterLoadTimeoutError extends Error {
   constructor() {
     super('数据加载超时，请检查网络后重试');
     this.name = 'GuardianCenterLoadTimeoutError';
+  }
+}
+
+export function persistGuardianCache(
+  storage: Pick<Storage, 'setItem'>,
+  guardian: GuardianCacheProfile,
+): boolean {
+  try {
+    storage.setItem('guardian_user', JSON.stringify({
+      id: guardian.id,
+      nickname: guardian.nickname,
+      invite_code: guardian.invite_code,
+    }));
+    return true;
+  } catch {
+    // 缓存只用于加快下次页面初始化，写入失败不能影响已加载的数据展示。
+    return false;
   }
 }
 
