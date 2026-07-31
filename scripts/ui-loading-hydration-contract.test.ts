@@ -7,15 +7,19 @@ const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), 'utf8');
 
 const guardian = read('src/app/guardian/center/page.tsx');
+const guardianLoader = read('src/lib/guardian/load-center-data.ts');
 const civil = read('src/components/consult/civil-consultation-wizard.tsx');
 const messages = read('src/app/user/messages/page.tsx');
 const admin = read('src/app/admin/dashboard/page.tsx');
 const lawyerJoin = read('src/app/lawyer/join/page.tsx');
 
-assert.match(guardian, /LOAD_TIMEOUT_MS/);
+assert.match(guardian, /loadGuardianCenterData/);
+assert.match(guardian, /GuardianCenterLoadTimeoutError/);
+assert.match(guardianLoader, /UI_LOAD_TIMEOUT_MS/);
+assert.match(guardianLoader, /controller\.abort/);
 assert.match(guardian, /loadError/);
 assert.match(guardian, /加载失败/);
-assert.match(guardian, /readSuccessfulJson/);
+assert.match(guardianLoader, /readSuccessfulJson/);
 assert.match(civil, /authLoadTimedOut/);
 assert.match(civil, /登录状态加载超时/);
 assert.doesNotMatch(messages, /const hasToken = typeof window !== 'undefined' \? !!localStorage\.getItem\('token'\)/);

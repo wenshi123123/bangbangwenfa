@@ -11,7 +11,7 @@ import QRCode from 'qrcode';
 import { usePosterGenerator } from '@/hooks/use-poster';
 import { getGuardianInviteRegistrationPath } from '@/lib/guardian/invite-contract';
 import { apiRequest, getToken } from '@/lib/api/request';
-import { UI_LOAD_TIMEOUT_MS } from '@/lib/ui/with-timeout';
+import { GuardianCenterLoadTimeoutError, loadGuardianCenterData } from '@/lib/guardian/load-center-data';
 import { GuardianLoginForm } from '@/components/guardian/guardian-login-form';
 import { GuardianIdentityHero } from '@/components/guardian/guardian-identity-hero';
 import { GuardianShareDrawer } from '@/components/guardian/guardian-share-drawer';
@@ -61,13 +61,6 @@ interface WithdrawalRecord {
   status: string;
   created_at: string;
   processed_at?: string;
-}
-
-async function readSuccessfulJson(response: Response): Promise<any> {
-  if (!response.ok) throw new Error(`请求失败（${response.status}）`);
-  const data = await response.json();
-  if (!data?.success) throw new Error(data?.error || '接口返回异常');
-  return data;
 }
 
 export default function GuardianCenterPage() {
@@ -140,57 +133,42 @@ export default function GuardianCenterPage() {
     setRefreshing(true);
     setIsLoading(true);
     setLoadError('');
-    const timeoutId = window.setTimeout(() => {
-      setLoadError('数据加载超时，请检查网络后重试');
-      setIsLoading(false);
-      setRefreshing(false);
-    }, UI_LOAD_TIMEOUT_MS);
     try {
-      // 先获取最新的守护者资料（包含统计数据）
       // Guardian identity is resolved from the authenticated token on the server.
       // Do not use the cached/client guardian id as an authorization input.
-      const profileRes = await apiRequest('/api/guardian/profile');
-      const profileData = await readSuccessfulJson(profileRes);
-      setGuardian(profileData.data);
+      const data = await loadGuardianCenterData<
+        GuardianData,
+        CommissionRecord[],
+        InviteeRecord[],
+        WithdrawalRecord[],
+        WithdrawConfig
+      >(apiRequest);
+      setGuardian(data.profile);
       // 同时更新 localStorage 中的数据
-      localStorage.setItem('guardian_user', JSON.stringify(profileData.data));
-      // 获取分成记录
-      const commRes = await apiRequest('/api/guardian/commissions');
-      const commData = await readSuccessfulJson(commRes);
-      setCommissions(commData.data);
-
-      // 获取邀请列表
-      const inviteRes = await apiRequest('/api/guardian/invites');
-      const inviteData = await readSuccessfulJson(inviteRes);
-      setInvitees(inviteData.data);
-
-      // 获取提现记录
-      const withdrawRes = await apiRequest('/api/guardian/withdrawals');
-      const withdrawData = await readSuccessfulJson(withdrawRes);
-      setWithdrawals(withdrawData.data);
+      localStorage.setItem('guardian_user', JSON.stringify(data.profile));
+      setCommissions(data.commissions);
+      setInvitees(data.invitees);
+      setWithdrawals(data.withdrawals);
       // 检查是否有待处理的提现
-      const hasPending = withdrawData.data.some((w: WithdrawalRecord) => w.status === 'pending');
+      const hasPending = data.withdrawals.some((w: WithdrawalRecord) => w.status === 'pending');
       setHasPendingWithdraw(hasPending);
-
-      // 获取提现配置
-      try {
-        const configRes = await apiRequest('/api/guardian/withdraw?action=config');
-        const configData = await configRes.json();
-        if (configData.success) {
-          setWithdrawConfig({
-            minAmount: configData.data.minAmount || 10000,
-            feeRate: configData.data.feeRate || 0.006,
-            processingDays: configData.data.processingDays || '1-3个工作日',
-          });
-        }
-      } catch (e) {
-        console.error('获取提现配置失败', e);
+      if (data.withdrawConfig) {
+        setWithdrawConfig({
+          minAmount: data.withdrawConfig.minAmount || 10000,
+          feeRate: data.withdrawConfig.feeRate || 0.006,
+          processingDays: data.withdrawConfig.processingDays || '1-3个工作日',
+        });
       }
     } catch (error) {
       console.error('获取数据失败:', error);
-      setLoadError('数据加载失败，请检查网络后重试');
+      setLoadError(
+        error instanceof GuardianCenterLoadTimeoutError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : '数据加载失败，请检查网络后重试',
+      );
     } finally {
-      window.clearTimeout(timeoutId);
       setIsLoading(false);
       setRefreshing(false);
     }
