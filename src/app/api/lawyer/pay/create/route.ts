@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       .from('lawyer_application_payment_orders')
       .update({ status: 'expired', updated_at: now.toISOString() })
       .eq('application_id', application.id)
-      .in('status', ['creating', 'pending'])
+      .in('status', ['creating', 'pending', 'paying'])
       .lt('payment_expires_at', now.toISOString());
     if (expireError) {
       console.error('[Lawyer/Pay/Create] 清理过期订单失败:', expireError);
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
       .from('lawyer_application_payment_orders')
       .select('order_no, status, payment_expires_at, paid_at')
       .eq('application_id', application.id)
-      .in('status', ['creating', 'pending'])
+      .in('status', ['creating', 'pending', 'paying'])
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
 
     const { error: markPendingError } = await supabase
       .from('lawyer_application_payment_orders')
-      .update({ status: 'pending', updated_at: new Date().toISOString() })
+      .update({ status: 'paying', payment_channel: channel, updated_at: new Date().toISOString() })
       .eq('order_no', orderNo)
       .eq('status', 'creating');
     if (markPendingError) {

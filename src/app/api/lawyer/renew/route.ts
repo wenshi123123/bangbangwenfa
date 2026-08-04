@@ -3,12 +3,37 @@ import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { getWechatPayClient } from '@/lib/payment/wechat-pay';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
 import { notifyOrder } from '@/lib/notify/webhook';
-import { getSiteUrl } from '@/lib/site';
+import { getSiteUrl, getWechatH5SiteUrl } from '@/lib/site';
 import { RENEWAL_PACKAGE_META, RenewalPackageId } from '@/lib/lawyer/package-config';
 import { loadRenewalPackagePrice } from '@/lib/lawyer/price-config';
 import { resolveUserNickname } from '@/lib/user/resolve-nickname';
+import { getPaymentClientContext, getWechatPaymentSession } from '@/lib/payment/payment-context';
 
 const SITE_URL = getSiteUrl();
+const H5_SITE_URL = getWechatH5SiteUrl();
+const PAYMENT_TTL_MS = 5 * 60 * 1000;
+
+function withH5ReturnUrl(h5Url: string, returnUrl: string) {
+  const url = new URL(h5Url);
+  url.searchParams.set('redirect_url', returnUrl);
+  return url.toString();
+}
+
+function parseSelectedPackages(value: unknown, fallback: string | null) {
+  let selected: string[] = [];
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) selected = parsed.filter((item): item is string => typeof item === 'string');
+    } catch {
+      selected = [];
+    }
+  } else if (Array.isArray(value)) {
+    selected = value.filter((item): item is string => typeof item === 'string');
+  }
+  if (selected.length === 0 && fallback) selected = [fallback];
+  return new Set(selected.map((item) => item === 'criminal' || item === 'criminal_premium' ? 'criminal' : 'civil'));
+}
 
 // 生成订单号
 function generateOrderNo(): string {
@@ -46,6 +71,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  let createdOrderNo: string | null = null;
   try {
     const body = await request.json();
     const { package_id } = body;
@@ -105,20 +131,21 @@ export async function POST(request: NextRequest) {
 
     const { data: application } = await supabase
       .from('lawyer_applications')
-      .select('package_type')
+      .select('package_type, selected_packages')
       .eq('user_id', lawyer.user_id || userId)
       .eq('review_status', 'approved')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    // 优先按入驻套餐确定律师类型；存量数据才回退到专业领域。
-    const lawyerType = application?.package_type === 'criminal_premium'
-      ? 'criminal'
-      : lawyer.specialization?.toLowerCase().includes('刑事') ? 'criminal' : 'civil';
-    if (lawyerType !== packageConfig.type) {
+    // 双领域律师可分别为民事/刑事套餐续费；历史记录才回退到专业领域。
+    const selectedPackages = parseSelectedPackages(application?.selected_packages, application?.package_type || null);
+    if (selectedPackages.size === 0) {
+      selectedPackages.add(lawyer.specialization?.toLowerCase().includes('刑事') ? 'criminal' : 'civil');
+    }
+    if (!selectedPackages.has(packageConfig.type)) {
       return NextResponse.json(
-        { success: false, error: `律师类型不匹配：您是${lawyerType === 'criminal' ? '刑事' : '民事'}律师，无法购买${packageConfig.type === 'criminal' ? '刑事' : '民事'}续费套餐` },
+        { success: false, error: `您未开通${packageConfig.type === 'criminal' ? '刑事' : '民事'}律师资格，无法购买该续费套餐` },
         { status: 400 }
       );
     }
@@ -140,7 +167,7 @@ export async function POST(request: NextRequest) {
       .from('lawyer_renew_orders')
       .select('order_no, created_at')
       .eq('lawyer_id', lawyer.id)
-      .eq('payment_status', 'pending')
+      .in('payment_status', ['pending', 'paying'])
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -155,14 +182,21 @@ export async function POST(request: NextRequest) {
           { status: 409 }
         );
       }
-      // 超过 5 分钟的 pending 订单，标记为 expired
+      // 超过 5 分钟的待支付订单关闭，避免支付中订单永久存在。
       await supabase
         .from('lawyer_renew_orders')
-        .update({ payment_status: 'expired' })
+        .update({ payment_status: 'closed', updated_at: new Date().toISOString() })
         .eq('order_no', pendingOrder.order_no);
     }
 
     const orderNo = generateOrderNo();
+    createdOrderNo = orderNo;
+    const paymentExpiresAt = new Date(Date.now() + PAYMENT_TTL_MS).toISOString();
+    const { channel } = getPaymentClientContext(request);
+    const wechatSession = getWechatPaymentSession(request);
+    if (channel === 'jsapi' && !wechatSession) {
+      return NextResponse.json({ success: false, code: 'WECHAT_OAUTH_REQUIRED', error: '需要微信授权后才能在微信内支付' }, { status: 401 });
+    }
 
     // 创建订单记录
     const { data: order, error: orderError } = await supabase
@@ -175,6 +209,7 @@ export async function POST(request: NextRequest) {
         package_price: price,
         months: months,
         payment_status: 'pending',
+        payment_expires_at: paymentExpiresAt,
         expires_at: null, // 支付成功后在回调中计算
       })
       .select()
@@ -200,20 +235,41 @@ export async function POST(request: NextRequest) {
       expiresAt = calculateExpiry(now, months);
     }
 
-    // 调用微信支付 Native API 创建订单
-    const wechatPay = getWechatPayClient();
-    const payResult = await wechatPay.createNativeOrder({
-      description: `律师会员续费 - ${packageConfig.name}`,
-      outTradeNo: orderNo,
-      amount: price,
-      notifyUrl: `${SITE_URL}/api/lawyer/renew/callback`,
-    });
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || request.headers.get('x-real-ip') || '127.0.0.1';
+    const wechatPay = getWechatPayClient({ appId: channel === 'jsapi' ? process.env.WEIXIN_OA_APPID : undefined });
+    const description = `律师会员续费 - ${packageConfig.name}`;
+    const responseData: Record<string, unknown> = { order_id: orderNo, amount: price, months, expires_at: expiresAt.toISOString() };
+    let prepayId: string | undefined;
+    if (channel === 'jsapi') {
+      const result = await wechatPay.createJsapiOrder({ description, outTradeNo: orderNo, amount: price, notifyUrl: `${SITE_URL}/api/lawyer/renew/callback`, payerOpenid: wechatSession!.openid });
+      prepayId = result.prepayId;
+      responseData.jsapiPayParams = result.payParams;
+    } else if (channel === 'h5') {
+      const result = await wechatPay.createH5Order({ description, outTradeNo: orderNo, amount: price, notifyUrl: `${SITE_URL}/api/lawyer/renew/callback`, clientIp, appUrl: H5_SITE_URL });
+      prepayId = result.prepayId;
+      const returnUrl = new URL('/success', H5_SITE_URL);
+      returnUrl.searchParams.set('type', 'renew');
+      returnUrl.searchParams.set('orderId', orderNo);
+      responseData.h5_url = withH5ReturnUrl(result.h5Url, returnUrl.toString());
+    } else {
+      const result = await wechatPay.createNativeOrder({ description, outTradeNo: orderNo, amount: price, notifyUrl: `${SITE_URL}/api/lawyer/renew/callback` });
+      prepayId = result.prepayId;
+      responseData.code_url = result.codeUrl;
+    }
+
+    const { error: paymentStateError } = await supabase
+      .from('lawyer_renew_orders')
+      .update({ payment_status: 'paying', payment_channel: channel, prepay_id: prepayId || null, updated_at: new Date().toISOString() })
+      .eq('order_no', orderNo)
+      .eq('payment_status', 'pending');
+    if (paymentStateError) throw paymentStateError;
 
     console.log('律师续费支付创建成功:', {
       orderNo,
       lawyerId: lawyer.id,
       packagePrice: price,
-      codeUrl: payResult.codeUrl,
+      channel,
     });
 
     // Webhook 通知
@@ -228,16 +284,17 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: {
-        order_id: orderNo,
-        code_url: payResult.codeUrl,
-        amount: price,
-        months: months,
-        expires_at: expiresAt.toISOString(),
-      },
+      data: responseData,
     });
   } catch (error) {
     console.error('续费失败:', error);
+    if (createdOrderNo) {
+      await getSupabaseAdmin()
+        .from('lawyer_renew_orders')
+        .update({ payment_status: 'closed', updated_at: new Date().toISOString() })
+        .eq('order_no', createdOrderNo)
+        .in('payment_status', ['pending', 'paying']);
+    }
     return NextResponse.json(
       { success: false, error: '服务器错误' },
       { status: 500 }

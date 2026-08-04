@@ -23,17 +23,16 @@ interface PricePlan {
   features: string[];
 }
 
-// 默认价格（API 加载失败时使用）
-const defaultPlans: PricePlan[] = [
-  { id: 'basic', name: '基础咨询', price: 99, features: ['快速了解案件性质', '法律风险初步判断', '24小时内回复'] },
-  { id: 'standard', name: '标准方案', price: 249, features: ['深度案件分析', '个性化应对策略', '12小时优先回复', '可追加提问1次'] },
-  { id: 'advanced', name: '深度服务', price: 379, features: ['一对一深度咨询', '完整分析报告', '可执行行动方案', '3次追加提问'] },
-];
+const planFeatures: Record<string, string[]> = {
+  basic: ['快速了解案件性质', '法律风险初步判断', '24小时内回复'],
+  standard: ['深度案件分析', '个性化应对策略', '12小时优先回复', '可追加提问1次'],
+  advanced: ['一对一深度咨询', '完整分析报告', '可执行行动方案', '3次追加提问'],
+};
 
 export function PriceStep({ formData, inviteCode, onBack }: PriceStepProps) {
   const [selectedPlan, setSelectedPlan] = useState<string>('standard');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [plans, setPlans] = useState<PricePlan[]>(defaultPlans);
+  const [plans, setPlans] = useState<PricePlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [detailPlan, setDetailPlan] = useState<ServicePlanDialogPlan | null>(null);
@@ -55,12 +54,11 @@ export function PriceStep({ formData, inviteCode, onBack }: PriceStepProps) {
           
           if (categoryPlans.length > 0) {
             const mappedPlans: PricePlan[] = categoryPlans.map((p: { plan_id: string; plan_name: string; price: number }) => {
-              const defaultPlan = defaultPlans.find(dp => dp.id === p.plan_id);
               return {
                 id: p.plan_id,
                 name: p.plan_name,
                 price: p.price / 100, // 转换分为元
-                features: defaultPlan?.features || [],
+                features: planFeatures[p.plan_id] || [],
               };
             });
             setPlans(mappedPlans);
@@ -68,6 +66,7 @@ export function PriceStep({ formData, inviteCode, onBack }: PriceStepProps) {
         }
       } catch (error) {
         console.error('Failed to fetch prices:', error);
+        setSubmitError('套餐价格暂不可用，请稍后重试');
       } finally {
         setLoading(false);
       }
@@ -82,19 +81,11 @@ export function PriceStep({ formData, inviteCode, onBack }: PriceStepProps) {
   const selectedServices = formData.services.map(id => services.find(s => s.id === id)?.name).filter(Boolean);
   const currentPlan = plans.find(p => p.id === selectedPlan);
   
-  // 计算价格（分）
-  const getPriceInCents = () => {
-    if (!currentPlan) return 0;
-    return currentPlan.price * 100;
-  };
-
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setSubmitError(null);
     
     try {
-      const priceInCents = getPriceInCents();
-      
       const response = await apiRequest('/api/consult/create', {
         method: 'POST',
         body: JSON.stringify({
@@ -102,8 +93,7 @@ export function PriceStep({ formData, inviteCode, onBack }: PriceStepProps) {
           caseType: formData.caseType,
           caseDescription: formData.description,
           serviceType: formData.services,
-          servicePrice: priceInCents,
-          paymentStatus: 'pending',
+          planId: selectedPlan,
           inviteCode: inviteCode || null, // 传递邀请码用于守护者分佣
           openid: localStorage.getItem('oa_openid') || undefined,
         }),
@@ -301,7 +291,7 @@ export function PriceStep({ formData, inviteCode, onBack }: PriceStepProps) {
       <div className="flex gap-2 sm:gap-3">
         <button
           onClick={onBack}
-          disabled={isSubmitting}
+          disabled={isSubmitting || !currentPlan}
           className="flex-1 py-2.5 sm:py-3 md:py-4 rounded-lg sm:rounded-xl md:rounded-xl font-semibold text-xs sm:text-sm md:text-base border-2 border-border bg-card hover:bg-muted transition-all duration-300 disabled:opacity-50"
         >
           上一步

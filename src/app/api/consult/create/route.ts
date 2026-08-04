@@ -4,6 +4,7 @@ import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware
 import { notifyOrder } from '@/lib/notify/webhook';
 import { createConsultPaymentHandoff } from '@/lib/payment/payment-handoff';
 import { resolveUserNickname } from '@/lib/user/resolve-nickname';
+import { loadConfiguredPrices } from '@/lib/lawyer/price-config';
 
 function generateOrderNo(): string {
   const timestamp = Date.now();
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
       caseType,
       caseDescription,
       serviceType,
-      servicePrice,
+      planId,
       contactName,
       contactPhone,
       contactWechat,
@@ -42,15 +43,13 @@ export async function POST(request: NextRequest) {
       case_type,
       case_title,
       case_description,
-      service_type,
-      service_price
+      service_type
     } = body;
 
     // 支持新旧两种数据格式
     const finalCaseType = caseType || case_type || 'other';
     const finalCaseDescription = caseDescription || case_description || '';
     const finalServiceType = Array.isArray(serviceType) ? serviceType.join(',') : (service_type || 'consult');
-    const finalServicePrice = servicePrice || service_price || 0;
     const supabase = getSupabaseAdmin();
     const finalContactName = await resolveUserNickname(supabase, userId);
     // 默认使用 token 中的手机号，如果没有则使用请求中的
@@ -92,6 +91,22 @@ export async function POST(request: NextRequest) {
         { success: false, error: '请填写完整的必填信息' },
         { status: 400 }
       );
+    }
+
+    if (!['civil', 'criminal'].includes(finalCategory)) {
+      return NextResponse.json({ success: false, error: '咨询分类无效' }, { status: 400 });
+    }
+    if (typeof planId !== 'string' || !['basic', 'standard', 'advanced'].includes(planId)) {
+      return NextResponse.json({ success: false, error: '请选择有效的咨询套餐' }, { status: 400 });
+    }
+
+    let finalServicePrice: number;
+    try {
+      const configuredPrices = await loadConfiguredPrices(supabase, finalCategory, [planId]);
+      finalServicePrice = configuredPrices.get(planId)!.price;
+    } catch (priceError) {
+      console.error('读取咨询套餐价格失败:', priceError);
+      return NextResponse.json({ success: false, error: '咨询套餐价格暂不可用，请稍后重试' }, { status: 503 });
     }
 
     const orderNo = generateOrderNo();

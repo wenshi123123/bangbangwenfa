@@ -25,13 +25,6 @@ interface PriceConfig {
 // 只显示这三个咨询套餐
 const CONSULT_PLANS = ['basic', 'standard', 'advanced'];
 
-// 默认价格（API 加载失败或返回空数据时使用）
-const defaultPlans: PriceConfig[] = [
-  { plan_id: 'basic', plan_name: '基础咨询', price: 6900 },
-  { plan_id: 'standard', plan_name: '标准方案', price: 19900 },
-  { plan_id: 'advanced', plan_name: '深度服务', price: 29900 },
-];
-
 export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
   const [selectedPlan, setSelectedPlan] = useState<string>('standard');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,13 +42,11 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
         if (result.success && result.data && result.data.length > 0) {
           setPrices(result.data);
         } else {
-          // API 返回空数据，使用默认价格
-          setPrices(defaultPlans);
+          throw new Error(result.error || '套餐价格暂不可用');
         }
       } catch (error) {
         console.error('Failed to fetch prices:', error);
-        // API 请求失败，使用默认价格
-        setPrices(defaultPlans);
+        setSubmitError('套餐价格暂不可用，请稍后重试');
       } finally {
         setLoading(false);
       }
@@ -91,8 +82,7 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
           caseDescription: formData.description,
           contactPhone: formData.contactPhone || '',
           serviceType: formData.services,
-          servicePrice: currentPlan?.price ? currentPlan.price * 100 : 0, // 转换为分
-          paymentStatus: 'pending',
+          planId: selectedPlan,
           openid: localStorage.getItem('oa_openid') || undefined,
         }),
       });
@@ -272,7 +262,7 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
         </button>
         <button
           onClick={handleSubmit}
-          disabled={isSubmitting}
+          disabled={isSubmitting || !currentPlan}
           className="flex-1 py-2.5 sm:py-3 md:py-4 px-4 sm:px-6 rounded-lg sm:rounded-xl bg-gradient-to-r from-[#C47353] to-[#A85D40] text-white font-semibold text-xs sm:text-sm md:text-base hover:from-[#A85D40] hover:to-[#8B3E2A] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_16px_rgba(61,50,45,0.08)]"
         >
           {isSubmitting ? (

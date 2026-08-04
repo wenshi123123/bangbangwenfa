@@ -15,7 +15,7 @@ interface Order {
   id: number;
   applicationId?: number;
   orderNo: string;
-  type: 'consult' | 'lawyer';  // 订单类型：咨询订单 或 律师入驻订单
+  type: 'consult' | 'lawyer' | 'renewal' | 'complimentary';
   caseTitle: string;
   caseType: string;
   serviceType: string;
@@ -263,7 +263,11 @@ function UserCenterPageContent() {
                 // 咨询订单状态
                 const consultStatusMap: Record<string, { label: string; color: string; icon: any }> = {
                   pending: { label: '待支付', color: 'bg-amber-100 text-amber-700', icon: Clock },
+                  paying: { label: '支付中', color: 'bg-blue-100 text-blue-700', icon: Clock },
                   paid: { label: '已支付', color: 'bg-green-100 text-green-700', icon: CheckCircle },
+                  completed: { label: '已完成', color: 'bg-green-100 text-green-700', icon: CheckCircle },
+                  cancelled: { label: '已取消', color: 'bg-gray-100 text-gray-700', icon: AlertCircle },
+                  closed: { label: '已关闭', color: 'bg-gray-100 text-gray-700', icon: AlertCircle },
                   refunded: { label: '已退款', color: 'bg-gray-100 text-gray-700', icon: AlertCircle },
                 };
                 // 律师入驻订单状态
@@ -286,7 +290,7 @@ function UserCenterPageContent() {
                           ? 'pending_review'
                           : 'pending'
                     )
-                  : order.paymentStatus;
+                  : order.type === 'complimentary' ? 'completed' : order.paymentStatus;
                 const status = statusMap[statusKey] || statusMap.pending;
                 const StatusIcon = status.icon;
                 
@@ -303,6 +307,12 @@ function UserCenterPageContent() {
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-[#FAF7F2] text-[#C47353]">
                             律师入驻
                           </span>
+                        )}
+                        {order.type === 'renewal' && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-blue-50 text-blue-600">律师续费</span>
+                        )}
+                        {order.type === 'complimentary' && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-amber-50 text-amber-700">赠送体验</span>
                         )}
                         <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs ${status.color}`}>
                           <StatusIcon className="w-3 h-3" />

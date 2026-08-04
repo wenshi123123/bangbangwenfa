@@ -37,11 +37,21 @@ export async function GET(request: NextRequest) {
 
       const { data: renewOrder, error: renewOrderError } = await supabase
         .from('lawyer_renew_orders')
-        .select('order_no, lawyer_id, payment_status, paid_at, trade_no, expires_at')
+        .select('order_no, lawyer_id, payment_status, paid_at, trade_no, expires_at, payment_expires_at')
         .eq('order_no', orderRef)
         .maybeSingle();
       if (renewOrderError || !renewOrder) return NextResponse.json({ success: false, error: '订单不存在' }, { status: 404 });
       if (String(renewOrder.lawyer_id) !== String(auth.lawyerId)) return NextResponse.json({ success: false, error: '无权查看此订单' }, { status: 403 });
+
+      if (renewOrder.payment_status === 'paying' && renewOrder.payment_expires_at && new Date(renewOrder.payment_expires_at).getTime() <= Date.now()) {
+        const closedAt = new Date().toISOString();
+        const { error: closeError } = await supabase
+          .from('lawyer_renew_orders')
+          .update({ payment_status: 'closed', updated_at: closedAt })
+          .eq('order_no', renewOrder.order_no)
+          .eq('payment_status', 'paying');
+        if (!closeError) renewOrder.payment_status = 'closed';
+      }
 
       return NextResponse.json({
         success: true,
@@ -64,7 +74,7 @@ export async function GET(request: NextRequest) {
     // 新订单优先。订单归属与关联申请归属必须同时匹配当前登录用户。
     const { data: paymentOrder, error: paymentOrderError } = await supabase
       .from('lawyer_application_payment_orders')
-      .select('application_id, user_id, order_no, status, paid_at, wechat_transaction_id')
+      .select('application_id, user_id, order_no, status, paid_at, wechat_transaction_id, payment_expires_at')
       .eq('order_no', orderRef)
       .maybeSingle();
     if (paymentOrderError) {
@@ -83,6 +93,15 @@ export async function GET(request: NextRequest) {
       if (applicationError || !application) return NextResponse.json({ success: false, error: '订单关联申请不存在' }, { status: 404 });
       if (String(application.user_id) !== String(auth.user.id)) {
         return NextResponse.json({ success: false, error: '无权查看此订单' }, { status: 403 });
+      }
+      if (paymentOrder.status === 'paying' && paymentOrder.payment_expires_at && new Date(paymentOrder.payment_expires_at).getTime() <= Date.now()) {
+        const closedAt = new Date().toISOString();
+        const { error: closeError } = await supabase
+          .from('lawyer_application_payment_orders')
+          .update({ status: 'closed', updated_at: closedAt, failure_reason: '支付超时' })
+          .eq('order_no', paymentOrder.order_no)
+          .eq('status', 'paying');
+        if (!closeError) paymentOrder.status = 'closed';
       }
       return paymentResponse(paymentOrder);
     }

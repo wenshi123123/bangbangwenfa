@@ -4,7 +4,7 @@ import { requireAdminAuth, adminUnauthorizedResponse } from '@/lib/auth/admin-mi
 
 type DisplayOrder = {
   id: string | number;
-  order_type: 'consult' | 'lawyer_application';
+  order_type: 'consult' | 'lawyer_application' | 'lawyer_renewal' | 'lawyer_complimentary';
   order_no: string | null;
   contact_name: string;
   contact_phone: string | null;
@@ -40,31 +40,45 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
     let applicationQuery: any = supabase
       .from('lawyer_applications')
-      .select('id, user_id, order_no, name, phone, package_type, package_price, payment_status, created_at')
+      .select('id, user_id, order_no, name, phone, package_type, package_price, payment_status, approval_mode, created_at')
+      .order('created_at', { ascending: false });
+    let renewQuery: any = supabase
+      .from('lawyer_renew_orders')
+      .select('id, user_id, order_no, package_id, package_price, payment_status, created_at')
+      .order('created_at', { ascending: false });
+    let complimentaryQuery: any = supabase
+      .from('lawyer_complimentary_orders')
+      .select('id, user_id, order_no, reason, amount, status, created_at')
       .order('created_at', { ascending: false });
 
     if (status) {
       consultQuery = consultQuery.eq('payment_status', status);
       applicationQuery = applicationQuery.eq('payment_status', status);
+      renewQuery = renewQuery.eq('payment_status', status);
+      complimentaryQuery = complimentaryQuery.eq('status', status);
     }
     if (category === 'civil' || category === 'criminal') {
       consultQuery = consultQuery.eq('category', category);
     }
-    if (category && category !== 'civil' && category !== 'criminal' && category !== 'lawyer_application') {
+    if (category && !['civil', 'criminal', 'lawyer_application', 'lawyer_renewal', 'lawyer_complimentary'].includes(category)) {
       return NextResponse.json({ success: true, data: { list: [], total: 0 } });
     }
 
-    const [{ data: consultations, error: consultationError }, { data: applications, error: applicationError }] = await Promise.all([
+    const [{ data: consultations, error: consultationError }, { data: applications, error: applicationError }, { data: renewals, error: renewalError }, { data: complimentary, error: complimentaryError }] = await Promise.all([
       category === 'lawyer_application' ? Promise.resolve({ data: [], error: null }) : consultQuery,
       category && category !== 'lawyer_application' ? Promise.resolve({ data: [], error: null }) : applicationQuery,
+      category && category !== 'lawyer_renewal' ? Promise.resolve({ data: [], error: null }) : renewQuery,
+      category && category !== 'lawyer_complimentary' ? Promise.resolve({ data: [], error: null }) : complimentaryQuery,
     ]);
-    if (consultationError || applicationError) {
-      return NextResponse.json({ success: false, error: consultationError?.message || applicationError?.message || '查询订单失败' }, { status: 500 });
+    if (consultationError || applicationError || renewalError || complimentaryError) {
+      return NextResponse.json({ success: false, error: consultationError?.message || applicationError?.message || renewalError?.message || complimentaryError?.message || '查询订单失败' }, { status: 500 });
     }
 
     const userIds = [...new Set([
       ...(consultations || []).map((order: any) => order.user_id),
       ...(applications || []).map((application: any) => application.user_id),
+      ...(renewals || []).map((order: any) => order.user_id),
+      ...(complimentary || []).map((order: any) => order.user_id),
     ].filter(Boolean).map(String))];
     const nicknameByUserId = new Map<string, string>();
     if (userIds.length > 0) {
@@ -81,7 +95,7 @@ export async function GET(request: NextRequest) {
         contact_name: nicknameByUserId.get(String(order.user_id)) || '匿名用户',
         service_price: Number(order.service_price),
       })),
-      ...(applications || []).map((application: any): DisplayOrder => ({
+      ...(applications || []).filter((application: any) => application.approval_mode !== 'complimentary').map((application: any): DisplayOrder => ({
         id: application.id,
         order_type: 'lawyer_application',
         order_no: application.order_no,
@@ -94,6 +108,34 @@ export async function GET(request: NextRequest) {
         payment_status: application.payment_status || 'pending',
         category: 'lawyer_application',
         created_at: application.created_at,
+      })),
+      ...(renewals || []).map((order: any): DisplayOrder => ({
+        id: order.id,
+        order_type: 'lawyer_renewal',
+        order_no: order.order_no,
+        contact_name: nicknameByUserId.get(String(order.user_id)) || '匿名用户',
+        contact_phone: null,
+        case_type: 'lawyer_renewal',
+        case_title: `${String(order.package_id).startsWith('criminal_') ? '刑事' : '民事'}律师${String(order.package_id).endsWith('_year') ? '年卡' : '季卡'}续费`,
+        service_type: order.package_id,
+        service_price: Number(order.package_price),
+        payment_status: order.payment_status || 'pending',
+        category: 'lawyer_renewal',
+        created_at: order.created_at,
+      })),
+      ...(complimentary || []).map((order: any): DisplayOrder => ({
+        id: order.id,
+        order_type: 'lawyer_complimentary',
+        order_no: order.order_no,
+        contact_name: nicknameByUserId.get(String(order.user_id)) || '匿名用户',
+        contact_phone: null,
+        case_type: 'lawyer_complimentary',
+        case_title: '律师赠送体验开通',
+        service_type: 'complimentary',
+        service_price: Number(order.amount || 0),
+        payment_status: order.status || 'completed',
+        category: 'lawyer_complimentary',
+        created_at: order.created_at,
       })),
     ].filter((order) => !rawSearch || [
       order.contact_name,

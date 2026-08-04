@@ -66,18 +66,37 @@ async function handlePaymentSuccess(tradeNo: string, orderNo: string, paidAmount
     return { success: false, error: '支付金额不一致' };
   }
 
-  // 幂等检查：已支付则跳过
-  if (order.payment_status === 'paid') {
-    console.log('订单已处理，跳过:', orderNo);
-    return { success: true };
+  const alreadyPaid = order.payment_status === 'paid';
+  if (!alreadyPaid && !['pending', 'paying'].includes(order.payment_status)) {
+    return { success: false, error: '订单状态不允许完成支付' };
   }
+
+  const membershipPackage = String(order.package_id).startsWith('criminal_') ? 'criminal' : 'civil';
+  const { data: existingMembership } = await supabase
+    .from('membership_records')
+    .select('id, expires_at')
+    .eq('source_order_no', order.order_no)
+    .maybeSingle();
+
+  const { data: activeMembership } = await supabase
+    .from('membership_records')
+    .select('expires_at')
+    .eq('lawyer_id', order.lawyer_id)
+    .eq('package_type', membershipPackage)
+    .in('status', ['active', 'trial'])
+    .order('expires_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   // 计算新的到期时间（精确按月计算）
   const months = order.months;
   let newExpiresAt: Date;
 
-  if (order.lawyers?.member_expires_at) {
-    const currentExpires = new Date(order.lawyers.member_expires_at);
+  const packageExpiry = order.expires_at || existingMembership?.expires_at || activeMembership?.expires_at || order.lawyers?.member_expires_at;
+  if (packageExpiry && alreadyPaid) {
+    newExpiresAt = new Date(packageExpiry);
+  } else if (packageExpiry) {
+    const currentExpires = new Date(packageExpiry);
     newExpiresAt = currentExpires > new Date()
       ? calculateExpiry(currentExpires, months)
       : calculateExpiry(new Date(), months);
@@ -85,20 +104,42 @@ async function handlePaymentSuccess(tradeNo: string, orderNo: string, paidAmount
     newExpiresAt = calculateExpiry(new Date(), months);
   }
 
-  // 更新续费订单状态
-  const { error: updateOrderError } = await supabase
-    .from('lawyer_renew_orders')
-    .update({
-      payment_status: 'paid',
-      paid_at: new Date().toISOString(),
-      trade_no: tradeNo,
-      expires_at: newExpiresAt.toISOString(),
-    })
-    .eq('order_no', orderNo);
+  if (!alreadyPaid) {
+    const { error: updateOrderError } = await supabase
+      .from('lawyer_renew_orders')
+      .update({
+        payment_status: 'paid',
+        paid_at: new Date().toISOString(),
+        trade_no: tradeNo,
+        expires_at: newExpiresAt.toISOString(),
+        payment_completed_at: new Date().toISOString(),
+      })
+      .eq('order_no', orderNo)
+      .in('payment_status', ['pending', 'paying']);
 
-  if (updateOrderError) {
-    console.error('更新续费订单失败:', updateOrderError);
-    return { success: false, error: '更新续费订单失败' };
+    if (updateOrderError) {
+      console.error('更新续费订单失败:', updateOrderError);
+      return { success: false, error: '更新续费订单失败' };
+    }
+  }
+
+  if (!existingMembership) {
+    const { error: membershipError } = await supabase
+      .from('membership_records')
+      .insert({
+        lawyer_id: order.lawyer_id,
+        package_type: membershipPackage,
+        status: 'active',
+        started_at: new Date().toISOString(),
+        expires_at: newExpiresAt.toISOString(),
+        source_type: 'renewal',
+        source_order_no: order.order_no,
+        is_complimentary: false,
+      });
+    if (membershipError && membershipError.code !== '23505') {
+      console.error('更新套餐会员资格失败:', membershipError);
+      return { success: false, error: '更新套餐会员资格失败' };
+    }
   }
 
   // 更新律师会员到期时间

@@ -19,7 +19,7 @@ async function main() {
   // 订单创建与生命周期：服务端释放过期单、失败单可另行新建、并发时复用唯一赢家订单。
   assert.match(createRoute, /update\(\{ status: 'expired'/, 'expired pending orders must be released before creating another order');
   assert.match(createRoute, /createOrderError\?\.code === '23505'/, 'concurrent active-order conflicts must reuse the database winner');
-  assert.match(createRoute, /\['creating', 'pending'\]/, 'only active orders are reused');
+  assert.match(createRoute, /\['creating', 'pending', 'paying'\]/, 'only active orders are reused');
   assert.match(createRoute, /status: 'failed'/, 'failed payment creation must be recorded as failed rather than active');
 
   // 状态查询：新订单与关联申请都必须属于当前用户，已支付申请不能继续走创建分支。
@@ -32,7 +32,7 @@ async function main() {
   assert.match(callbackRoute, /paymentOrder\.amount !== paymentResult\.amount\.total/, 'callback must reject new-order amount mismatches');
   assert.match(callbackRoute, /application\.package_price !== paymentResult\.amount\.total/, 'callback must reject legacy-order amount mismatches');
   assert.match(callbackRoute, /paymentOrder\.status === 'paid'/, 'duplicate successful callbacks must be idempotent');
-  assert.match(callbackRoute, /\.in\('status', \['creating', 'pending'\]\)/, 'callback must use an atomic active-to-paid state transition');
+  assert.match(callbackRoute, /\.in\('status', \['creating', 'pending', 'paying'\]\)/, 'callback must use an atomic active-to-paid state transition');
   assert.match(callbackRoute, /\/\/ 历史订单兼容/, 'legacy entry-payment callbacks must remain supported');
   assert.doesNotMatch(callbackRoute, /review_status:\s*'approved'|member_expires_at|lawyer_renew_orders/, 'payment callback must not approve lawyers or trigger renewal');
 
@@ -40,7 +40,8 @@ async function main() {
   assert.match(adminListRoute, /\.eq\('payment_status', 'paid'\)/, 'admin list must be able to identify paid applications');
   assert.match(adminDetailPage, /支付状态：\{application\.payment_status === 'paid' \? '已支付' : '未支付'\}/, 'admin detail must display payment status separately');
   assert.match(adminDetailPage, /application\.review_status === 'pending'/, 'admin detail must keep review state separate from payment state');
-  assert.match(adminReviewRoute, /if \(action === 'approve'\)/, 'lawyer benefits remain in the existing explicit approval flow');
+  assert.match(adminReviewRoute, /action === 'approve' && application\.payment_status !== 'paid'/, 'normal approval must remain an explicit paid-only action');
+  assert.match(adminReviewRoute, /action === 'approve_complimentary'/, 'complimentary approval must be a separately audited action');
 
   // 律师续费仍保持独立表和回调。
   assert.match(renewRoute, /lawyer_renew_orders/, 'renewal creation must remain isolated');

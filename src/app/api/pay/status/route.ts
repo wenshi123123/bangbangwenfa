@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabaseClient();
     let orderQuery = supabase
       .from('consult_orders')
-      .select('id, payment_status, service_price, pay_trade_no, paid_at, wechat_transaction_id');
+      .select('id, payment_status, service_price, pay_trade_no, paid_at, wechat_transaction_id, payment_expires_at');
 
     if (payTradeNo) {
       orderQuery = orderQuery.eq('pay_trade_no', payTradeNo);
@@ -49,6 +49,16 @@ export async function GET(request: NextRequest) {
         { success: false, error: '订单不存在' },
         { status: 404 }
       );
+    }
+
+    if (order.payment_status === 'paying' && order.payment_expires_at && new Date(order.payment_expires_at).getTime() <= Date.now()) {
+      const closedAt = new Date().toISOString();
+      const { error: closeError } = await supabase
+        .from('consult_orders')
+        .update({ payment_status: 'closed', closed_at: closedAt, close_reason: '支付超时', updated_at: closedAt })
+        .eq('id', order.id)
+        .eq('payment_status', 'paying');
+      if (!closeError) order.payment_status = 'closed';
     }
 
     let paymentStatus = order.payment_status;
@@ -100,7 +110,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        tradeState: paymentStatus === 'paid' ? 'SUCCESS' : 'NOTPAY',
+        tradeState: paymentStatus === 'paid' ? 'SUCCESS' : paymentStatus === 'closed' ? 'CLOSED' : 'NOTPAY',
         tradeStateDesc: paymentStatus,
         orderId: order.id,
         servicePrice: order.service_price,

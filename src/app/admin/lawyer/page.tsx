@@ -34,11 +34,11 @@ const statusMap = {
   paid: { label: '待支付', color: 'bg-blue-100 text-blue-700', icon: Clock },
 };
 
-const packageMap: Record<string, { label: string; price: number }> = {
-  civil_premium: { label: '民事律师（臻选）', price: 500000 },
-  criminal_premium: { label: '刑事律师（臻选）', price: 800000 },
-  civil: { label: '民事律师（臻选）', price: 500000 },
-  criminal: { label: '刑事律师（臻选）', price: 800000 },
+const packageMap: Record<string, string> = {
+  civil_premium: '民事律师（臻选）',
+  criminal_premium: '刑事律师（臻选）',
+  civil: '民事律师（臻选）',
+  criminal: '刑事律师（臻选）',
 };
 
 export default function LawyerListPage() {
@@ -267,7 +267,10 @@ export default function LawyerListPage() {
                 applications.map((app) => {
                   const status = statusMap[app.review_status as keyof typeof statusMap] || statusMap.pending;
                   const StatusIcon = status.icon;
-                  const pkg = packageMap[app.package_type as keyof typeof packageMap] || { label: app.package_type, price: app.package_price };
+                  const pkg = {
+                    label: packageMap[app.package_type as keyof typeof packageMap] || app.package_type,
+                    price: app.package_price,
+                  };
 
                   return (
                     <tr key={app.id} className="hover:bg-slate-50">

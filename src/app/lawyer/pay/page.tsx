@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { AlertCircle, ArrowLeft, CheckCircle, Loader2, Smartphone } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 import { getLawyerUrl } from '@/lib/site';
 import { WechatExternalBrowserGuide } from '@/components/payment/wechat-external-browser-guide';
@@ -35,6 +36,7 @@ function money(amount?: number) {
 }
 
 export default function LawyerPayPage() {
+  const router = useRouter();
   const [context, setContext] = useState<PaymentContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [authRequired, setAuthRequired] = useState(false);
@@ -93,6 +95,12 @@ export default function LawyerPayPage() {
     return () => window.clearInterval(timer);
   }, [orderId, paid]);
 
+  useEffect(() => {
+    if (!paid) return;
+    const timer = window.setTimeout(() => router.push('/lawyer/pending'), 2000);
+    return () => window.clearTimeout(timer);
+  }, [paid, router]);
+
   const createPayment = async () => {
     if (!context || context.status !== 'payable' || creatingPayment) return;
     setCreatingPayment(true);
@@ -149,7 +157,7 @@ export default function LawyerPayPage() {
   if (deviceReady && isWechat) return <WechatExternalBrowserGuide />;
   if (loading) return shell(<><Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-green-600" /><p>正在加载支付信息...</p></>);
   if (authRequired) return shell(<><AlertCircle className="mx-auto mb-4 h-10 w-10 text-amber-500" /><h1 className="mb-2 text-xl font-bold">请先登录</h1><p className="mb-6 text-sm text-muted-foreground">登录后将继续验证您本人的入驻支付申请。</p><Link href={loginUrl} className="block rounded-xl bg-[#C47353] px-5 py-3 font-semibold text-white">前往登录</Link></>);
-  if (paid) return shell(<><CheckCircle className="mx-auto mb-4 h-12 w-12 text-green-600" /><h1 className="mb-2 text-xl font-bold">支付已完成</h1><p className="text-sm text-muted-foreground">您的入驻申请已支付，等待平台审核。</p></>);
+  if (paid) return shell(<><CheckCircle className="mx-auto mb-4 h-12 w-12 text-green-600" /><h1 className="mb-2 text-xl font-bold">支付成功，等待平台审核</h1><p className="text-sm text-muted-foreground">申请状态已刷新，页面即将跳转。</p></>);
   if (!context || context.status !== 'payable') return shell(<><AlertCircle className="mx-auto mb-4 h-10 w-10 text-slate-500" /><h1 className="mb-2 text-xl font-bold">暂无可支付申请</h1><p className="mb-6 text-sm text-muted-foreground">请先提交入驻申请，或查看当前申请审核状态。</p><div className="flex gap-3"><Link href="/lawyer/join/apply" className="flex-1 rounded-xl bg-[#C47353] px-3 py-3 text-sm font-semibold text-white">申请入驻</Link><Link href="/lawyer/pending" className="flex-1 rounded-xl border px-3 py-3 text-sm font-semibold">查看申请状态</Link></div></>);
 
   return shell(<>

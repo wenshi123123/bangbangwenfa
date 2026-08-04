@@ -62,7 +62,7 @@ function RenewContent() {
               id,
               name: meta.name,
               price,
-              priceDisplay: (price / 100).toFixed(0),
+              priceDisplay: (price / 100).toFixed(2),
               duration: meta.duration,
               type: meta.type,
               features: [`继续接收${meta.type === 'civil' ? '民事' : '刑事'}类客户`, '平台流量扶持', '专属认证标识'],
@@ -121,7 +121,9 @@ function RenewContent() {
       if (token) headers['Authorization'] = `Bearer ${token}`;
       const response = await fetch('/api/lawyer/renew', { method: 'POST', headers, body: JSON.stringify({ package_id: pkg.id }) });
       const result = await response.json();
-      if (result.success && result.data?.code_url) {
+      if (result.success && result.data?.h5_url) {
+        window.location.assign(result.data.h5_url);
+      } else if (result.success && result.data?.code_url) {
         setOrderId(result.data.order_id);
         setQrcodeUrl(result.data.code_url);
       } else {

@@ -63,11 +63,11 @@ const statusMap = {
   paid: { label: '待支付', color: 'bg-blue-100 text-blue-700', icon: Clock },
 };
 
-const packageMap: Record<string, { label: string; price: number }> = {
-  civil_premium: { label: '民事律师（臻选）', price: 500000 },
-  criminal_premium: { label: '刑事律师（臻选）', price: 800000 },
-  civil: { label: '民事律师（臻选）', price: 500000 },
-  criminal: { label: '刑事律师（臻选）', price: 800000 },
+const packageMap: Record<string, string> = {
+  civil_premium: '民事律师（臻选）',
+  criminal_premium: '刑事律师（臻选）',
+  civil: '民事律师（臻选）',
+  criminal: '刑事律师（臻选）',
 };
 
 export default function LawyerDetailPage() {
@@ -80,6 +80,10 @@ export default function LawyerDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showComplimentaryModal, setShowComplimentaryModal] = useState(false);
+  const [complimentaryReason, setComplimentaryReason] = useState('');
+  const [complimentaryCode, setComplimentaryCode] = useState('');
+  const [complimentaryDays, setComplimentaryDays] = useState('30');
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -99,9 +103,13 @@ export default function LawyerDetailPage() {
     fetchDetail();
   }, [id]);
 
-  const handleReview = async (action: 'approve' | 'reject') => {
+  const handleReview = async (action: 'approve' | 'approve_complimentary' | 'reject') => {
     if (action === 'reject' && !rejectReason.trim()) {
       alert('请填写拒绝原因');
+      return;
+    }
+    if (action === 'approve_complimentary' && (!complimentaryReason.trim() || !complimentaryCode || !complimentaryDays)) {
+      alert('请填写赠送体验原因、暗号和有效期');
       return;
     }
 
@@ -116,6 +124,9 @@ export default function LawyerDetailPage() {
           id: id,
           action,
           reason: rejectReason,
+          complimentaryCode,
+          complimentaryDays: Number(complimentaryDays),
+          ...(action === 'approve_complimentary' ? { reason: complimentaryReason } : {}),
         })
       });
 
@@ -160,7 +171,10 @@ export default function LawyerDetailPage() {
 
   const status = statusMap[application.review_status as keyof typeof statusMap] || statusMap.pending;
   const StatusIcon = status.icon;
-  const pkg = packageMap[application.package_type as keyof typeof packageMap] || { label: application.package_type, price: application.package_price };
+  const pkg = {
+    label: packageMap[application.package_type as keyof typeof packageMap] || application.package_type,
+    price: application.package_price,
+  };
 
   return (
     <div className="space-y-6">
@@ -376,7 +390,7 @@ export default function LawyerDetailPage() {
           <div className="flex flex-wrap gap-3 sm:gap-4">
             <button
               onClick={() => handleReview('approve')}
-              disabled={actionLoading}
+              disabled={actionLoading || application.payment_status !== 'paid'}
               className="flex items-center gap-2 px-4 sm:px-6 py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors disabled:opacity-50 text-sm sm:text-base"
             >
               {actionLoading ? (
@@ -387,6 +401,14 @@ export default function LawyerDetailPage() {
               批准入驻
             </button>
             <button
+              onClick={() => setShowComplimentaryModal(true)}
+              disabled={actionLoading}
+              className="flex items-center gap-2 px-4 sm:px-6 py-3 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 transition-colors disabled:opacity-50 text-sm sm:text-base"
+            >
+              <CheckCircle className="w-5 h-5" />
+              赠送体验开通
+            </button>
+            <button
               onClick={() => setShowRejectModal(true)}
               disabled={actionLoading}
               className="flex items-center gap-2 px-4 sm:px-6 py-3 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors disabled:opacity-50 text-sm sm:text-base"
@@ -395,6 +417,9 @@ export default function LawyerDetailPage() {
               拒绝入驻
             </button>
           </div>
+          {application.payment_status !== 'paid' && (
+            <p className="mt-3 text-sm text-amber-700">普通入驻必须在付款完成后才能批准；如需免费体验，请使用“赠送体验开通”。</p>
+          )}
         </div>
       )}
 
@@ -423,6 +448,22 @@ export default function LawyerDetailPage() {
               >
                 确认拒绝
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showComplimentaryModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-slate-800 mb-2">赠送体验开通</h3>
+            <p className="text-sm text-slate-500 mb-4">此操作不会记为已付款，会生成一笔 ¥0.00 的体验订单。</p>
+            <textarea value={complimentaryReason} onChange={(event) => setComplimentaryReason(event.target.value)} placeholder="请填写赠送原因..." className="w-full h-24 px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none mb-3" />
+            <input type="password" value={complimentaryCode} onChange={(event) => setComplimentaryCode(event.target.value)} placeholder="赠送体验暗号" className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 mb-3" />
+            <input type="number" min="1" max="365" value={complimentaryDays} onChange={(event) => setComplimentaryDays(event.target.value)} placeholder="体验天数" className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500" />
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => setShowComplimentaryModal(false)} className="flex-1 px-4 py-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">取消</button>
+              <button onClick={() => handleReview('approve_complimentary')} disabled={actionLoading} className="flex-1 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50">确认开通</button>
             </div>
           </div>
         </div>

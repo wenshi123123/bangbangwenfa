@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
     } else if (lawyerApplications) {
       // 格式化律师入驻订单
       for (const app of lawyerApplications) {
+        if (app.approval_mode === 'complimentary') continue;
         let selectedPackages: string[] = [];
         if (app.selected_packages) {
           try {
@@ -112,6 +113,66 @@ export async function GET(request: NextRequest) {
           contactName: nickname,
           createdAt: app.created_at,
           updatedAt: app.updated_at,
+        });
+      }
+    }
+
+    // 3. 查询律师续费订单。续费与咨询/入驻使用同一个订单展示契约。
+    const { data: renewOrders, error: renewError } = await supabase
+      .from('lawyer_renew_orders')
+      .select('id, order_no, package_id, package_price, payment_status, paid_at, expires_at, created_at, updated_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (renewError) {
+      console.error('查询律师续费订单失败:', renewError);
+    } else {
+      for (const order of renewOrders || []) {
+        const isCriminal = String(order.package_id).startsWith('criminal_');
+        const isYear = String(order.package_id).endsWith('_year');
+        orders.push({
+          id: `renew-${order.id}`,
+          orderNo: order.order_no,
+          type: 'renewal',
+          category: 'lawyer_renewal',
+          caseType: '律师续费',
+          caseTitle: `${isCriminal ? '刑事' : '民事'}律师${isYear ? '年卡' : '季卡'}续费`,
+          serviceType: order.package_id,
+          servicePrice: Number(order.package_price),
+          paymentStatus: order.payment_status,
+          paidAt: order.paid_at,
+          expiresAt: order.expires_at,
+          contactName: nickname,
+          createdAt: order.created_at,
+          updatedAt: order.updated_at,
+        });
+      }
+    }
+
+    // 4. 赠送体验是零金额开通，不混入付款收入，但用户可在订单中查到。
+    const { data: complimentaryOrders, error: complimentaryError } = await supabase
+      .from('lawyer_complimentary_orders')
+      .select('id, order_no, reason, expires_at, status, created_at, updated_at')
+      .eq('user_id', String(userId))
+      .order('created_at', { ascending: false });
+    if (complimentaryError) {
+      console.error('查询赠送体验订单失败:', complimentaryError);
+    } else {
+      for (const order of complimentaryOrders || []) {
+        orders.push({
+          id: `complimentary-${order.id}`,
+          orderNo: order.order_no,
+          type: 'complimentary',
+          category: 'lawyer_complimentary',
+          caseType: '赠送体验',
+          caseTitle: '律师赠送体验开通',
+          caseDescription: '平台赠送体验资格已开通',
+          serviceType: 'complimentary',
+          servicePrice: 0,
+          paymentStatus: order.status,
+          expiresAt: order.expires_at,
+          contactName: nickname,
+          createdAt: order.created_at,
+          updatedAt: order.updated_at,
         });
       }
     }

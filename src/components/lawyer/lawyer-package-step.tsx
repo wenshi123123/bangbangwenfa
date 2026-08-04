@@ -48,7 +48,7 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
             return {
               ...config,
               price,
-              priceDisplay: (price / 100).toFixed(0),
+              priceDisplay: (price / 100).toFixed(2),
             };
           });
           setPackages(packagesData);
@@ -71,7 +71,7 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
     .filter(pkg => selectedPackages.includes(pkg.id))
     .reduce((sum, pkg) => sum + pkg.price, 0);
 
-  const totalPriceDisplay = (totalPrice / 100).toFixed(0);
+  const totalPriceDisplay = (totalPrice / 100).toFixed(2);
 
   // 处理套餐选择（自由多选）
   const handlePackageSelect = (pkgId: string) => {

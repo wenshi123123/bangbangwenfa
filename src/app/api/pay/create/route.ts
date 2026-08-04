@@ -83,6 +83,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (order.payment_status === 'paying') {
+      const expiresAt = order.payment_expires_at ? new Date(order.payment_expires_at) : null;
+      if (expiresAt && expiresAt.getTime() > Date.now()) {
+        return NextResponse.json({ success: false, code: 'PAYMENT_IN_PROGRESS', error: '该订单正在支付中，请继续完成支付或等待订单超时后重试' }, { status: 409 });
+      }
+      await supabase
+        .from('consult_orders')
+        .update({ payment_status: 'closed', closed_at: new Date().toISOString(), close_reason: '支付超时', updated_at: new Date().toISOString() })
+        .eq('id', order.id)
+        .eq('payment_status', 'paying');
+    }
+
     // 生成微信支付订单号（最多32字符，微信支付限制）
     // WX(2) + 时间戳(13) + 随机hex(12) = 27字符，在32字符限制内
     const payTradeNo = `WX${Date.now()}${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
@@ -182,6 +194,10 @@ export async function POST(request: NextRequest) {
       .update({
         pay_trade_no: payTradeNo,
         pay_prepay_id: payData.prepayId,
+        payment_status: 'paying',
+        payment_channel: channel,
+        payment_expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .eq('id', orderId);
 

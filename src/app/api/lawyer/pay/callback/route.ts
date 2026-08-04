@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
         if (paymentOrder.wechat_transaction_id && paymentOrder.wechat_transaction_id !== transactionId) return failure('微信交易号不一致');
         return success();
       }
-      if (!['creating', 'pending'].includes(paymentOrder.status)) return failure('订单状态不允许支付完成');
+      if (!['creating', 'pending', 'paying'].includes(paymentOrder.status)) return failure('订单状态不允许支付完成');
 
       const { data: application, error: applicationError } = await supabase
         .from('lawyer_applications')
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
         .from('lawyer_application_payment_orders')
         .update({ status: 'paid', paid_at: paidAt, wechat_transaction_id: transactionId, updated_at: paidAt })
         .eq('order_no', outTradeNo)
-        .in('status', ['creating', 'pending'])
+        .in('status', ['creating', 'pending', 'paying'])
         .select('order_no')
         .maybeSingle();
       if (updateOrderError) return failure('Order update failed', 500);

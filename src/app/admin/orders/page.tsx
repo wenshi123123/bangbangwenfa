@@ -28,7 +28,7 @@ interface TrendData {
 
 interface Order {
   id: string | number;
-  order_type: 'consult' | 'lawyer_application';
+  order_type: 'consult' | 'lawyer_application' | 'lawyer_renewal' | 'lawyer_complimentary';
   order_no: string | null;
   contact_name: string;
   contact_phone: string;
@@ -43,7 +43,11 @@ interface Order {
 
 const paymentStatusMap = {
   pending: { label: '待支付', color: 'bg-amber-100 text-amber-700' },
+  paying: { label: '支付中', color: 'bg-blue-100 text-blue-700' },
   paid: { label: '已支付', color: 'bg-green-100 text-green-700' },
+  completed: { label: '已完成', color: 'bg-green-100 text-green-700' },
+  cancelled: { label: '已取消', color: 'bg-slate-100 text-slate-700' },
+  closed: { label: '已关闭', color: 'bg-slate-100 text-slate-700' },
   refunded: { label: '已退款', color: 'bg-slate-100 text-slate-700' },
 };
 
@@ -51,6 +55,8 @@ const categoryMap = {
   criminal: { label: '刑事案件', color: 'text-red-600' },
   civil: { label: '民事案件', color: 'text-blue-600' },
   lawyer_application: { label: '律师入驻订单', color: 'text-violet-600' },
+  lawyer_renewal: { label: '律师续费订单', color: 'text-blue-600' },
+  lawyer_complimentary: { label: '赠送体验订单', color: 'text-amber-600' },
 };
 
 export const dynamic = 'force-dynamic';
@@ -279,6 +285,8 @@ export default function OrderListPage() {
               <option value="criminal">刑事案件</option>
               <option value="civil">民事案件</option>
               <option value="lawyer_application">律师入驻订单</option>
+              <option value="lawyer_renewal">律师续费订单</option>
+              <option value="lawyer_complimentary">赠送体验订单</option>
             </select>
           </div>
         </div>
