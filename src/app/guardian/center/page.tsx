@@ -335,36 +335,24 @@ export default function GuardianCenterPage() {
 
       if (result.success) {
         // 注册成功，保存守护者信息到 localStorage
-        localStorage.setItem('guardian_user', JSON.stringify({
+        persistGuardianCache(localStorage, {
           id: result.data.id,
           nickname: user.nickname || user.username || '守护者',
-          avatar_url: null,
           invite_code: result.data.invite_code || result.data.inviteCode,
-          total_invites: 0,
-          valid_invites: 0,
-          total_commission: 0,
-          available_commission: 0,
-          withdrawn_commission: 0,
-        }));
+        });
         alert('恭喜！您已成功入驻守护者计划');
         window.location.reload();
       } else if (result.message === '已是守护者' || result.error === '已是守护者') {
         // 已经是守护者，保存信息并刷新
         if (result.data) {
-          localStorage.setItem('guardian_user', JSON.stringify(result.data));
+          persistGuardianCache(localStorage, result.data);
         } else {
           // API 可能没返回完整 data，构造最小数据
-          localStorage.setItem('guardian_user', JSON.stringify({
+          persistGuardianCache(localStorage, {
             id: 0,
             nickname: user.nickname || user.username || '守护者',
-            avatar_url: null,
             invite_code: '',
-            total_invites: 0,
-            valid_invites: 0,
-            total_commission: 0,
-            available_commission: 0,
-            withdrawn_commission: 0,
-          }));
+          });
         }
         window.location.reload();
       } else {
@@ -493,7 +481,7 @@ export default function GuardianCenterPage() {
         if (guardian) {
           const updatedGuardian = { ...guardian, wechat_account: result.wechat_qrcode || wechatQrcode, wechat_qrcode: result.wechat_qrcode || wechatQrcode };
           setGuardian(updatedGuardian);
-          localStorage.setItem('guardian_user', JSON.stringify(updatedGuardian));
+          persistGuardianCache(localStorage, updatedGuardian);
         }
       } else if (result.remainingSeconds) {
         // 冷却期处理

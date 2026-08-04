@@ -5,6 +5,7 @@ import { X, Smartphone, Loader2, CheckCircle, AlertCircle, Shield } from 'lucide
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { persistGuardianCache } from '@/lib/guardian/load-center-data';
 
 interface GuardianLoginFormProps {
   onSuccess: (data: any) => void;
@@ -105,7 +106,7 @@ export function GuardianLoginForm({ onSuccess, onCancel }: GuardianLoginFormProp
         
         // 保存守护者信息
         const guardianData = result.data;
-        localStorage.setItem('guardian_user', JSON.stringify(guardianData));
+        persistGuardianCache(localStorage, guardianData);
         localStorage.setItem('token', guardianData.token);
         
         // 保存用户信息（兼容主站）
