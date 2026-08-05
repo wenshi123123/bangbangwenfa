@@ -19,7 +19,10 @@ export function LocalRoleSwitcher() {
     const result = await response.json();
     if (!response.ok || !result.success) return setMessage(result.error || '切换失败');
     localStorage.removeItem('token'); localStorage.removeItem('user_info'); localStorage.removeItem('user_id'); localStorage.removeItem('guardian_user'); localStorage.removeItem('admin_token'); localStorage.removeItem('admin_info');
-    if (result.token) { localStorage.setItem('token', result.token); localStorage.setItem('user_info', JSON.stringify(result.user)); localStorage.setItem('user_id', String(result.user.id)); }
+    if (result.token) {
+      localStorage.setItem('token', result.token); localStorage.setItem('user_info', JSON.stringify(result.user)); localStorage.setItem('user_id', String(result.user.id));
+      if (result.user.guardianInfo) localStorage.setItem('guardian_user', JSON.stringify({ id: result.user.guardianInfo.id, nickname: result.user.nickname, invite_code: result.user.guardianInfo.inviteCode }));
+    }
     if (result.adminToken) { localStorage.setItem('admin_token', result.adminToken); localStorage.setItem('admin_info', JSON.stringify(result.admin)); }
     window.location.assign(result.targetPath);
   };
