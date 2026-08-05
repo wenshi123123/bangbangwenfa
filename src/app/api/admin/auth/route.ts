@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import bcrypt from 'bcryptjs';
 import { generateAdminToken, verifyAdminJWT } from '@/lib/auth/admin-token';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
+import { findLocalTestAccount, isLocalTestAdminId } from '@/lib/auth/local-test-accounts';
 
 // 使用 JWT 签名的管理员 Token（不再使用 Base64 明文编码）
 
@@ -26,6 +27,12 @@ export async function POST(request: NextRequest) {
         { success: false, error: '请输入用户名和密码' },
         { status: 400 }
       );
+    }
+
+    const localAccount = findLocalTestAccount(username, password);
+    if (localAccount?.role === 'admin') {
+      const token = generateAdminToken(localAccount.id, username);
+      return NextResponse.json({ success: true, data: { token, admin: { id: localAccount.id, username, nickname: localAccount.nickname, permissions: ['all'] } } });
     }
 
     // 查询管理员
@@ -104,6 +111,10 @@ export async function GET(request: NextRequest) {
     const payload = verifyAdminJWT(token);
     if (!payload) {
       return NextResponse.json({ success: false, error: '登录已过期' }, { status: 401 });
+    }
+
+    if (isLocalTestAdminId(payload.adminId)) {
+      return NextResponse.json({ success: true, data: { admin: { id: payload.adminId, username: payload.username, nickname: '本地测试管理员', permissions: ['all'], status: 'active' } } });
     }
 
     // 获取管理员信息

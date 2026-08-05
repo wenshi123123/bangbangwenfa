@@ -4,6 +4,7 @@ import { verifyCode } from '@/lib/sms/verify-code';
 import { generateToken } from '@/lib/auth/token';
 import { verifyPassword, validateUsername } from '@/lib/auth/password';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
+import { findLocalTestAccount } from '@/lib/auth/local-test-accounts';
 
 // 登录失败限制配置
 const LOGIN_FAIL_MAX = 5;           // 最大连续失败次数
@@ -475,6 +476,13 @@ async function handlePasswordLogin(
       { success: false, error: '账号和密码不能为空' },
       { status: 400 }
     );
+  }
+
+  const localAccount = findLocalTestAccount(account, password);
+  if (localAccount && localAccount.role !== 'admin') {
+    const userType = localAccount.role;
+    const token = await generateToken({ id: localAccount.id, phone: `1390000${localAccount.id}`, username: account, userType, lawyerId: userType === 'lawyer' ? 'local-test-lawyer' : undefined, status: userType === 'lawyer' ? 'active' : undefined });
+    return attachAuthCookie(NextResponse.json({ success: true, data: { user: { id: localAccount.id, phone: `1390000${localAccount.id}`, username: account, nickname: localAccount.nickname, userType, isGuardian: false, guardianInfo: null, isLawyer: userType === 'lawyer', lawyerInfo: userType === 'lawyer' ? { id: 'local-test-lawyer', name: localAccount.nickname, status: 'active', expireAt: null } : null }, token } }), token);
   }
 
   cleanupAttempts();
