@@ -5,6 +5,7 @@ import { Header } from '@/components/layout/header';
 import LoginModal from '@/components/auth/login-modal';
 import SearchModal from '@/components/search/search-modal';
 import { CanonicalHostGuard } from '@/components/canonical-host-guard';
+import { LocalRoleSwitcher } from '@/components/local-preview/role-switcher';
 import { getSiteUrl } from '@/lib/site';
 import {
   LEGACY_BROWSER_FALLBACK_CSS,
@@ -98,6 +99,7 @@ export default function RootLayout({
           <main className="min-h-screen">{children}</main>
           <LoginModal />
           <SearchModal />
+          <LocalRoleSwitcher />
         </AuthProvider>
       </body>
     </html>

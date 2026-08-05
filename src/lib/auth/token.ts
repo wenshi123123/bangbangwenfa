@@ -1,8 +1,9 @@
 import crypto from 'crypto';
+import { getLocalPreviewJwtSecret } from '@/lib/local-preview/environment';
 
 // JWT_SECRET 配置：延迟检查，只在真正使用时才验证
 function getJwtSecret(): string {
-  const secret = process.env.JWT_SECRET;
+  const secret = process.env.JWT_SECRET || getLocalPreviewJwtSecret();
   if (!secret) {
     throw new Error('必须设置 JWT_SECRET 环境变量');
   }
