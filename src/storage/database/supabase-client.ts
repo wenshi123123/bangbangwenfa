@@ -23,14 +23,6 @@ type MockFilter = {
 const mockTableStore = new Map<string, any[]>();
 const mockTableSequences = new Map<string, number>();
 
-export function resetMockDatabase(tables: Record<string, any[]> = {}): void {
-  mockTableStore.clear();
-  mockTableSequences.clear();
-  for (const [table, rows] of Object.entries(tables)) {
-    mockTableStore.set(table, rows.map((row) => ({ ...row })));
-  }
-}
-
 function getMockTableRows(table: string): any[] {
   if (!mockTableStore.has(table)) {
     mockTableStore.set(table, []);
@@ -55,25 +47,13 @@ function createMockQueryBuilder(table: string, defaultData: any = null) {
   const state: {
     filters: MockFilter[];
     pendingInsert: any[] | null;
-    pendingUpdate: Record<string, unknown> | null;
-    pendingDelete: boolean;
     selectedColumns: string | null;
     limitCount: number | null;
-    rangeStart: number | null;
-    rangeEnd: number | null;
-    orderColumn: string | null;
-    orderAscending: boolean;
   } = {
     filters: [],
     pendingInsert: null,
-    pendingUpdate: null,
-    pendingDelete: false,
     selectedColumns: null,
     limitCount: null,
-    rangeStart: null,
-    rangeEnd: null,
-    orderColumn: null,
-    orderAscending: true,
   };
 
   const normalize = (value: any) => {
@@ -138,12 +118,12 @@ function createMockQueryBuilder(table: string, defaultData: any = null) {
       state.filters.push({ type: 'filter', column, value });
       return builder;
     },
-    order(column: string, options?: { ascending?: boolean }) { state.orderColumn = column; state.orderAscending = options?.ascending !== false; return builder; },
+    order() { return builder; },
     limit(count: number) {
       state.limitCount = count;
       return builder;
     },
-    range(start: number, end: number) { state.rangeStart = start; state.rangeEnd = end; return builder; },
+    range() { return builder; },
     gte(column: string, value: any) {
       state.filters.push({ type: 'gte', column, value });
       return builder;
@@ -174,9 +154,9 @@ function createMockQueryBuilder(table: string, defaultData: any = null) {
       state.pendingInsert = Array.isArray(rows) ? rows : [rows];
       return builder;
     },
-    update(values: Record<string, unknown>) { state.pendingUpdate = values; return builder; },
+    update() { return builder; },
     upsert() { return builder; },
-    delete() { state.pendingDelete = true; return builder; },
+    delete() { return builder; },
     single: async () => {
       if (state.pendingInsert) {
         const inserted = state.pendingInsert.map((row) => {
@@ -191,16 +171,7 @@ function createMockQueryBuilder(table: string, defaultData: any = null) {
         return { data: row, error: null, count: row ? 1 : 0 };
       }
 
-      const source = getMockTableRows(table);
-      const matches = source.filter(matchesFilters);
-      if (state.pendingUpdate) Object.assign(matches[0] || {}, state.pendingUpdate);
-      if (state.pendingDelete) {
-        for (const row of matches) source.splice(source.indexOf(row), 1);
-      }
-      let rows = matches;
-      if (state.orderColumn) rows = [...rows].sort((a, b) => (a[state.orderColumn!] > b[state.orderColumn!] ? 1 : -1) * (state.orderAscending ? 1 : -1));
-      if (state.rangeStart !== null && state.rangeEnd !== null) rows = rows.slice(state.rangeStart, state.rangeEnd + 1);
-      rows = applyLimit(rows);
+      const rows = applyLimit(getMockTableRows(table).filter(matchesFilters));
       const row = rows[0] ? projectColumns(rows[0]) : null;
       return { data: row, error: null, count: row ? 1 : 0 };
     },
@@ -208,11 +179,7 @@ function createMockQueryBuilder(table: string, defaultData: any = null) {
       const result = await builder.single();
       return result;
     },
-    then: (onFulfilled: any, onRejected: any) => {
-      const rows = getMockTableRows(table).filter(matchesFilters);
-      const data = applyLimit(rows).map(projectColumns);
-      return Promise.resolve({ data, error: null, count: data.length }).then(onFulfilled, onRejected);
-    },
+    then: (onFulfilled: any, onRejected: any) => Promise.resolve(resolved).then(onFulfilled, onRejected),
     catch: (onRejected: any) => Promise.resolve(resolved).catch(onRejected),
     finally: (onFinally: any) => Promise.resolve(resolved).finally(onFinally),
   };
@@ -225,16 +192,8 @@ function createMockSupabaseClient(): SupabaseClient {
     from(table: string) {
       return createMockQueryBuilder(table);
     },
-    rpc(name: string, args: Record<string, unknown>) {
-      if (name !== 'create_guardian_withdrawal') return Promise.resolve({ data: null, error: null });
-      const guardianId = args.p_guardian_id;
-      const amount = args.p_amount;
-      const guardian = getMockTableRows('guardian_users').find((row) => String(row.id) === String(guardianId));
-      if (!guardian || typeof amount !== 'number' || guardian.available_commission < amount) return Promise.resolve({ data: null, error: { message: 'INSUFFICIENT_BALANCE_OR_GUARDIAN' } });
-      guardian.available_commission -= amount;
-      const row = { id: nextMockId('guardian_withdrawals'), guardian_id: guardianId, amount, actual_amount: amount, fee: 0, status: 'pending', created_at: new Date().toISOString() };
-      getMockTableRows('guardian_withdrawals').push(row);
-      return Promise.resolve({ data: { withdrawalId: row.id, amount }, error: null });
+    rpc() {
+      return Promise.resolve({ data: null, error: null });
     },
     auth: {
       getUser: async () => ({ data: { user: null }, error: null }),
