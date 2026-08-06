@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { requireAdminAuth, adminUnauthorizedResponse } from '@/lib/auth/admin-middleware';
+import { getWechatPayClient } from '@/lib/payment/wechat-pay';
 
 export async function POST(request: NextRequest) {
   const authResult = await requireAdminAuth(request);
@@ -32,6 +33,24 @@ export async function POST(request: NextRequest) {
     if (order.payment_status === 'refunded') {
       return NextResponse.json({ success: false, error: '订单已退款' }, { status: 400 });
     }
+    if (order.payment_status !== 'paid') {
+      return NextResponse.json({ success: false, error: '只有已支付订单可以退款' }, { status: 409 });
+    }
+
+    const outTradeNo = order.pay_trade_no || order.order_no;
+    const totalAmount = Number(order.service_price || 0);
+    if (!outTradeNo || !totalAmount) {
+      return NextResponse.json({ success: false, error: '订单缺少微信支付信息' }, { status: 409 });
+    }
+
+    const outRefundNo = `RF${Date.now()}${String(orderId).replace(/\D/g, '').slice(-8)}`.slice(0, 64);
+    const refundResult = await getWechatPayClient().refundOrder({
+      outTradeNo,
+      outRefundNo,
+      amount: totalAmount,
+      totalAmount,
+      reason: '管理员处理退款',
+    });
 
     // 3. 查询该订单对应的佣金记录
     const { data: commission } = await supabase
@@ -46,6 +65,7 @@ export async function POST(request: NextRequest) {
       .from('consult_orders')
       .update({ 
         payment_status: 'refunded',
+        refund_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
       .eq('id', orderId)
@@ -98,6 +118,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       success: true, 
       order: updatedOrder,
+      refundId: refundResult.refundId || null,
       message: commission ? '退款成功，佣金已回滚' : '退款成功'
     });
 

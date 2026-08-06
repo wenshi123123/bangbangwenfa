@@ -88,11 +88,16 @@ export async function POST(request: NextRequest) {
       if (expiresAt && expiresAt.getTime() > Date.now()) {
         return NextResponse.json({ success: false, code: 'PAYMENT_IN_PROGRESS', error: '该订单正在支付中，请继续完成支付或等待订单超时后重试' }, { status: 409 });
       }
-      await supabase
+      const { error: closeError } = await supabase
         .from('consult_orders')
         .update({ payment_status: 'closed', closed_at: new Date().toISOString(), close_reason: '支付超时', updated_at: new Date().toISOString() })
         .eq('id', order.id)
         .eq('payment_status', 'paying');
+      if (closeError) {
+        console.error('[Pay/Create] 关闭过期订单失败:', closeError);
+        return NextResponse.json({ success: false, error: '关闭过期支付失败，请稍后重试' }, { status: 500 });
+      }
+      return NextResponse.json({ success: false, code: 'PAYMENT_EXPIRED', error: '支付已超时，请重新提交咨询订单' }, { status: 409 });
     }
 
     // 生成微信支付订单号（最多32字符，微信支付限制）

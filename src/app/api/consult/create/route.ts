@@ -109,6 +109,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '咨询套餐价格暂不可用，请稍后重试' }, { status: 503 });
     }
 
+    // 同一用户、同一咨询分类只保留一笔有效支付订单，避免重复下单和重复扣款。
+    const { data: activeOrder, error: activeOrderError } = await supabase
+      .from('consult_orders')
+      .select('id, payment_status')
+      .eq('user_id', userId)
+      .eq('category', finalCategory)
+      .in('payment_status', ['pending', 'paying'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (activeOrderError) {
+      console.error('查询有效咨询订单失败:', activeOrderError);
+      return NextResponse.json({ success: false, error: '检查现有订单失败，请稍后重试' }, { status: 500 });
+    }
+
+    if (activeOrder) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          orderId: activeOrder.id,
+          reused: true,
+          paymentHandoffToken: createConsultPaymentHandoff(activeOrder.id, userId),
+        },
+      });
+    }
+
     const orderNo = generateOrderNo();
 
     // 插入订单
@@ -134,6 +161,28 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
+      // 数据库唯一索引兜底并发请求：读取先创建成功的有效订单并复用。
+      if (error.code === '23505') {
+        const { data: concurrentOrder } = await supabase
+          .from('consult_orders')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('category', finalCategory)
+          .in('payment_status', ['pending', 'paying'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (concurrentOrder) {
+          return NextResponse.json({
+            success: true,
+            data: {
+              orderId: concurrentOrder.id,
+              reused: true,
+              paymentHandoffToken: createConsultPaymentHandoff(concurrentOrder.id, userId),
+            },
+          });
+        }
+      }
       console.error('创建订单失败:', error);
       return NextResponse.json(
         { success: false, error: '创建订单失败，请重试' },

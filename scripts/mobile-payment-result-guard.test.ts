@@ -22,9 +22,10 @@ async function main() {
 
   assert.match(consultStatus, /orderId/, '咨询支付状态接口必须支持按业务订单号查询');
   assert.match(consultCreate, /payTradeNo/, '咨询 H5 回跳必须带上微信支付单号');
-  assert.match(lawyerCreate, /applicationId/, '律师 H5 回跳必须带上申请 ID，未付款时才能继续支付');
+  assert.match(lawyerCreate, /application\.id|application_id/, '律师支付必须由服务端绑定当前用户的申请');
 
-  assert.match(consultPayPage, /前往微信支付/, '咨询外部手机浏览器必须由用户点击发起微信 H5 支付');
+  assert.match(consultPayPage, /if \(isMobile && result\.h5Url\)[\s\S]*window\.location\.assign\(result\.h5Url\)/, '咨询 H5 支付创建成功后必须直接跳转微信支付');
+  assert.doesNotMatch(consultPayPage, /前往微信支付/, '咨询 H5 支付正常流程不应再显示第二个支付按钮');
   assert.match(lawyerPayPage, /前往微信支付/, '律师外部手机浏览器必须由用户点击发起微信 H5 支付');
   assert.doesNotMatch(lawyerPayPage, /window\.location\.href = h5Url/, '律师支付不能在异步创建后自动唤起微信 H5');
 

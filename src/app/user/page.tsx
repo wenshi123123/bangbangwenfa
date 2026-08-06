@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { apiRequest } from '@/lib/api/request';
 
 interface Order {
-  id: number;
+  id: number | string;
   applicationId?: number;
   orderNo: string;
   type: 'consult' | 'lawyer' | 'renewal' | 'complimentary';
@@ -34,6 +34,7 @@ function UserCenterPageContent() {
   const [saving, setSaving] = useState(false);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [targetOrderId, setTargetOrderId] = useState<string | null>(null);
+  const [refundLoading, setRefundLoading] = useState(false);
 
   // 订单相关状态
   const [orders, setOrders] = useState<Order[]>([]);
@@ -84,6 +85,33 @@ function UserCenterPageContent() {
       // 忽略错误，通知入口仍可点击
     }
   }, []);
+
+  const requestRefund = async () => {
+    if (!showOrderDetail || showOrderDetail.paymentStatus !== 'paid' || showOrderDetail.type === 'complimentary') return;
+    const reason = window.prompt('请填写退款原因');
+    if (!reason?.trim()) return;
+    const orderType = showOrderDetail.type === 'consult'
+      ? 'consult'
+      : showOrderDetail.type === 'lawyer'
+        ? 'lawyer_application'
+        : 'lawyer_renewal';
+    const orderId = String(showOrderDetail.id).replace(/^renew-/, '');
+    setRefundLoading(true);
+    try {
+      const response = await apiRequest('/api/user/refund-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderType, orderId, reason: reason.trim() }),
+      });
+      const result = await response.json();
+      alert(result.success ? '退款申请已提交，请等待平台审核' : (result.error || '退款申请失败'));
+      if (result.success) setShowOrderDetail(null);
+    } catch {
+      alert('退款申请失败，请稍后重试');
+    } finally {
+      setRefundLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (effectiveUser?.id && effectiveLoggedIn) {
@@ -522,6 +550,18 @@ function UserCenterPageContent() {
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500">支付时间</span>
                   <span className="text-sm">{new Date(showOrderDetail.paidAt).toLocaleString()}</span>
+                </div>
+              )}
+              {showOrderDetail.paymentStatus === 'paid' && showOrderDetail.type !== 'complimentary' && (
+                <div className="pt-2">
+                  <Button
+                    variant="outline"
+                    className="w-full border-red-200 text-red-600 hover:bg-red-50"
+                    disabled={refundLoading}
+                    onClick={requestRefund}
+                  >
+                    {refundLoading ? '提交中...' : '申请退款'}
+                  </Button>
                 </div>
               )}
               {/* 律师入驻订单审核通过后显示入口 */}
