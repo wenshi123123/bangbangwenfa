@@ -218,8 +218,12 @@ export async function POST(request: NextRequest) {
     // ========== 签名验证（任何环境都必须验证，防止伪造回调）==========
     // 微信支付 APIv3 回调签名在 Authorization 头中
     // 格式: WECHATPAY2-SHA256-RSA2048 signature="xxx",serial_no="yyy",nonce_str="...",timestamp="..."
+    // 微信支付回调的签名在独立的 Wechatpay-Signature 请求头中。
+    // 保留 Authorization 解析作为兼容旧代理/测试请求的回退路径。
     const authorization = headers.get('authorization') || '';
-    const signature = authorization.match(/signature="([^"]+)"/)?.[1] || '';
+    const signature = headers.get('wechatpay-signature')
+      || authorization.match(/signature="([^"]+)"/)?.[1]
+      || '';
     const timestamp = headers.get('wechatpay-timestamp') || '';
     const nonce = headers.get('wechatpay-nonce') || '';
     const serial = headers.get('wechatpay-serial') || '';
