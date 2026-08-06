@@ -8,11 +8,10 @@ import { RENEWAL_PACKAGE_META, RenewalPackageId } from '@/lib/lawyer/package-con
 import { loadRenewalPackagePrice } from '@/lib/lawyer/price-config';
 import { resolveUserNickname } from '@/lib/user/resolve-nickname';
 import { getPaymentClientContext, getWechatPaymentSession } from '@/lib/payment/payment-context';
+import { PAYMENT_TTL_MS } from '@/lib/payment/order-lifecycle';
 
 const SITE_URL = getSiteUrl();
 const H5_SITE_URL = getWechatH5SiteUrl();
-const PAYMENT_TTL_MS = 5 * 60 * 1000;
-
 function withH5ReturnUrl(h5Url: string, returnUrl: string) {
   const url = new URL(h5Url);
   url.searchParams.set('redirect_url', returnUrl);
@@ -165,7 +164,7 @@ export async function POST(request: NextRequest) {
     // 检查是否有未支付的续费订单（防止重复创建）
     const { data: pendingOrder } = await supabase
       .from('lawyer_renew_orders')
-      .select('order_no, created_at')
+      .select('order_no, created_at, payment_expires_at')
       .eq('lawyer_id', lawyer.id)
       .in('payment_status', ['pending', 'paying'])
       .order('created_at', { ascending: false })
@@ -173,20 +172,23 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (pendingOrder) {
-      // 5 分钟内的 pending 订单直接复用，不让重复创建
-      const createdAt = new Date(pendingOrder.created_at);
-      const minutesDiff = (Date.now() - createdAt.getTime()) / (1000 * 60);
-      if (minutesDiff < 5) {
+      // 15 分钟内保留唯一有效订单；历史订单没有过期时间时按创建时间兜底。
+      const fallbackExpiresAt = new Date(new Date(pendingOrder.created_at).getTime() + PAYMENT_TTL_MS);
+      const expiresAt = pendingOrder.payment_expires_at
+        ? new Date(pendingOrder.payment_expires_at)
+        : fallbackExpiresAt;
+      if (expiresAt.getTime() > Date.now()) {
         return NextResponse.json(
-          { success: false, error: '您有一笔未完成的续费订单，请先完成支付或等待订单超时' },
+          { success: false, error: '您有一笔未完成的续费订单，请先完成支付或等待 15 分钟超时' },
           { status: 409 }
         );
       }
-      // 超过 5 分钟的待支付订单关闭，避免支付中订单永久存在。
+      // 超过 15 分钟的待支付订单关闭，避免支付中订单永久存在。
       await supabase
         .from('lawyer_renew_orders')
         .update({ payment_status: 'closed', updated_at: new Date().toISOString() })
-        .eq('order_no', pendingOrder.order_no);
+        .eq('order_no', pendingOrder.order_no)
+        .in('payment_status', ['pending', 'paying']);
     }
 
     const orderNo = generateOrderNo();

@@ -153,8 +153,9 @@ export async function POST(request: NextRequest) {
             }
 
             if (order.payment_status !== 'paid') {
-              // 更新为已支付
-              const { error: updateError } = await supabase
+              // 只允许仍处于有效支付生命周期的订单完成支付。
+              // 已被超时清理为 closed 的旧订单不能被迟到回调重新激活。
+              const { data: paidOrder, error: updateError } = await supabase
                 .from('consult_orders')
                 .update({
                   payment_status: 'paid',
@@ -162,15 +163,20 @@ export async function POST(request: NextRequest) {
                   wechat_transaction_id: transaction_id,
                   updated_at: new Date().toISOString(),
                 })
-                .eq('id', order.id);
+                .eq('id', order.id)
+                .in('payment_status', ['pending', 'paying'])
+                .select('id')
+                .maybeSingle();
 
               if (updateError) {
                 console.error('更新订单状态失败:', updateError);
-              } else {
+              } else if (paidOrder) {
                 console.log('订单支付状态更新成功:', order.id);
 
                 // 创建守护者分成记录
                 await createGuardianCommission(order.id, transaction_id);
+              } else {
+                console.log('忽略已关闭或已变更状态的迟到支付回调:', order.id);
               }
             } else {
               console.log('订单已支付，跳过重复处理:', order.id);

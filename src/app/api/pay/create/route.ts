@@ -5,6 +5,7 @@ import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware
 import { getSiteUrl, getWechatH5SiteUrl, normalizeCanonicalUrl } from '@/lib/site';
 import { getPaymentClientContext, getWechatPaymentSession } from '@/lib/payment/payment-context';
 import { readConsultPaymentHandoff } from '@/lib/payment/payment-handoff';
+import { paymentExpiresAt } from '@/lib/payment/order-lifecycle';
 import crypto from 'crypto';
 
 function withH5ReturnUrl(h5Url: string, returnUrl: string): string {
@@ -201,7 +202,7 @@ export async function POST(request: NextRequest) {
         pay_prepay_id: payData.prepayId,
         payment_status: 'paying',
         payment_channel: channel,
-        payment_expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+        payment_expires_at: paymentExpiresAt().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq('id', orderId);
