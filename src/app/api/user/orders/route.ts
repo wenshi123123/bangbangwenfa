@@ -10,6 +10,18 @@ const lawyerPackageLabels: Record<string, string> = {
   criminal: '刑事律师（臻选）',
 };
 
+type RefundRequestSummary = {
+  id: number;
+  order_type: string;
+  order_id: string | number;
+  reason: string;
+  status: string;
+  amount: number;
+  created_at: string;
+  processed_at: string | null;
+  failure_reason: string | null;
+};
+
 export async function GET(request: NextRequest) {
   try {
     // 1. 验证用户身份
@@ -23,6 +35,20 @@ export async function GET(request: NextRequest) {
 
     const supabase = getSupabaseAdmin();
     const nickname = await resolveUserNickname(supabase, userId);
+
+    const { data: refundRequests, error: refundRequestsError } = await supabase
+      .from('refund_requests')
+      .select('id, order_type, order_id, reason, status, amount, created_at, processed_at, failure_reason')
+      .eq('user_id', String(userId))
+      .order('created_at', { ascending: false });
+    if (refundRequestsError) {
+      console.error('查询退款申请失败:', refundRequestsError);
+    }
+    const refundRequestMap = new Map<string, RefundRequestSummary>();
+    for (const request of refundRequests || []) {
+      const key = `${request.order_type}:${request.order_id}`;
+      if (!refundRequestMap.has(key)) refundRequestMap.set(key, request);
+    }
 
     const orders: any[] = [];
 
@@ -58,6 +84,7 @@ export async function GET(request: NextRequest) {
           respondedAt: order.responded_at,
           createdAt: order.created_at,
           updatedAt: order.updated_at,
+          refundRequest: refundRequestMap.get(`consult:${order.id}`) || null,
         });
       }
     }
@@ -113,6 +140,7 @@ export async function GET(request: NextRequest) {
           contactName: nickname,
           createdAt: app.created_at,
           updatedAt: app.updated_at,
+          refundRequest: refundRequestMap.get(`lawyer_application:${app.id}`) || null,
         });
       }
     }
@@ -144,6 +172,7 @@ export async function GET(request: NextRequest) {
           contactName: nickname,
           createdAt: order.created_at,
           updatedAt: order.updated_at,
+          refundRequest: refundRequestMap.get(`lawyer_renewal:${order.id}`) || null,
         });
       }
     }
