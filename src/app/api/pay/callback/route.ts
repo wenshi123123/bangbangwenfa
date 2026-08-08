@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import crypto from 'crypto';
 import { verifyWechatPaySignature } from '@/lib/payment/wechat-cert';
+import { notifyOrder } from '@/lib/notify/webhook';
 
 /**
  * 解密微信支付回调的敏感数据（AES-256-GCM）
@@ -40,7 +41,9 @@ export async function POST(request: NextRequest) {
     const timestamp = request.headers.get('wechatpay-timestamp') || '';
     const nonce = request.headers.get('wechatpay-nonce') || '';
     const serial = request.headers.get('wechatpay-serial') || '';
-    const signature = authorization.match(/signature="([^"]+)"/)?.[1] || '';
+    const signature = request.headers.get('wechatpay-signature')
+      || authorization.match(/signature="([^"]+)"/)?.[1]
+      || '';
 
     const body = await request.text();
     console.log('收到微信支付回调:', { timestamp, nonce, serial: serial ? '***' : 'missing' });
@@ -136,7 +139,7 @@ export async function POST(request: NextRequest) {
           // 查询订单
           const { data: orders, error: queryError } = await supabase
             .from('consult_orders')
-            .select('id, payment_status, pay_trade_no, service_price')
+            .select('id, payment_status, pay_trade_no, service_price, order_no, case_title, category, contact_name, contact_phone, user_id')
             .eq('pay_trade_no', out_trade_no)
             .limit(1);
 
@@ -170,13 +173,32 @@ export async function POST(request: NextRequest) {
 
               if (updateError) {
                 console.error('更新订单状态失败:', updateError);
+                return NextResponse.json(
+                  { code: 'FAIL', message: '订单状态更新失败' },
+                  { status: 500 }
+                );
               } else if (paidOrder) {
                 console.log('订单支付状态更新成功:', order.id);
+
+                await notifyOrder({
+                  type: 'Consult',
+                  userName: order.contact_name || '咨询用户',
+                  phone: order.contact_phone || undefined,
+                  amount: order.service_price,
+                  detail: `${order.category === 'civil' ? '民事' : '刑事'}：${order.case_title || '法律咨询'}`,
+                  orderId: order.order_no || order.pay_trade_no || out_trade_no,
+                  status: 'Paid',
+                  event: 'paid',
+                });
 
                 // 创建守护者分成记录
                 await createGuardianCommission(order.id, transaction_id);
               } else {
                 console.log('忽略已关闭或已变更状态的迟到支付回调:', order.id);
+                return NextResponse.json(
+                  { code: 'FAIL', message: '订单状态已变更，无法完成支付' },
+                  { status: 409 }
+                );
               }
             } else {
               console.log('订单已支付，跳过重复处理:', order.id);

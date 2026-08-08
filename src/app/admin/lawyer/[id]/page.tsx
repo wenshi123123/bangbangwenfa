@@ -60,7 +60,7 @@ const statusMap = {
   pending: { label: '待审核', color: 'bg-amber-100 text-amber-700', icon: Clock },
   approved: { label: '已通过', color: 'bg-green-100 text-green-700', icon: CheckCircle },
   rejected: { label: '已拒绝', color: 'bg-red-100 text-red-700', icon: XCircle },
-  paid: { label: '待支付', color: 'bg-blue-100 text-blue-700', icon: Clock },
+  paid: { label: '已支付', color: 'bg-blue-100 text-blue-700', icon: CheckCircle },
 };
 
 const packageMap: Record<string, string> = {

@@ -247,6 +247,7 @@ export interface PaymentCallbackResult {
   success: boolean;
   error?: string;
   order?: any;
+  paidNow?: boolean;
 }
 
 function decryptCallbackResource(
@@ -330,7 +331,8 @@ export async function updateOrderStatusAfterPayment(body: string): Promise<Payme
       console.log('订单已支付，跳过重复处理:', out_trade_no);
       return { 
         success: true, 
-        order: { order_no: out_trade_no, openid: existingOrder.openid }
+        order: { order_no: out_trade_no, openid: existingOrder.openid },
+        paidNow: false,
       };
     }
 
@@ -360,7 +362,8 @@ export async function updateOrderStatusAfterPayment(body: string): Promise<Payme
       order: { 
         order_no: orderNoField, 
         user_wechat_openid: existingOrder.openid
-      }
+      },
+      paidNow: true,
     };
 
   } catch (err: any) {

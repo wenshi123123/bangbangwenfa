@@ -70,6 +70,7 @@ export async function GET(request: NextRequest) {
           type: 'consult',
           category: order.category,
           caseType: order.case_type,
+          planId: order.plan_id || null,
           caseTitle: order.case_title,
           caseDescription: order.case_description,
           serviceType: order.service_type,

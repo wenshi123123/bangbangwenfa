@@ -87,6 +87,12 @@ export async function POST(request: NextRequest) {
     if (order.payment_status === 'paying') {
       const expiresAt = order.payment_expires_at ? new Date(order.payment_expires_at) : null;
       if (expiresAt && expiresAt.getTime() > Date.now()) {
+        if (channel === 'h5' && order.payment_url) {
+          return NextResponse.json({
+            success: true,
+            data: { orderId: order.id, payTradeNo: order.pay_trade_no, h5Url: order.payment_url, reused: true },
+          });
+        }
         return NextResponse.json({ success: false, code: 'PAYMENT_IN_PROGRESS', error: '该订单正在支付中，请继续完成支付或等待订单超时后重试' }, { status: 409 });
       }
       const { error: closeError } = await supabase
@@ -200,6 +206,7 @@ export async function POST(request: NextRequest) {
       .update({
         pay_trade_no: payTradeNo,
         pay_prepay_id: payData.prepayId,
+        payment_url: payData.h5Url || payData.codeUrl || null,
         payment_status: 'paying',
         payment_channel: channel,
         payment_expires_at: paymentExpiresAt().toISOString(),

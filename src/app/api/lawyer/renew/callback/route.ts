@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { verifyWechatPaySignature } from '@/lib/payment/wechat-cert';
+import { notifyOrder } from '@/lib/notify/webhook';
 import crypto from 'crypto';
 
 // 精确计算到期时间：基于 setMonth，并处理月末溢出
@@ -21,6 +22,17 @@ function calculateExpiry(baseDate: Date, months: number): Date {
     result.setDate(0);
   }
   return result;
+}
+
+function parsePackageList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string');
+  if (typeof value !== 'string') return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+  } catch {
+    return [];
+  }
 }
 
 // 解密微信支付 v3 回调数据（AES-256-GCM）
@@ -46,13 +58,13 @@ function decryptNotifyData(
 }
 
 // 处理支付成功逻辑（幂等）
-async function handlePaymentSuccess(tradeNo: string, orderNo: string, paidAmount: number): Promise<{ success: boolean; error?: string }> {
+async function handlePaymentSuccess(tradeNo: string, orderNo: string, paidAmount: number): Promise<{ success: boolean; paidNow?: boolean; error?: string }> {
   const supabase = getSupabaseAdmin();
 
   // 查询续费订单
   const { data: order, error: orderError } = await supabase
     .from('lawyer_renew_orders')
-    .select('*, lawyers(id, user_id, member_expires_at)')
+    .select('*, lawyers(id, user_id, member_expires_at, selected_packages)')
     .eq('order_no', orderNo)
     .single();
 
@@ -92,7 +104,8 @@ async function handlePaymentSuccess(tradeNo: string, orderNo: string, paidAmount
   const months = order.months;
   let newExpiresAt: Date;
 
-  const packageExpiry = order.expires_at || existingMembership?.expires_at || activeMembership?.expires_at || order.lawyers?.member_expires_at;
+  // 民事/刑事分别计算；不能用另一类型的全局到期日覆盖当前套餐。
+  const packageExpiry = order.expires_at || existingMembership?.expires_at || activeMembership?.expires_at;
   if (packageExpiry && alreadyPaid) {
     newExpiresAt = new Date(packageExpiry);
   } else if (packageExpiry) {
@@ -142,11 +155,26 @@ async function handlePaymentSuccess(tradeNo: string, orderNo: string, paidAmount
     }
   }
 
+  // 更新律师会员套餐标签，并把总览到期时间设为所有有效会员中的最大值。
+  const { data: activeMemberships } = await supabase
+    .from('membership_records')
+    .select('package_type, expires_at')
+    .eq('lawyer_id', order.lawyer_id)
+    .in('status', ['active', 'trial']);
+  const maxExpiresAt = (activeMemberships || [])
+    .map((item) => new Date(item.expires_at).getTime())
+    .filter(Number.isFinite)
+    .reduce((max, value) => Math.max(max, value), newExpiresAt.getTime());
+  const existingPackages = parsePackageList(order.lawyers?.selected_packages);
+  const packageLabel = membershipPackage === 'criminal' ? 'criminal_premium' : 'civil_premium';
+  const selectedPackages = [...new Set([...existingPackages, packageLabel])];
+
   // 更新律师会员到期时间
   const { data: lawyerData, error: updateLawyerError } = await supabase
     .from('lawyers')
     .update({
-      member_expires_at: newExpiresAt.toISOString(),
+      member_expires_at: new Date(maxExpiresAt).toISOString(),
+      selected_packages: JSON.stringify(selectedPackages),
       membership_status: 'normal',
       updated_at: new Date().toISOString(),
     })
@@ -164,7 +192,7 @@ async function handlePaymentSuccess(tradeNo: string, orderNo: string, paidAmount
     await supabase
       .from('lawyer_applications')
       .update({
-        member_expires_at: newExpiresAt.toISOString(),
+        member_expires_at: new Date(maxExpiresAt).toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq('user_id', lawyerData.user_id)
@@ -179,7 +207,7 @@ async function handlePaymentSuccess(tradeNo: string, orderNo: string, paidAmount
     newExpiresAt: newExpiresAt.toISOString(),
   });
 
-  return { success: true };
+  return { success: true, paidNow: !alreadyPaid };
 }
 
 // POST /api/lawyer/renew/callback - 微信支付 APIv3 回调
@@ -309,6 +337,18 @@ export async function POST(request: NextRequest) {
         { code: 'FAIL', message: result.error },
         { status: 500 }
       );
+    }
+
+    if (result.paidNow) {
+      await notifyOrder({
+        type: 'Renew',
+        userName: '律师用户',
+        amount: paidAmount,
+        detail: `续费订单 ${outTradeNo}`,
+        orderId: outTradeNo,
+        status: 'Paid',
+        event: 'paid',
+      });
     }
 
     return NextResponse.json(

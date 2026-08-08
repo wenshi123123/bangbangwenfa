@@ -133,9 +133,11 @@ export async function POST(request: NextRequest) {
     // 同一用户、同一咨询分类只保留一笔有效支付订单，避免重复下单和重复扣款。
     const { data: activeOrder, error: activeOrderError } = await supabase
       .from('consult_orders')
-      .select('id, payment_status')
+      .select('id, order_no, case_type, case_title, service_price, payment_status, payment_expires_at, plan_id')
       .eq('user_id', userId)
       .eq('category', finalCategory)
+      .eq('case_type', finalCaseType)
+      .eq('plan_id', planId)
       .in('payment_status', ['pending', 'paying'])
       .gt('payment_expires_at', lifecycleNow.toISOString())
       .order('created_at', { ascending: false })
@@ -152,6 +154,15 @@ export async function POST(request: NextRequest) {
         success: true,
         data: {
           orderId: activeOrder.id,
+          orderNo: activeOrder.order_no,
+          reusedOrder: {
+            caseType: activeOrder.case_type,
+            caseTitle: activeOrder.case_title,
+            planId: activeOrder.plan_id,
+            amount: activeOrder.service_price,
+            paymentStatus: activeOrder.payment_status,
+            paymentExpiresAt: activeOrder.payment_expires_at,
+          },
           reused: true,
           paymentHandoffToken: createConsultPaymentHandoff(activeOrder.id, userId),
         },
@@ -173,6 +184,7 @@ export async function POST(request: NextRequest) {
         case_description: finalCaseDescription,
         service_type: finalServiceType,
         service_price: finalServicePrice,
+        plan_id: planId,
         payment_status: 'pending',
         payment_expires_at: paymentExpiresAt(lifecycleNow).toISOString(),
         user_id: userId,
@@ -188,9 +200,11 @@ export async function POST(request: NextRequest) {
       if (error.code === '23505') {
         const { data: concurrentOrder } = await supabase
           .from('consult_orders')
-          .select('id')
+          .select('id, order_no, case_type, case_title, service_price, payment_status, payment_expires_at, plan_id')
           .eq('user_id', userId)
           .eq('category', finalCategory)
+          .eq('case_type', finalCaseType)
+          .eq('plan_id', planId)
           .in('payment_status', ['pending', 'paying'])
           .order('created_at', { ascending: false })
           .limit(1)
@@ -200,6 +214,15 @@ export async function POST(request: NextRequest) {
             success: true,
             data: {
               orderId: concurrentOrder.id,
+              orderNo: concurrentOrder.order_no,
+              reusedOrder: {
+                caseType: concurrentOrder.case_type,
+                caseTitle: concurrentOrder.case_title,
+                planId: concurrentOrder.plan_id,
+                amount: concurrentOrder.service_price,
+                paymentStatus: concurrentOrder.payment_status,
+                paymentExpiresAt: concurrentOrder.payment_expires_at,
+              },
               reused: true,
               paymentHandoffToken: createConsultPaymentHandoff(concurrentOrder.id, userId),
             },

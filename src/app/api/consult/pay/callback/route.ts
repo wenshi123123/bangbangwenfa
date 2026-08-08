@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { updateOrderStatusAfterPayment } from '@/lib/payment/wechat-pay';
 import { verifyWechatPaySignature } from '@/lib/payment/wechat-cert';
 import { sendPaymentSuccessNotification } from '@/lib/wechat-oa';
+import { notifyOrder } from '@/lib/notify/webhook';
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,7 +21,9 @@ export async function POST(req: NextRequest) {
     // 微信支付 APIv3 回调签名在 Authorization 头中
     // 格式: WECHATPAY2-SHA256-RSA2048 signature="xxx",serial_no="yyy",nonce_str="...",timestamp="..."
     const authorization = req.headers.get('authorization') || '';
-    const signature = authorization.match(/signature="([^"]+)"/)?.[1] || '';
+    const signature = req.headers.get('wechatpay-signature')
+      || authorization.match(/signature="([^"]+)"/)?.[1]
+      || '';
     const timestamp = req.headers.get('wechatpay-timestamp') || '';
     const nonce = req.headers.get('wechatpay-nonce') || '';
     const serialNo = req.headers.get('wechatpay-serial') || '';
@@ -55,8 +58,11 @@ export async function POST(req: NextRequest) {
     
     if (!result.success) {
       console.error('支付回调处理失败:', result.error);
-      // 注意：即使处理失败，也返回SUCCESS给微信，避免重复回调
-      // 但在日志中记录错误以便排查
+      // 业务更新失败必须返回失败，让微信重试，避免出现“微信已支付但站内订单未更新”。
+      return NextResponse.json({
+        code: 'FAIL',
+        message: result.error || '支付回调处理失败',
+      }, { status: 500 });
     }
 
     // 2. 支付成功后发送微信通知
@@ -78,6 +84,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (result.success && result.paidNow) {
+      await notifyOrder({
+        type: 'Consult',
+        userName: '咨询用户',
+        detail: '法律咨询订单',
+        orderId: result.order?.order_no,
+        status: 'Paid',
+        event: 'paid',
+      });
+    }
+
     // 统一返回SUCCESS给微信支付系统
     return NextResponse.json({ 
       code: 'SUCCESS',
@@ -86,11 +103,10 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error('支付回调错误:', error);
-    // 返回SUCCESS防止微信重复回调
-    return NextResponse.json({ 
-      code: 'SUCCESS',
-      message: '处理完成'
-    }, { status: 200 });
+    return NextResponse.json({
+      code: 'FAIL',
+      message: '支付回调处理失败',
+    }, { status: 500 });
   }
 }
 

@@ -24,7 +24,9 @@ function decryptNotifyData(ciphertext: string, associatedData: string, nonce: st
 async function parseVerifiedPayment(request: NextRequest) {
   const body = await request.text();
   const authorization = request.headers.get('authorization') || '';
-  const signature = authorization.match(/signature="([^"]+)"/)?.[1] || '';
+  const signature = request.headers.get('wechatpay-signature')
+    || authorization.match(/signature="([^"]+)"/)?.[1]
+    || '';
   const timestamp = request.headers.get('wechatpay-timestamp') || '';
   const nonce = request.headers.get('wechatpay-nonce') || '';
   const serial = request.headers.get('wechatpay-serial') || '';

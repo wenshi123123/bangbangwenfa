@@ -18,22 +18,6 @@ function withH5ReturnUrl(h5Url: string, returnUrl: string) {
   return url.toString();
 }
 
-function parseSelectedPackages(value: unknown, fallback: string | null) {
-  let selected: string[] = [];
-  if (typeof value === 'string') {
-    try {
-      const parsed = JSON.parse(value);
-      if (Array.isArray(parsed)) selected = parsed.filter((item): item is string => typeof item === 'string');
-    } catch {
-      selected = [];
-    }
-  } else if (Array.isArray(value)) {
-    selected = value.filter((item): item is string => typeof item === 'string');
-  }
-  if (selected.length === 0 && fallback) selected = [fallback];
-  return new Set(selected.map((item) => item === 'criminal' || item === 'criminal_premium' ? 'criminal' : 'civil'));
-}
-
 // 生成订单号
 function generateOrderNo(): string {
   const timestamp = Date.now();
@@ -73,7 +57,7 @@ export async function POST(request: NextRequest) {
   let createdOrderNo: string | null = null;
   try {
     const body = await request.json();
-    const { package_id } = body;
+    const { package_id, order_id } = body;
 
     if (!package_id) {
       return NextResponse.json(
@@ -128,26 +112,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: application } = await supabase
-      .from('lawyer_applications')
-      .select('package_type, selected_packages')
-      .eq('user_id', lawyer.user_id || userId)
-      .eq('review_status', 'approved')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    // 双领域律师可分别为民事/刑事套餐续费；历史记录才回退到专业领域。
-    const selectedPackages = parseSelectedPackages(application?.selected_packages, application?.package_type || null);
-    if (selectedPackages.size === 0) {
-      selectedPackages.add(lawyer.specialization?.toLowerCase().includes('刑事') ? 'criminal' : 'civil');
-    }
-    if (!selectedPackages.has(packageConfig.type)) {
-      return NextResponse.json(
-        { success: false, error: `您未开通${packageConfig.type === 'criminal' ? '刑事' : '民事'}律师资格，无法购买该续费套餐` },
-        { status: 400 }
-      );
-    }
+    // 续费按具体 package_id 授权，不再受律师历史民事/刑事类型限制。
+    // 历史 selected_packages 资格会保留，支付成功后新增对应的会员记录和套餐标签。
 
     let priceConfig;
     try {
@@ -164,8 +130,9 @@ export async function POST(request: NextRequest) {
     // 检查是否有未支付的续费订单（防止重复创建）
     const { data: pendingOrder } = await supabase
       .from('lawyer_renew_orders')
-      .select('order_no, created_at, payment_expires_at')
+      .select('order_no, package_id, package_price, payment_url, payment_status, created_at, payment_expires_at')
       .eq('lawyer_id', lawyer.id)
+      .eq('package_id', package_id)
       .in('payment_status', ['pending', 'paying'])
       .order('created_at', { ascending: false })
       .limit(1)
@@ -178,8 +145,14 @@ export async function POST(request: NextRequest) {
         ? new Date(pendingOrder.payment_expires_at)
         : fallbackExpiresAt;
       if (expiresAt.getTime() > Date.now()) {
+        if (order_id && String(order_id) === String(pendingOrder.order_no) && pendingOrder.payment_url) {
+          return NextResponse.json({
+            success: true,
+            data: { order_id: pendingOrder.order_no, amount: pendingOrder.package_price, h5_url: pendingOrder.payment_url, reused: true },
+          });
+        }
         return NextResponse.json(
-          { success: false, error: '您有一笔未完成的续费订单，请先完成支付或等待 15 分钟超时' },
+          { success: false, code: 'ACTIVE_RENEWAL_ORDER', error: '该续费套餐已有未完成订单，请从订单中心继续支付或等待 15 分钟超时', data: { order_id: pendingOrder.order_no, expires_at: expiresAt.toISOString(), payment_url: pendingOrder.payment_url || null } },
           { status: 409 }
         );
       }
@@ -262,7 +235,7 @@ export async function POST(request: NextRequest) {
 
     const { error: paymentStateError } = await supabase
       .from('lawyer_renew_orders')
-      .update({ payment_status: 'paying', payment_channel: channel, prepay_id: prepayId || null, updated_at: new Date().toISOString() })
+      .update({ payment_status: 'paying', payment_channel: channel, prepay_id: prepayId || null, payment_url: typeof responseData.h5_url === 'string' ? responseData.h5_url : typeof responseData.code_url === 'string' ? responseData.code_url : null, updated_at: new Date().toISOString() })
       .eq('order_no', orderNo)
       .eq('payment_status', 'pending');
     if (paymentStateError) throw paymentStateError;

@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
 
 type RefundOrderType = 'consult' | 'lawyer_application' | 'lawyer_renewal';
+const REFUND_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export async function POST(request: NextRequest) {
   const auth = authenticateRequest(request);
@@ -20,20 +21,24 @@ export async function POST(request: NextRequest) {
     const supabase = getSupabaseAdmin();
     let order: any = null;
     if (orderType === 'consult') {
-      const result = await supabase.from('consult_orders').select('id, order_no, user_id, payment_status, service_price').eq('id', orderId).eq('user_id', auth.userId).maybeSingle();
+      const result = await supabase.from('consult_orders').select('id, order_no, user_id, payment_status, service_price, paid_at').eq('id', orderId).eq('user_id', auth.userId).maybeSingle();
       order = result.data;
     } else if (orderType === 'lawyer_application') {
-      const result = await supabase.from('lawyer_applications').select('id, order_no, user_id, payment_status, package_price').eq('id', orderId).eq('user_id', auth.userId).maybeSingle();
+      const result = await supabase.from('lawyer_applications').select('id, order_no, user_id, payment_status, package_price, paid_at').eq('id', orderId).eq('user_id', auth.userId).maybeSingle();
       order = result.data;
       if (order) order.service_price = order.package_price;
     } else {
-      const result = await supabase.from('lawyer_renew_orders').select('id, order_no, user_id, payment_status, package_price').eq('id', orderId).eq('user_id', auth.userId).maybeSingle();
+      const result = await supabase.from('lawyer_renew_orders').select('id, order_no, user_id, payment_status, package_price, paid_at').eq('id', orderId).eq('user_id', auth.userId).maybeSingle();
       order = result.data;
       if (order) order.service_price = order.package_price;
     }
 
     if (!order) return NextResponse.json({ success: false, error: '订单不存在或无权操作' }, { status: 404 });
     if (order.payment_status !== 'paid') return NextResponse.json({ success: false, error: '只有已支付订单可以申请退款' }, { status: 409 });
+    const paidAt = order.paid_at ? new Date(order.paid_at).getTime() : NaN;
+    if (!Number.isFinite(paidAt) || Date.now() > paidAt + REFUND_WINDOW_MS) {
+      return NextResponse.json({ success: false, error: '该订单已超过支付后 24 小时退款期限' }, { status: 409 });
+    }
 
     const { data, error } = await supabase.from('refund_requests').insert({
       order_type: orderType,

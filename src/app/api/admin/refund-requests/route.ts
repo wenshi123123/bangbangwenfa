@@ -3,6 +3,8 @@ import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { getWechatPayClient } from '@/lib/payment/wechat-pay';
 import { requireAdminAuth, adminUnauthorizedResponse } from '@/lib/auth/admin-middleware';
 
+const REFUND_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 function refundNumber(id: number | string) {
   return `RF${Date.now()}${String(id).replace(/\D/g, '').slice(-8)}`.slice(0, 64);
 }
@@ -38,7 +40,7 @@ export async function POST(request: NextRequest) {
       order = (await supabase.from('consult_orders').select('*').eq('id', refundRequest.order_id).maybeSingle()).data;
     } else if (refundRequest.order_type === 'lawyer_application') {
       order = (await supabase.from('lawyer_applications').select('*').eq('id', refundRequest.order_id).maybeSingle()).data;
-      paymentOrder = order ? (await supabase.from('lawyer_application_payment_orders').select('order_no, status, amount').eq('application_id', order.id).eq('status', 'paid').order('created_at', { ascending: false }).limit(1).maybeSingle()).data : null;
+      paymentOrder = order ? (await supabase.from('lawyer_application_payment_orders').select('order_no, status, amount, paid_at').eq('application_id', order.id).eq('status', 'paid').order('created_at', { ascending: false }).limit(1).maybeSingle()).data : null;
     } else if (refundRequest.order_type === 'lawyer_renewal') {
       order = (await supabase.from('lawyer_renew_orders').select('*').eq('id', refundRequest.order_id).maybeSingle()).data;
     }
@@ -47,6 +49,13 @@ export async function POST(request: NextRequest) {
     if (!order || paymentStatus !== 'paid') {
       await supabase.from('refund_requests').update({ status: 'failed', failure_reason: '订单不是已支付状态', updated_at: new Date().toISOString(), processed_at: new Date().toISOString() }).eq('id', requestId);
       return NextResponse.json({ success: false, error: '订单不是已支付状态' }, { status: 409 });
+    }
+
+    const paidAtValue = order?.paid_at || paymentOrder?.paid_at;
+    const paidAt = paidAtValue ? new Date(paidAtValue).getTime() : NaN;
+    if (!Number.isFinite(paidAt) || Date.now() > paidAt + REFUND_WINDOW_MS) {
+      await supabase.from('refund_requests').update({ status: 'failed', failure_reason: '已超过支付后 24 小时退款期限', updated_at: new Date().toISOString(), processed_at: new Date().toISOString() }).eq('id', requestId);
+      return NextResponse.json({ success: false, error: '已超过支付后 24 小时退款期限' }, { status: 409 });
     }
 
     const outTradeNo = paymentOrder?.order_no || order.pay_trade_no || order.trade_no || order.order_no;
@@ -66,6 +75,50 @@ export async function POST(request: NextRequest) {
         await supabase.from('lawyer_applications').update({ payment_status: 'refunded', refund_at: now, updated_at: now }).eq('id', refundRequest.order_id).eq('payment_status', 'paid');
       } else {
         await supabase.from('lawyer_renew_orders').update({ payment_status: 'refunded', updated_at: now }).eq('id', refundRequest.order_id).eq('payment_status', 'paid');
+
+        // 续费退款必须撤销本次订单新增的会员记录，避免退款后仍可使用权益。
+        const { data: revertedMemberships } = await supabase
+          .from('membership_records')
+          .update({ status: 'refunded', expires_at: now, updated_at: now })
+          .eq('source_order_no', order.order_no)
+          .in('status', ['active', 'trial'])
+          .select('lawyer_id, package_type');
+
+        const lawyerId = revertedMemberships?.[0]?.lawyer_id || order.lawyer_id;
+        if (lawyerId) {
+          const { data: remainingMemberships } = await supabase
+            .from('membership_records')
+            .select('package_type, expires_at')
+            .eq('lawyer_id', lawyerId)
+            .in('status', ['active', 'trial'])
+            .gt('expires_at', now);
+          const maxExpires = (remainingMemberships || [])
+            .map((item) => new Date(item.expires_at).getTime())
+            .filter(Number.isFinite)
+            .reduce((max, value) => Math.max(max, value), 0);
+          const { data: lawyer } = await supabase
+            .from('lawyers')
+            .select('selected_packages')
+            .eq('id', lawyerId)
+            .maybeSingle();
+          const remainingTypes = new Set((remainingMemberships || []).map((item) => item.package_type));
+          const currentPackages = Array.isArray(lawyer?.selected_packages)
+            ? lawyer.selected_packages.filter((item: unknown): item is string => typeof item === 'string')
+            : typeof lawyer?.selected_packages === 'string'
+              ? (() => { try { const parsed = JSON.parse(lawyer.selected_packages); return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : []; } catch { return []; } })()
+              : [];
+          const selectedPackages = currentPackages.filter((item) => {
+            if (item.startsWith('criminal')) return remainingTypes.has('criminal');
+            if (item.startsWith('civil')) return remainingTypes.has('civil');
+            return true;
+          });
+          await supabase.from('lawyers').update({
+            member_expires_at: maxExpires ? new Date(maxExpires).toISOString() : null,
+            selected_packages: JSON.stringify(selectedPackages),
+            membership_status: maxExpires ? 'normal' : 'expired',
+            updated_at: now,
+          }).eq('id', lawyerId);
+        }
       }
       await supabase.from('refund_requests').update({ status: 'succeeded', wechat_refund_no: outRefundNo, wechat_refund_id: result.refundId || null, updated_at: now, processed_at: now }).eq('id', requestId);
       return NextResponse.json({ success: true, data: { requestId, status: 'succeeded', refundId: result.refundId || null } });

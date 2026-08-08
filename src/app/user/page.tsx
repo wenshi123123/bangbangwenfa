@@ -63,6 +63,13 @@ function UserCenterPageContent() {
     criminal: '刑事律师（臻选）',
   };
 
+  const renewalPackageLabels: Record<string, string> = {
+    civil_renew_quarter: '民事律师季卡',
+    civil_renew_year: '民事律师年卡',
+    criminal_renew_quarter: '刑事律师季卡',
+    criminal_renew_year: '刑事律师年卡',
+  };
+
   // 加载用户订单（apiRequest 自动携带 Authorization token 进行鉴权）
   const loadOrders = useCallback(async () => {
     if (!effectiveUser?.id) return;
@@ -99,7 +106,7 @@ function UserCenterPageContent() {
   }, []);
 
   const requestRefund = async () => {
-    if (!showOrderDetail || showOrderDetail.paymentStatus !== 'paid' || showOrderDetail.type === 'complimentary' || showOrderDetail.refundRequest) return;
+    if (!showOrderDetail || showOrderDetail.paymentStatus !== 'paid' || showOrderDetail.type === 'complimentary' || showOrderDetail.refundRequest || !isRefundWindowOpen(showOrderDetail)) return;
     if (!refundReason) return;
     const reason = refundNote.trim() ? `${refundReason}：${refundNote.trim()}` : refundReason;
     const orderType = showOrderDetail.type === 'consult'
@@ -130,6 +137,11 @@ function UserCenterPageContent() {
     } finally {
       setRefundLoading(false);
     }
+  };
+
+  const isRefundWindowOpen = (order: Order) => {
+    if (!order.paidAt) return false;
+    return Date.now() <= new Date(order.paidAt).getTime() + 24 * 60 * 60 * 1000;
   };
 
   useEffect(() => {
@@ -535,14 +547,16 @@ function UserCenterPageContent() {
               <div className="flex justify-between items-center">
                 <span className="text-gray-500">订单类型</span>
                 <span>
-                  {showOrderDetail.type === 'lawyer' ? '律师入驻' : '法律咨询'}
+                  {showOrderDetail.type === 'lawyer' ? '律师入驻' : showOrderDetail.type === 'renewal' ? '律师续费' : '法律咨询'}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-500">{showOrderDetail.type === 'lawyer' ? '入驻套餐' : '服务类型'}</span>
+                <span className="text-gray-500">{showOrderDetail.type === 'lawyer' || showOrderDetail.type === 'renewal' ? '套餐' : '服务类型'}</span>
                 <span className="capitalize">
                   {showOrderDetail.type === 'lawyer' 
                     ? (lawyerPackageLabels[showOrderDetail.serviceType] || showOrderDetail.serviceType)
+                    : showOrderDetail.type === 'renewal'
+                      ? (renewalPackageLabels[showOrderDetail.serviceType] || showOrderDetail.serviceType)
                     : showOrderDetail.serviceType}
                 </span>
               </div>
@@ -571,6 +585,12 @@ function UserCenterPageContent() {
                   <span className="text-sm">{new Date(showOrderDetail.paidAt).toLocaleString()}</span>
                 </div>
               )}
+              {showOrderDetail.paidAt && showOrderDetail.paymentStatus === 'paid' && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">退款截止</span>
+                  <span className="text-sm">{new Date(new Date(showOrderDetail.paidAt).getTime() + 24 * 60 * 60 * 1000).toLocaleString()}</span>
+                </div>
+              )}
               {showOrderDetail.refundRequest && (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
                   <p className="font-medium">
@@ -584,7 +604,7 @@ function UserCenterPageContent() {
                   )}
                 </div>
               )}
-              {showOrderDetail.paymentStatus === 'paid' && showOrderDetail.type !== 'complimentary' && !showOrderDetail.refundRequest && (
+              {showOrderDetail.paymentStatus === 'paid' && showOrderDetail.type !== 'complimentary' && !showOrderDetail.refundRequest && isRefundWindowOpen(showOrderDetail) && (
                 <div className="pt-2">
                   <Button
                     variant="outline"
@@ -608,7 +628,7 @@ function UserCenterPageContent() {
               )}
 
               {/* 待支付订单 - 继续支付按钮 */}
-              {showOrderDetail.paymentStatus === 'pending' && (
+              {(showOrderDetail.paymentStatus === 'pending' || showOrderDetail.paymentStatus === 'paying') && (
                 <div className="pt-2">
                   <Button
                     onClick={() => {
@@ -616,6 +636,8 @@ function UserCenterPageContent() {
                       router.push(
                         showOrderDetail.type === 'lawyer'
                           ? `/lawyer/pay?applicationId=${showOrderDetail.applicationId || showOrderDetail.id}`
+                          : showOrderDetail.type === 'renewal'
+                            ? `/lawyer/renew?orderId=${encodeURIComponent(String(showOrderDetail.id).replace(/^renew-/, ''))}`
                           : `/pay?orderId=${showOrderDetail.id}`
                       );
                     }}
