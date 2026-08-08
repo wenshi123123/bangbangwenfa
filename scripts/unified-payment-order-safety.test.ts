@@ -30,6 +30,8 @@ async function main() {
   assert.match(renewCreate, /PAYMENT_TTL_MS/, '律师续费必须使用统一支付期限');
   assert.match(lifecycle, /15 \* 60 \* 1000/, '统一支付期限必须为15分钟');
   assert.match(refundRoute, /payment_status\s*!==\s*['"]paid['"]|payment_status.*paid/, '退款接口必须只处理已支付订单');
+  assert.match(refundRoute, /REFUND_WINDOW_MS/, '管理员直接退款接口必须执行24小时窗口');
+  assert.match(refundRoute, /paidAt[\s\S]*REFUND_WINDOW_MS/, '管理员直接退款接口必须依据支付时间校验');
   assert.match(refundRoute, /refundOrder|退款.*微信|wechat.*refund/i, '退款接口必须调用真实微信退款能力');
   assert.match(wechatPay, /refund/i, '微信支付客户端必须提供退款方法');
 

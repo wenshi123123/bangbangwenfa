@@ -3,6 +3,8 @@ import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { requireAdminAuth, adminUnauthorizedResponse } from '@/lib/auth/admin-middleware';
 import { getWechatPayClient } from '@/lib/payment/wechat-pay';
 
+const REFUND_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 export async function POST(request: NextRequest) {
   const authResult = await requireAdminAuth(request);
   if (!authResult.success) {
@@ -35,6 +37,11 @@ export async function POST(request: NextRequest) {
     }
     if (order.payment_status !== 'paid') {
       return NextResponse.json({ success: false, error: '只有已支付订单可以退款' }, { status: 409 });
+    }
+
+    const paidAt = order.paid_at ? new Date(order.paid_at).getTime() : NaN;
+    if (!Number.isFinite(paidAt) || Date.now() > paidAt + REFUND_WINDOW_MS) {
+      return NextResponse.json({ success: false, error: '已超过支付后 24 小时退款期限' }, { status: 409 });
     }
 
     const outTradeNo = order.pay_trade_no || order.order_no;
