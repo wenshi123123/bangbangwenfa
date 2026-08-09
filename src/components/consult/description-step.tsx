@@ -11,15 +11,7 @@ interface DescriptionStepProps {
   onBack: () => void;
 }
 
-const placeholderText = `请详细描述您或家人的情况，例如：
-
-• 案件发生的时间、地点
-• 涉及的人员和事情经过
-• 目前所处的阶段（刚被传唤/已拘留/已逮捕/已取保候审等）
-• 是否已经聘请律师
-• 其他您认为重要的信息
-
-温馨提示：描述越详细，律师给出的建议越准确。`;
+const placeholderText = `一句话讲述现在的遭遇，律师对你的每一次询问，都是辩护的依据`;
 
 export function DescriptionStep({ value, contactPhone = '', onChange, onContactPhoneChange, onNext, onBack }: DescriptionStepProps) {
   const [isFocused, setIsFocused] = useState(false);
@@ -44,7 +36,7 @@ export function DescriptionStep({ value, contactPhone = '', onChange, onContactP
           请描述案情
         </h2>
         <p className="text-xs sm:text-sm md:text-base text-muted-foreground px-2">
-          详细描述有助于律师更准确地分析案件
+          不必掩饰内心的惊慌，律师会替你寻找出路
         </p>
       </div>
 

@@ -16,15 +16,7 @@ interface DescriptionStepProps {
   onBack: () => void;
 }
 
-const placeholderText = `请详细描述您的纠纷情况，例如：
-
-• 纠纷发生的时间、地点
-• 涉及的人员和事情经过
-• 目前的处理阶段（协商中/已起诉/已判决等）
-• 相关的证据材料（合同、聊天记录等）
-• 其他您认为重要的信息
-
-温馨提示：描述越详细，律师给出的建议越准确。`;
+const placeholderText = `一句话描述遇到的困难，律师比ai更能解决你的焦虑`;
 
 export function CivilDescriptionStep({ value, contactPhone = '', onChange, onContactPhoneChange, onNext, onBack }: DescriptionStepProps) {
   const [isFocused, setIsFocused] = useState(false);
@@ -47,7 +39,7 @@ export function CivilDescriptionStep({ value, contactPhone = '', onChange, onCon
           请描述纠纷情况
         </h2>
         <p className="text-xs sm:text-sm md:text-base text-muted-foreground px-2">
-          详细描述有助于律师更准确地分析案件
+          不输出冰冷的算法,讲述的是法理与人情
         </p>
       </div>
 
@@ -68,7 +60,7 @@ export function CivilDescriptionStep({ value, contactPhone = '', onChange, onCon
               onChange={(e) => onContactPhoneChange(e.target.value)}
               onFocus={() => setPhoneFocused(true)}
               onBlur={() => setPhoneFocused(false)}
-              placeholder="律师可通过此号码联系您"
+              placeholder="我们可通过此号码联系您"
               className="w-full p-3 sm:p-4 bg-card focus:outline-none text-foreground placeholder:text-muted-foreground/60 text-sm sm:text-base"
               maxLength={11}
             />
