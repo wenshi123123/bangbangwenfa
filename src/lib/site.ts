@@ -183,3 +183,7 @@ export function getLawyerCommitmentUrl(): string {
 export function getLawyerEntryAgreementUrl(): string {
   return getVersionedPath('/lawyer-entry-agreement');
 }
+
+export function getOnlineLegalServiceAgreementUrl(): string {
+  return getVersionedPath('/online-legal-service-agreement');
+}
