@@ -6,7 +6,7 @@ const root = process.cwd();
 const source = (file: string) => readFile(path.join(root, file), 'utf8');
 
 async function main() {
-  const [migration, reviewRoute, consultCreate, consultPriceStep, civilPriceStep, renewRoute, renewCallback, userOrders, adminOrders, renewPage, lawyerPackages] = await Promise.all([
+  const [migration, reviewRoute, consultCreate, consultPriceStep, civilPriceStep, renewRoute, renewCallback, renewalSettlement, renewStatus, userOrders, adminOrders, renewPage, lawyerPackages] = await Promise.all([
     source('supabase/migrations/20260805090000_lawyer_payment_closure.sql'),
     source('src/app/api/admin/lawyer/review/route.ts'),
     source('src/app/api/consult/create/route.ts'),
@@ -14,6 +14,8 @@ async function main() {
     source('src/components/consult/civil-price-step.tsx'),
     source('src/app/api/lawyer/renew/route.ts'),
     source('src/app/api/lawyer/renew/callback/route.ts'),
+    source('src/lib/payment/renewal-settlement.ts'),
+    source('src/app/api/lawyer/pay/status/route.ts'),
     source('src/app/api/user/orders/route.ts'),
     source('src/app/api/admin/order/list/route.ts'),
     source('src/app/lawyer/renew/page.tsx'),
@@ -41,7 +43,10 @@ async function main() {
   assert.match(renewRoute, /createH5Order/, 'renewal must support H5 payment');
   assert.match(renewRoute, /createJsapiOrder/, 'renewal must support JSAPI payment');
   assert.match(renewRoute, /selected_packages/, 'renewal eligibility must be based on selected packages');
-  assert.match(renewCallback, /membership_records/, 'renewal callback must update package membership');
+  assert.match(renewCallback, /handleRenewalPaymentSuccess/, 'renewal callback must use the shared settlement path');
+  assert.match(renewalSettlement, /membership_records/, 'renewal settlement must update package membership');
+  assert.match(renewStatus, /renewOrder[\s\S]*queryOrder\(renewOrder\.order_no\)/, 'renewal status must query WeChat to compensate missed callbacks');
+  assert.match(renewStatus, /remote\.tradeState === ['"]SUCCESS['"][\s\S]*handleRenewalPaymentSuccess/, 'renewal status must settle the order and membership after a successful query');
   assert.match(renewPage, /toFixed\(2\)/, 'renewal price display must preserve cents');
   assert.match(lawyerPackages, /toFixed\(2\)/, 'onboarding price display must preserve cents');
 
