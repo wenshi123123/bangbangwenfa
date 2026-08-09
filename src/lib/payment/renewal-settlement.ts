@@ -71,11 +71,12 @@ export async function handleRenewalPaymentSuccess(
   }
 
   if (!alreadyPaid) {
+    const payableStatuses = allowClosedRecovery ? ['pending', 'paying', 'closed'] : ['pending', 'paying'];
     const { error } = await supabase
       .from('lawyer_renew_orders')
       .update({ payment_status: 'paid', paid_at: new Date().toISOString(), trade_no: tradeNo, expires_at: newExpiresAt.toISOString(), payment_completed_at: new Date().toISOString() })
       .eq('order_no', orderNo)
-      .in('payment_status', ['pending', 'paying']);
+      .in('payment_status', payableStatuses);
     if (error) return { success: false, error: '更新续费订单失败' };
   }
 

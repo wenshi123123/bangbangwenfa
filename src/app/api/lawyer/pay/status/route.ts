@@ -67,6 +67,12 @@ export async function GET(request: NextRequest) {
               renewOrder.payment_status = 'paid';
               renewOrder.paid_at = new Date().toISOString();
               renewOrder.trade_no = remote.transactionId;
+              const { data: refreshedRenewOrder } = await supabase
+                .from('lawyer_renew_orders')
+                .select('payment_status, paid_at, trade_no, expires_at')
+                .eq('order_no', renewOrder.order_no)
+                .maybeSingle();
+              if (refreshedRenewOrder) Object.assign(renewOrder, refreshedRenewOrder);
               if (settled.paidNow) {
                 await notifyOrder({
                   type: 'Renew',
