@@ -5,6 +5,7 @@ import { notifyOrder } from '@/lib/notify/webhook';
 import { createConsultPaymentHandoff } from '@/lib/payment/payment-handoff';
 import { resolveUserNickname } from '@/lib/user/resolve-nickname';
 import { loadConfiguredPrices } from '@/lib/lawyer/price-config';
+import { paymentExpiresAt } from '@/lib/payment/order-lifecycle';
 
 function generateOrderNo(): string {
   const timestamp = Date.now();
@@ -109,6 +110,65 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '咨询套餐价格暂不可用，请稍后重试' }, { status: 503 });
     }
 
+    // 统一的 15 分钟支付生命周期：先释放超时订单以及历史上没有过期时间的旧订单。
+    // 这样旧订单不会永久占用同一用户/分类的下单入口。
+    const lifecycleNow = new Date();
+    const { error: expireError } = await supabase
+      .from('consult_orders')
+      .update({
+        payment_status: 'closed',
+        closed_at: lifecycleNow.toISOString(),
+        close_reason: '支付超时',
+        updated_at: lifecycleNow.toISOString(),
+      })
+      .eq('user_id', userId)
+      .eq('category', finalCategory)
+      .in('payment_status', ['pending', 'paying'])
+      .or(`payment_expires_at.lt.${lifecycleNow.toISOString()},payment_expires_at.is.null`);
+    if (expireError) {
+      console.error('清理过期咨询订单失败:', expireError);
+      return NextResponse.json({ success: false, error: '检查现有订单失败，请稍后重试' }, { status: 500 });
+    }
+
+    // 同一用户、同一咨询分类只保留一笔有效支付订单，避免重复下单和重复扣款。
+    const { data: activeOrder, error: activeOrderError } = await supabase
+      .from('consult_orders')
+      .select('id, order_no, case_type, case_title, service_price, payment_status, payment_expires_at, plan_id')
+      .eq('user_id', userId)
+      .eq('category', finalCategory)
+      .eq('case_type', finalCaseType)
+      .eq('plan_id', planId)
+      .in('payment_status', ['pending', 'paying'])
+      .gt('payment_expires_at', lifecycleNow.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (activeOrderError) {
+      console.error('查询有效咨询订单失败:', activeOrderError);
+      return NextResponse.json({ success: false, error: '检查现有订单失败，请稍后重试' }, { status: 500 });
+    }
+
+    if (activeOrder) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          orderId: activeOrder.id,
+          orderNo: activeOrder.order_no,
+          reusedOrder: {
+            caseType: activeOrder.case_type,
+            caseTitle: activeOrder.case_title,
+            planId: activeOrder.plan_id,
+            amount: activeOrder.service_price,
+            paymentStatus: activeOrder.payment_status,
+            paymentExpiresAt: activeOrder.payment_expires_at,
+          },
+          reused: true,
+          paymentHandoffToken: createConsultPaymentHandoff(activeOrder.id, userId),
+        },
+      });
+    }
+
     const orderNo = generateOrderNo();
 
     // 插入订单
@@ -124,7 +184,9 @@ export async function POST(request: NextRequest) {
         case_description: finalCaseDescription,
         service_type: finalServiceType,
         service_price: finalServicePrice,
+        plan_id: planId,
         payment_status: 'pending',
+        payment_expires_at: paymentExpiresAt(lifecycleNow).toISOString(),
         user_id: userId,
         openid: finalOpenid,
         category: finalCategory,
@@ -134,6 +196,39 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
+      // 数据库唯一索引兜底并发请求：读取先创建成功的有效订单并复用。
+      if (error.code === '23505') {
+        const { data: concurrentOrder } = await supabase
+          .from('consult_orders')
+          .select('id, order_no, case_type, case_title, service_price, payment_status, payment_expires_at, plan_id')
+          .eq('user_id', userId)
+          .eq('category', finalCategory)
+          .eq('case_type', finalCaseType)
+          .eq('plan_id', planId)
+          .in('payment_status', ['pending', 'paying'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (concurrentOrder) {
+          return NextResponse.json({
+            success: true,
+            data: {
+              orderId: concurrentOrder.id,
+              orderNo: concurrentOrder.order_no,
+              reusedOrder: {
+                caseType: concurrentOrder.case_type,
+                caseTitle: concurrentOrder.case_title,
+                planId: concurrentOrder.plan_id,
+                amount: concurrentOrder.service_price,
+                paymentStatus: concurrentOrder.payment_status,
+                paymentExpiresAt: concurrentOrder.payment_expires_at,
+              },
+              reused: true,
+              paymentHandoffToken: createConsultPaymentHandoff(concurrentOrder.id, userId),
+            },
+          });
+        }
+      }
       console.error('创建订单失败:', error);
       return NextResponse.json(
         { success: false, error: '创建订单失败，请重试' },

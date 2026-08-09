@@ -5,6 +5,7 @@ import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware
 import { getSiteUrl, getWechatH5SiteUrl, normalizeCanonicalUrl } from '@/lib/site';
 import { getPaymentClientContext, getWechatPaymentSession } from '@/lib/payment/payment-context';
 import { readConsultPaymentHandoff } from '@/lib/payment/payment-handoff';
+import { paymentExpiresAt } from '@/lib/payment/order-lifecycle';
 import crypto from 'crypto';
 
 function withH5ReturnUrl(h5Url: string, returnUrl: string): string {
@@ -86,13 +87,24 @@ export async function POST(request: NextRequest) {
     if (order.payment_status === 'paying') {
       const expiresAt = order.payment_expires_at ? new Date(order.payment_expires_at) : null;
       if (expiresAt && expiresAt.getTime() > Date.now()) {
+        if (channel === 'h5' && order.payment_url) {
+          return NextResponse.json({
+            success: true,
+            data: { orderId: order.id, payTradeNo: order.pay_trade_no, h5Url: order.payment_url, reused: true },
+          });
+        }
         return NextResponse.json({ success: false, code: 'PAYMENT_IN_PROGRESS', error: '该订单正在支付中，请继续完成支付或等待订单超时后重试' }, { status: 409 });
       }
-      await supabase
+      const { error: closeError } = await supabase
         .from('consult_orders')
         .update({ payment_status: 'closed', closed_at: new Date().toISOString(), close_reason: '支付超时', updated_at: new Date().toISOString() })
         .eq('id', order.id)
         .eq('payment_status', 'paying');
+      if (closeError) {
+        console.error('[Pay/Create] 关闭过期订单失败:', closeError);
+        return NextResponse.json({ success: false, error: '关闭过期支付失败，请稍后重试' }, { status: 500 });
+      }
+      return NextResponse.json({ success: false, code: 'PAYMENT_EXPIRED', error: '支付已超时，请重新提交咨询订单' }, { status: 409 });
     }
 
     // 生成微信支付订单号（最多32字符，微信支付限制）
@@ -194,9 +206,10 @@ export async function POST(request: NextRequest) {
       .update({
         pay_trade_no: payTradeNo,
         pay_prepay_id: payData.prepayId,
+        payment_url: payData.h5Url || payData.codeUrl || null,
         payment_status: 'paying',
         payment_channel: channel,
-        payment_expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+        payment_expires_at: paymentExpiresAt().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq('id', orderId);

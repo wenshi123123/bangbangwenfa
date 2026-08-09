@@ -22,7 +22,16 @@ export async function GET(
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
-    return NextResponse.json({ success: true, order: data });
+    const { data: refundRequest } = await supabase
+      .from('refund_requests')
+      .select('id, reason, status, amount, created_at')
+      .eq('order_type', 'consult')
+      .eq('order_id', String(id))
+      .in('status', ['pending', 'processing'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return NextResponse.json({ success: true, order: { ...data, refundRequest: refundRequest || null } });
   } catch (error) {
     return NextResponse.json({ success: false, error: '服务器错误' }, { status: 500 });
   }

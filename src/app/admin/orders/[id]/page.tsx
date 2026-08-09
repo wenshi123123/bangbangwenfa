@@ -48,6 +48,7 @@ interface Order {
   confirmed_at: string;
   category: string;
   created_at: string;
+  refundRequest?: { id: number; reason: string; status: string; amount: number; created_at: string } | null;
 }
 
 interface Lawyer {
@@ -133,12 +134,12 @@ export default function OrderDetailPage() {
 
     setActionLoading(true);
     try {
-      const response = await adminApiRequest('/api/admin/order/refund', {
+      const response = await adminApiRequest(order?.refundRequest?.id ? '/api/admin/refund-requests' : '/api/admin/order/refund', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ orderId: id })
+        body: JSON.stringify(order?.refundRequest?.id ? { requestId: order.refundRequest.id } : { orderId: id })
       });
 
       const result = await response.json();
@@ -407,6 +408,13 @@ export default function OrderDetailPage() {
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {order.refundRequest && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 sm:p-6">
+          <p className="font-medium text-amber-800">用户退款申请（{order.refundRequest.status === 'processing' ? '处理中' : '待审核'}）</p>
+          <p className="text-sm text-amber-700 mt-1">原因：{order.refundRequest.reason}</p>
         </div>
       )}
 

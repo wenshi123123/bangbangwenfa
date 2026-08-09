@@ -21,18 +21,33 @@ interface RefundOrder {
   created_at: string;
 }
 
+interface RefundRequest {
+  id: number;
+  order_type: string;
+  order_id: string;
+  order_no: string | null;
+  amount: number;
+  reason: string;
+  status: string;
+  created_at: string;
+}
+
 export default function RefundListPage() {
   const [orders, setOrders] = useState<RefundOrder[]>([]);
+  const [requests, setRequests] = useState<RefundRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchRefundedOrders = async () => {
+    const fetchRefundData = async () => {
       try {
-        const response = await adminApiRequest('/api/admin/order/list?status=refunded');
-        const result = await response.json();
-        if (result.success) {
-          setOrders(result.data.list || []);
-        }
+        const [ordersResponse, requestsResponse] = await Promise.all([
+          adminApiRequest('/api/admin/order/list?status=refunded'),
+          adminApiRequest('/api/admin/refund-requests'),
+        ]);
+        const ordersResult = await ordersResponse.json();
+        const requestsResult = await requestsResponse.json();
+        if (ordersResult.success) setOrders(ordersResult.data.list || []);
+        if (requestsResult.success) setRequests(requestsResult.data || []);
       } catch (error) {
         console.error('获取退款订单失败:', error);
       } finally {
@@ -40,8 +55,21 @@ export default function RefundListPage() {
       }
     };
 
-    fetchRefundedOrders();
+    fetchRefundData();
   }, []);
+
+  const approveRequest = async (requestId: number) => {
+    if (!window.confirm('确认调用微信原路退款吗？')) return;
+    const response = await adminApiRequest('/api/admin/refund-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestId }),
+    });
+    const result = await response.json();
+    if (!result.success) window.alert(result.error || '退款失败');
+    else window.alert('退款成功');
+    window.location.reload();
+  };
 
   return (
     <div className="space-y-6">
@@ -66,6 +94,26 @@ export default function RefundListPage() {
           </div>
         </div>
       </div>
+
+      {requests.length > 0 && (
+        <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(61,50,45,0.06)] p-4 sm:p-6">
+          <h2 className="text-lg font-semibold text-slate-800 mb-4">待处理退款申请</h2>
+          <div className="space-y-3">
+            {requests.map((request) => (
+              <div key={request.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-amber-100 rounded-lg p-3">
+                <div>
+                  <p className="font-medium text-slate-800">订单 {request.order_no || request.order_id}</p>
+                  <p className="text-sm text-slate-500">原因：{request.reason}</p>
+                  <p className="text-sm text-red-600">退款金额：¥{(Number(request.amount) / 100).toFixed(2)}</p>
+                </div>
+                <button onClick={() => approveRequest(request.id)} className="px-4 py-2 rounded-lg bg-red-500 text-white text-sm hover:bg-red-600">
+                  审核并退款
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-white rounded-xl shadow-[0_2px_8px_rgba(61,50,45,0.06)] overflow-hidden">

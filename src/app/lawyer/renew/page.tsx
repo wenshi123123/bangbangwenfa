@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Calendar, CheckCircle, Clock, CreditCard, Loader2, AlertCircle, Shield } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -27,6 +27,8 @@ type RenewalPackage = {
 
 function RenewContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const resumeOrderId = searchParams.get('orderId');
   const { isAuthorized, isLoading: authLoading } = useLawyerAuth();
   const loginUrl = `${getLawyerLoginUrl()}?redirect=${encodeURIComponent('/lawyer/renew')}`;
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
@@ -119,13 +121,15 @@ function RenewContent() {
       const token = localStorage.getItem('token');
       const headers: HeadersInit = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
-      const response = await fetch('/api/lawyer/renew', { method: 'POST', headers, body: JSON.stringify({ package_id: pkg.id }) });
+      const response = await fetch('/api/lawyer/renew', { method: 'POST', headers, body: JSON.stringify({ package_id: pkg.id, order_id: resumeOrderId || undefined }) });
       const result = await response.json();
       if (result.success && result.data?.h5_url) {
         window.location.assign(result.data.h5_url);
       } else if (result.success && result.data?.code_url) {
         setOrderId(result.data.order_id);
         setQrcodeUrl(result.data.code_url);
+      } else if (result.code === 'ACTIVE_RENEWAL_ORDER' && result.data?.payment_url) {
+        window.location.assign(result.data.payment_url);
       } else {
         setError(result.error || '创建支付订单失败，请稍后重试');
       }
@@ -133,7 +137,7 @@ function RenewContent() {
       console.error('创建支付订单失败:', err);
       setError(err?.message || (typeof err === 'string' ? err : '网络错误，请检查连接后重试'));
     } finally { setLoading(false); }
-  }, [selectedPackage, loading, deviceReady, isWechat, pricesLoading, renewalPackages]);
+  }, [selectedPackage, loading, deviceReady, isWechat, pricesLoading, renewalPackages, resumeOrderId]);
 
   if (deviceReady && isWechat) {
     return <WechatExternalBrowserGuide />;

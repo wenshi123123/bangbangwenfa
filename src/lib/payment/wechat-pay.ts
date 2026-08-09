@@ -88,6 +88,19 @@ interface CloseOrderResult {
   success: boolean;
 }
 
+interface RefundOrderParams {
+  outTradeNo: string;
+  outRefundNo: string;
+  amount: number;
+  totalAmount: number;
+  reason?: string;
+}
+
+interface RefundOrderResult {
+  refundId?: string;
+  status?: string;
+}
+
 // ===== 签名工具函数 =====
 
 /**
@@ -234,6 +247,7 @@ export interface PaymentCallbackResult {
   success: boolean;
   error?: string;
   order?: any;
+  paidNow?: boolean;
 }
 
 function decryptCallbackResource(
@@ -317,7 +331,8 @@ export async function updateOrderStatusAfterPayment(body: string): Promise<Payme
       console.log('订单已支付，跳过重复处理:', out_trade_no);
       return { 
         success: true, 
-        order: { order_no: out_trade_no, openid: existingOrder.openid }
+        order: { order_no: out_trade_no, openid: existingOrder.openid },
+        paidNow: false,
       };
     }
 
@@ -347,7 +362,8 @@ export async function updateOrderStatusAfterPayment(body: string): Promise<Payme
       order: { 
         order_no: orderNoField, 
         user_wechat_openid: existingOrder.openid
-      }
+      },
+      paidNow: true,
     };
 
   } catch (err: any) {
@@ -781,6 +797,28 @@ export class WechatPayClient {
     };
     await this.signedRequest('POST', urlPath, body);
     return { success: true };
+  }
+
+  /**
+   * 发起微信支付原路退款
+   * 文档: https://pay.weixin.qq.com/doc/v3/apis/chapter3_1_退款.shtml
+   */
+  async refundOrder(params: RefundOrderParams): Promise<RefundOrderResult> {
+    const body = {
+      out_trade_no: params.outTradeNo,
+      out_refund_no: params.outRefundNo,
+      reason: params.reason || '用户申请退款',
+      amount: {
+        refund: params.amount,
+        total: params.totalAmount,
+        currency: 'CNY',
+      },
+    };
+    const data = await this.signedRequest('POST', '/v3/refund/domestic/refunds', body);
+    return {
+      refundId: data.refund_id,
+      status: data.status,
+    };
   }
 
   /**

@@ -2,10 +2,9 @@
 
 import { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, QrCode, Loader2, AlertCircle, CheckCircle, Smartphone } from "lucide-react";
+import { ArrowLeft, QrCode, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { WechatExternalBrowserGuide } from '@/components/payment/wechat-external-browser-guide';
 
@@ -214,14 +213,15 @@ function PayPageInner() {
 
       if (data.success) {
         const result = data.data;
-        setPayResult(result);
 
-        // 手机浏览器：H5 支付跳转
+        // H5 支付是当前用户手势触发的正常页面导航。订单创建成功后直接进入微信支付，
+        // 不再把同一条 H5 链路拆成第二个支付按钮。
         if (isMobile && result.h5Url) {
-          // Android 浏览器常会拦截异步回调中的 App 唤起；展示按钮，让用户点击后跳转。
-          setShowQrCode(true);
+          window.location.assign(result.h5Url);
           return;
         }
+
+        setPayResult(result);
 
         // PC：Native 扫码支付（原有逻辑）
         if (!isMobile && result.codeUrl) {
@@ -342,45 +342,20 @@ function PayPageInner() {
             <Card className="card-apple">
               <CardHeader className="pb-3 sm:pb-4 text-center">
                 <CardTitle className="flex items-center justify-center gap-2 text-base sm:text-lg"><QrCode className="h-5 w-5 text-green-500" />微信支付</CardTitle>
-                {payResult?.h5Url ? (
-                  <CardDescription>正在跳转至微信支付...</CardDescription>
-                ) : (
-                  <CardDescription>请使用微信扫一扫</CardDescription>
-                )}
+                <CardDescription>请使用微信扫一扫</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {payResult?.h5Url ? (
-                  <>
-                    <div className="text-center py-4 border-t border-b border-gray-100">
-                      <p className="text-sm text-muted-foreground mb-1">应付金额</p>
-                      <p className="text-3xl sm:text-4xl font-bold text-gradient">¥{order ? formatPrice(order.servicePrice) : '0.00'}</p>
-                    </div>
-                    {(() => {
-                      const targetOrderId = order?.id ?? orderIdParam ?? '';
-                      return (
-                    <Button onClick={() => {
-                      if (payResult.h5Url) {
-                        window.location.href = payResult.h5Url;
-                      }
-                    }} className="w-full h-14 text-lg font-medium bg-[#07c160] hover:bg-[#06ad56] text-white rounded-xl" disabled={!payResult.h5Url}>
-                      <Smartphone className="h-5 w-5 mr-2" />前往微信支付
-                    </Button>
-                      );
-                    })()}
-                  </>
-                ) : (
-                  <div className="flex justify-center">
-                    <div className="w-64 h-64 bg-white rounded-xl border-2 border-gray-100 flex items-center justify-center overflow-hidden">
-                      {qrLoading ? (<Loader2 className="h-8 w-8 animate-spin text-[#C47353]" />) : qrCodeUrl ? (<img src={qrCodeUrl} alt="微信支付二维码" className="w-full h-full object-contain" />) : (
-                        <div className="text-center text-muted-foreground text-sm p-4">
-                          <AlertCircle className="h-8 w-8 mx-auto mb-2 text-red-500" />
-                          <p>二维码生成失败</p>
-                          <Button variant="outline" size="sm" onClick={() => generateQrCode(payResult.codeUrl!)} className="mt-2">重新生成</Button>
-                        </div>
-                      )}
-                    </div>
+                <div className="flex justify-center">
+                  <div className="w-64 h-64 bg-white rounded-xl border-2 border-gray-100 flex items-center justify-center overflow-hidden">
+                    {qrLoading ? (<Loader2 className="h-8 w-8 animate-spin text-[#C47353]" />) : qrCodeUrl ? (<img src={qrCodeUrl} alt="微信支付二维码" className="w-full h-full object-contain" />) : (
+                      <div className="text-center text-muted-foreground text-sm p-4">
+                        <AlertCircle className="h-8 w-8 mx-auto mb-2 text-red-500" />
+                        <p>二维码生成失败</p>
+                        <Button variant="outline" size="sm" onClick={() => generateQrCode(payResult.codeUrl!)} className="mt-2">重新生成</Button>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
                 <div className="text-center py-4 border-t border-b border-gray-100">
                   <p className="text-sm text-muted-foreground mb-1">应付金额</p>
                   <p className="text-3xl sm:text-4xl font-bold text-gradient">¥{order ? formatPrice(order.servicePrice) : '0.00'}</p>

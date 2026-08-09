@@ -6,7 +6,7 @@ const root = process.cwd();
 const source = (file: string) => readFile(path.join(root, file), 'utf8');
 
 async function main() {
-  const [migration, reviewRoute, consultCreate, consultPriceStep, civilPriceStep, renewRoute, renewCallback, userOrders, adminOrders, renewPage, lawyerPackages] = await Promise.all([
+  const [migration, reviewRoute, consultCreate, consultPriceStep, civilPriceStep, renewRoute, renewCallback, renewalSettlement, renewStatus, userOrders, adminOrders, renewPage, lawyerPackages, refundRoute] = await Promise.all([
     source('supabase/migrations/20260805090000_lawyer_payment_closure.sql'),
     source('src/app/api/admin/lawyer/review/route.ts'),
     source('src/app/api/consult/create/route.ts'),
@@ -14,10 +14,13 @@ async function main() {
     source('src/components/consult/civil-price-step.tsx'),
     source('src/app/api/lawyer/renew/route.ts'),
     source('src/app/api/lawyer/renew/callback/route.ts'),
+    source('src/lib/payment/renewal-settlement.ts'),
+    source('src/app/api/lawyer/pay/status/route.ts'),
     source('src/app/api/user/orders/route.ts'),
     source('src/app/api/admin/order/list/route.ts'),
     source('src/app/lawyer/renew/page.tsx'),
     source('src/components/lawyer/lawyer-package-step.tsx'),
+    source('src/app/api/admin/refund-requests/route.ts'),
   ]);
 
   assert.match(migration, /lawyer_complimentary_orders/i, 'migration must create auditable complimentary orders');
@@ -41,9 +44,16 @@ async function main() {
   assert.match(renewRoute, /createH5Order/, 'renewal must support H5 payment');
   assert.match(renewRoute, /createJsapiOrder/, 'renewal must support JSAPI payment');
   assert.match(renewRoute, /selected_packages/, 'renewal eligibility must be based on selected packages');
-  assert.match(renewCallback, /membership_records/, 'renewal callback must update package membership');
+  assert.match(renewCallback, /handleRenewalPaymentSuccess/, 'renewal callback must use the shared settlement path');
+  assert.match(renewalSettlement, /membership_records/, 'renewal settlement must update package membership');
+  assert.match(renewStatus, /renewOrder[\s\S]*queryOrder\(renewOrder\.order_no\)/, 'renewal status must query WeChat to compensate missed callbacks');
+  assert.match(renewStatus, /remote\.tradeState === ['"]SUCCESS['"][\s\S]*handleRenewalPaymentSuccess/, 'renewal status must settle the order and membership after a successful query');
+  assert.match(renewStatus, /['"]closed['"][\s\S]*allowClosedRecovery|renewOrder\.payment_status === ['"]closed['"]/, 'renewal status must recover a paid order closed before callback compensation');
+  assert.match(renewalSettlement, /allowClosedRecovery \? \['pending', ['"]paying['"], ['"]closed['"]\]/, 'closed renewal recovery must persist paid order state');
   assert.match(renewPage, /toFixed\(2\)/, 'renewal price display must preserve cents');
   assert.match(lawyerPackages, /toFixed\(2\)/, 'onboarding price display must preserve cents');
+
+  assert.match(refundRoute, /const outTradeNo = refundRequest\.order_type === ['"]lawyer_renewal['"][\s\S]*\? order\.order_no/, 'renewal refunds must use the original out_trade_no, not the stored transaction id');
 
   assert.match(userOrders, /lawyer_renew_orders/, 'user orders must include renewal orders');
   assert.match(userOrders, /lawyer_complimentary_orders/, 'user orders must include complimentary orders');

@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { apiRequest } from '@/lib/api/request';
 
 interface Order {
-  id: number;
+  id: number | string;
   applicationId?: number;
   orderNo: string;
   type: 'consult' | 'lawyer' | 'renewal' | 'complimentary';
@@ -21,6 +21,15 @@ interface Order {
   serviceType: string;
   servicePrice: number;
   paymentStatus: string;
+  refundRequest?: {
+    id: number;
+    reason: string;
+    status: 'pending' | 'processing' | 'succeeded' | 'failed';
+    amount: number;
+    created_at: string;
+    processed_at?: string | null;
+    failure_reason?: string | null;
+  } | null;
   reviewStatus?: string;  // 仅律师入驻订单有
   createdAt: string;
   paidAt: string | null;
@@ -34,6 +43,10 @@ function UserCenterPageContent() {
   const [saving, setSaving] = useState(false);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [targetOrderId, setTargetOrderId] = useState<string | null>(null);
+  const [refundLoading, setRefundLoading] = useState(false);
+  const [showRefundForm, setShowRefundForm] = useState(false);
+  const [refundReason, setRefundReason] = useState('');
+  const [refundNote, setRefundNote] = useState('');
 
   // 订单相关状态
   const [orders, setOrders] = useState<Order[]>([]);
@@ -48,6 +61,13 @@ function UserCenterPageContent() {
     criminal_premium: '刑事律师（臻选）',
     civil: '民事律师（臻选）',
     criminal: '刑事律师（臻选）',
+  };
+
+  const renewalPackageLabels: Record<string, string> = {
+    civil_renew_quarter: '民事律师季卡',
+    civil_renew_year: '民事律师年卡',
+    criminal_renew_quarter: '刑事律师季卡',
+    criminal_renew_year: '刑事律师年卡',
   };
 
   // 加载用户订单（apiRequest 自动携带 Authorization token 进行鉴权）
@@ -84,6 +104,45 @@ function UserCenterPageContent() {
       // 忽略错误，通知入口仍可点击
     }
   }, []);
+
+  const requestRefund = async () => {
+    if (!showOrderDetail || showOrderDetail.paymentStatus !== 'paid' || showOrderDetail.type === 'complimentary' || showOrderDetail.refundRequest || !isRefundWindowOpen(showOrderDetail)) return;
+    if (!refundReason) return;
+    const reason = refundNote.trim() ? `${refundReason}：${refundNote.trim()}` : refundReason;
+    const orderType = showOrderDetail.type === 'consult'
+      ? 'consult'
+      : showOrderDetail.type === 'lawyer'
+        ? 'lawyer_application'
+        : 'lawyer_renewal';
+    const orderId = String(showOrderDetail.id).replace(/^renew-/, '');
+    setRefundLoading(true);
+    try {
+      const response = await apiRequest('/api/user/refund-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderType, orderId, reason: reason.trim() }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setShowRefundForm(false);
+        setRefundReason('');
+        setRefundNote('');
+        setShowOrderDetail(null);
+        await loadOrders();
+      } else {
+        alert(result.error || '退款申请失败');
+      }
+    } catch {
+      alert('退款申请失败，请稍后重试');
+    } finally {
+      setRefundLoading(false);
+    }
+  };
+
+  const isRefundWindowOpen = (order: Order) => {
+    if (!order.paidAt) return false;
+    return Date.now() <= new Date(order.paidAt).getTime() + 24 * 60 * 60 * 1000;
+  };
 
   useEffect(() => {
     if (effectiveUser?.id && effectiveLoggedIn) {
@@ -488,14 +547,16 @@ function UserCenterPageContent() {
               <div className="flex justify-between items-center">
                 <span className="text-gray-500">订单类型</span>
                 <span>
-                  {showOrderDetail.type === 'lawyer' ? '律师入驻' : '法律咨询'}
+                  {showOrderDetail.type === 'lawyer' ? '律师入驻' : showOrderDetail.type === 'renewal' ? '律师续费' : '法律咨询'}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-500">{showOrderDetail.type === 'lawyer' ? '入驻套餐' : '服务类型'}</span>
+                <span className="text-gray-500">{showOrderDetail.type === 'lawyer' || showOrderDetail.type === 'renewal' ? '套餐' : '服务类型'}</span>
                 <span className="capitalize">
                   {showOrderDetail.type === 'lawyer' 
                     ? (lawyerPackageLabels[showOrderDetail.serviceType] || showOrderDetail.serviceType)
+                    : showOrderDetail.type === 'renewal'
+                      ? (renewalPackageLabels[showOrderDetail.serviceType] || showOrderDetail.serviceType)
                     : showOrderDetail.serviceType}
                 </span>
               </div>
@@ -524,6 +585,37 @@ function UserCenterPageContent() {
                   <span className="text-sm">{new Date(showOrderDetail.paidAt).toLocaleString()}</span>
                 </div>
               )}
+              {showOrderDetail.paidAt && showOrderDetail.paymentStatus === 'paid' && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">退款截止</span>
+                  <span className="text-sm">{new Date(new Date(showOrderDetail.paidAt).getTime() + 24 * 60 * 60 * 1000).toLocaleString()}</span>
+                </div>
+              )}
+              {showOrderDetail.refundRequest && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  <p className="font-medium">
+                    {showOrderDetail.refundRequest.status === 'pending' ? '退款申请已提交，等待审核' :
+                      showOrderDetail.refundRequest.status === 'processing' ? '退款正在处理中' :
+                        showOrderDetail.refundRequest.status === 'succeeded' ? '退款已完成' : '退款申请未通过'}
+                  </p>
+                  <p className="mt-1 text-xs text-amber-700">申请原因：{showOrderDetail.refundRequest.reason}</p>
+                  {showOrderDetail.refundRequest.status === 'failed' && showOrderDetail.refundRequest.failure_reason && (
+                    <p className="mt-1 text-xs text-red-600">{showOrderDetail.refundRequest.failure_reason}</p>
+                  )}
+                </div>
+              )}
+              {showOrderDetail.paymentStatus === 'paid' && showOrderDetail.type !== 'complimentary' && !showOrderDetail.refundRequest && isRefundWindowOpen(showOrderDetail) && (
+                <div className="pt-2">
+                  <Button
+                    variant="outline"
+                    className="w-full border-red-200 text-red-600 hover:bg-red-50"
+                    disabled={refundLoading}
+                    onClick={() => setShowRefundForm(true)}
+                  >
+                    申请退款
+                  </Button>
+                </div>
+              )}
               {/* 律师入驻订单审核通过后显示入口 */}
               {showOrderDetail.type === 'lawyer' && showOrderDetail.reviewStatus === 'approved' && (
                 <div className="pt-2">
@@ -536,7 +628,7 @@ function UserCenterPageContent() {
               )}
 
               {/* 待支付订单 - 继续支付按钮 */}
-              {showOrderDetail.paymentStatus === 'pending' && (
+              {(showOrderDetail.paymentStatus === 'pending' || showOrderDetail.paymentStatus === 'paying') && (
                 <div className="pt-2">
                   <Button
                     onClick={() => {
@@ -544,6 +636,8 @@ function UserCenterPageContent() {
                       router.push(
                         showOrderDetail.type === 'lawyer'
                           ? `/lawyer/pay?applicationId=${showOrderDetail.applicationId || showOrderDetail.id}`
+                          : showOrderDetail.type === 'renewal'
+                            ? `/lawyer/renew?orderId=${encodeURIComponent(String(showOrderDetail.id).replace(/^renew-/, ''))}`
                           : `/pay?orderId=${showOrderDetail.id}`
                       );
                     }}
@@ -555,6 +649,37 @@ function UserCenterPageContent() {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showRefundForm} onOpenChange={setShowRefundForm}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>申请退款</DialogTitle>
+            <DialogDescription>请说明退款原因，平台审核后会原路退回支付金额。</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {['服务尚未开始', '服务与描述不符', '与律师协商一致', '其他原因'].map((reason) => (
+              <label key={reason} className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 px-3 py-2 text-sm">
+                <input type="radio" name="refund-reason" value={reason} checked={refundReason === reason} onChange={() => setRefundReason(reason)} />
+                <span>{reason}</span>
+              </label>
+            ))}
+            <textarea
+              value={refundNote}
+              onChange={(event) => setRefundNote(event.target.value)}
+              placeholder="补充说明（选填）"
+              maxLength={300}
+              className="min-h-24 w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#C47353]"
+            />
+            <Button
+              className="w-full bg-[#C47353] text-white hover:bg-[#A85D40]"
+              disabled={!refundReason || refundLoading}
+              onClick={requestRefund}
+            >
+              {refundLoading ? '提交中...' : '提交退款申请'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -4,11 +4,10 @@ import { getWechatPayClient } from '@/lib/payment/wechat-pay';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
 import { getSiteUrl, getWechatH5SiteUrl } from '@/lib/site';
 import { getPaymentClientContext, getWechatPaymentSession } from '@/lib/payment/payment-context';
+import { PAYMENT_TTL_MS } from '@/lib/payment/order-lifecycle';
 
 const SITE_URL = getSiteUrl();
 const H5_SITE_URL = getWechatH5SiteUrl();
-const PAYMENT_TTL_MS = 5 * 60 * 1000;
-
 function withH5ReturnUrl(h5Url: string, returnUrl: string): string {
   const url = new URL(h5Url);
   url.searchParams.set('redirect_url', returnUrl);
@@ -89,7 +88,7 @@ export async function POST(request: NextRequest) {
       .update({ status: 'expired', updated_at: now.toISOString() })
       .eq('application_id', application.id)
       .in('status', ['creating', 'pending', 'paying'])
-      .lt('payment_expires_at', now.toISOString());
+      .or(`payment_expires_at.lt.${now.toISOString()},and(payment_expires_at.is.null,created_at.lt.${new Date(now.getTime() - PAYMENT_TTL_MS).toISOString()})`);
     if (expireError) {
       console.error('[Lawyer/Pay/Create] 清理过期订单失败:', expireError);
       return NextResponse.json({ success: false, error: '创建支付订单失败' }, { status: 500 });

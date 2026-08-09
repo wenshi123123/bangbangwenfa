@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     let consultQuery: any = supabase
       .from('consult_orders')
-      .select('id, user_id, order_no, contact_name, contact_phone, case_type, case_title, service_type, service_price, payment_status, category, created_at')
+      .select('id, user_id, order_no, contact_name, contact_phone, case_type, case_title, service_type, service_price, payment_status, category, plan_id, created_at')
       .order('created_at', { ascending: false });
     let applicationQuery: any = supabase
       .from('lawyer_applications')

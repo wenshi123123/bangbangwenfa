@@ -36,8 +36,10 @@ function SuccessContent() {
   const applicationId = searchParams.get('applicationId');
   const orderType = searchParams.get('type'); // 'lawyer' 或其他
   const isLawyerOrder = orderType === 'lawyer';
-  const centerHref = isLawyerOrder ? getLawyerUrl() : getVersionedPath(USER_CENTER_HREF);
-  const centerLabel = isLawyerOrder ? '前往律师中心' : '查看我的订单';
+  const isRenewalOrder = orderType === 'renew';
+  const isLawyerPayment = isLawyerOrder || isRenewalOrder;
+  const centerHref = isLawyerPayment ? getLawyerUrl() : getVersionedPath(USER_CENTER_HREF);
+  const centerLabel = isRenewalOrder ? '返回律师中心' : isLawyerOrder ? '前往律师中心' : '查看我的订单';
   
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,7 +52,7 @@ function SuccessContent() {
       return;
     }
 
-    if (orderType === 'lawyer') {
+    if (isLawyerPayment) {
       try {
         const response = await apiRequest(`/api/lawyer/pay/status?orderId=${encodeURIComponent(orderId)}`);
         const data = await response.json();
@@ -86,7 +88,7 @@ function SuccessContent() {
     } finally {
       setLoading(false);
     }
-  }, [orderId, orderType, payTradeNo, handoffToken]);
+  }, [orderId, orderType, payTradeNo, handoffToken, isLawyerPayment]);
 
   useEffect(() => {
     fetchOrder();
@@ -128,7 +130,7 @@ function SuccessContent() {
         <div className="max-w-md mx-auto space-y-4 sm:space-y-6">
           
           {/* 添加客服微信提示 */}
-          {!isLawyerOrder && order && paymentConfirmed && (
+          {!isLawyerPayment && order && paymentConfirmed && (
             <Card className="card-apple bg-gradient-to-br from-green-50 to-emerald-100/50 border-green-200">
               <CardContent className="pt-6 pb-6 flex flex-col items-center">
                 <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mb-3">
@@ -153,17 +155,16 @@ function SuccessContent() {
             </Card>
           )}
 
-          {/* 律师入驻提示 */}
-          {isLawyerOrder && paymentConfirmed && (
+          {/* 律师入驻/续费提示 */}
+          {isLawyerPayment && paymentConfirmed && (
             <Card className="card-apple bg-[#F5EDE5] border-[rgba(196,115,83,0.25)]">
               <CardContent className="pt-6 pb-6 flex flex-col items-center">
                 <div className="w-12 h-12 bg-[#C47353] rounded-full flex items-center justify-center mb-3">
                   <CheckCircle className="h-6 w-6 text-white" />
                 </div>
-                <h3 className="text-lg font-medium text-[#3D322D] mb-2">入驻支付成功</h3>
+                <h3 className="text-lg font-medium text-[#3D322D] mb-2">{isRenewalOrder ? '续费支付成功' : '入驻支付成功'}</h3>
                 <p className="text-sm text-[#8C7B6E] text-center">
-                  您的入驻申请已提交，请等待管理员审核。<br/>
-                  审核通过后，将自动跳转到律师工作台。
+                  {isRenewalOrder ? '您的律师会员已提交续费，请返回律师中心查看最新状态。' : <>您的入驻申请已提交，请等待管理员审核。<br/>审核通过后，将自动跳转到律师工作台。</>}
                 </p>
               </CardContent>
             </Card>
@@ -230,7 +231,7 @@ function SuccessContent() {
             )}
             {!paymentConfirmed && (
               <Link
-                href={isLawyerOrder && applicationId ? `/lawyer/pay?applicationId=${encodeURIComponent(applicationId)}` : `/pay?orderId=${encodeURIComponent(orderId || '')}`}
+                href={isRenewalOrder ? '/lawyer/renew' : isLawyerOrder && applicationId ? `/lawyer/pay?applicationId=${encodeURIComponent(applicationId)}` : `/pay?orderId=${encodeURIComponent(orderId || '')}`}
                 className="flex-1"
               >
                 <Button className="btn-apple text-white w-full rounded-xl py-3 sm:py-6 text-sm sm:text-base">

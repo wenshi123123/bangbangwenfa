@@ -5,6 +5,7 @@ import { getWechatPayClient } from '@/lib/payment/wechat-pay';
 import { notifyOrder } from '@/lib/notify/webhook';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
 import { resolveUserNickname } from '@/lib/user/resolve-nickname';
+import { handleRenewalPaymentSuccess } from '@/lib/payment/renewal-settlement';
 
 function paymentResponse(order: any) {
   return NextResponse.json({
@@ -37,12 +38,61 @@ export async function GET(request: NextRequest) {
 
       const { data: renewOrder, error: renewOrderError } = await supabase
         .from('lawyer_renew_orders')
-        .select('order_no, lawyer_id, payment_status, paid_at, trade_no, expires_at, payment_expires_at')
+        .select('order_no, lawyer_id, package_id, months, package_price, payment_status, paid_at, trade_no, expires_at, payment_expires_at')
         .eq('order_no', orderRef)
         .maybeSingle();
       if (renewOrderError || !renewOrder) return NextResponse.json({ success: false, error: '订单不存在' }, { status: 404 });
       if (String(renewOrder.lawyer_id) !== String(auth.lawyerId)) return NextResponse.json({ success: false, error: '无权查看此订单' }, { status: 403 });
 
+      // 微信回调可能因网络或平台重试延迟而尚未到达；状态查询时主动查单，
+      // 并复用与回调完全相同的幂等结算逻辑，确保订单、会员权益和到期时间一致。
+      if (['pending', 'paying', 'closed'].includes(renewOrder.payment_status)) {
+        try {
+          const remote = await getWechatPayClient().queryOrder(renewOrder.order_no);
+          const remoteAmount = remote.amount;
+          if (
+            remote.tradeState === 'SUCCESS' &&
+            remote.transactionId &&
+            remoteAmount &&
+            remoteAmount.total === renewOrder.package_price
+          ) {
+            const settled = await handleRenewalPaymentSuccess(
+              remote.transactionId,
+              renewOrder.order_no,
+              remoteAmount.total,
+              renewOrder.payment_status === 'closed',
+            );
+            if (!settled.success) console.error('[Lawyer/Pay/Status] 续费查单结算失败:', settled.error);
+            if (settled.success) {
+              renewOrder.payment_status = 'paid';
+              renewOrder.paid_at = new Date().toISOString();
+              renewOrder.trade_no = remote.transactionId;
+              const { data: refreshedRenewOrder } = await supabase
+                .from('lawyer_renew_orders')
+                .select('payment_status, paid_at, trade_no, expires_at')
+                .eq('order_no', renewOrder.order_no)
+                .maybeSingle();
+              if (refreshedRenewOrder) Object.assign(renewOrder, refreshedRenewOrder);
+              if (settled.paidNow) {
+                await notifyOrder({
+                  type: 'Renew',
+                  userName: '律师用户',
+                  amount: remoteAmount.total,
+                  detail: `续费订单 ${renewOrder.order_no}`,
+                  orderId: renewOrder.order_no,
+                  status: 'Paid',
+                  event: 'paid',
+                });
+              }
+            }
+          }
+        } catch (syncError) {
+          console.error('[Lawyer/Pay/Status] 续费微信查单补偿失败:', syncError);
+        }
+      }
+
+      // 只有查单未确认成功时，才按 15 分钟规则关闭订单；不能先关闭再查单，
+      // 否则“已付款但回调延迟”的订单会被错误地判成超时。
       if (renewOrder.payment_status === 'paying' && renewOrder.payment_expires_at && new Date(renewOrder.payment_expires_at).getTime() <= Date.now()) {
         const closedAt = new Date().toISOString();
         const { error: closeError } = await supabase
