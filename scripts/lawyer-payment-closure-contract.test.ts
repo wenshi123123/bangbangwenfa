@@ -53,7 +53,7 @@ async function main() {
   assert.match(renewPage, /toFixed\(2\)/, 'renewal price display must preserve cents');
   assert.match(lawyerPackages, /toFixed\(2\)/, 'onboarding price display must preserve cents');
 
-  assert.match(refundRoute, /order_type === ['"]lawyer_renewal['"][\s\S]*const outTradeNo = order\.order_no/, 'renewal refunds must use the original out_trade_no, not the stored transaction id');
+  assert.match(refundRoute, /const outTradeNo = refundRequest\.order_type === ['"]lawyer_renewal['"][\s\S]*\? order\.order_no/, 'renewal refunds must use the original out_trade_no, not the stored transaction id');
 
   assert.match(userOrders, /lawyer_renew_orders/, 'user orders must include renewal orders');
   assert.match(userOrders, /lawyer_complimentary_orders/, 'user orders must include complimentary orders');
