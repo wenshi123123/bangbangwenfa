@@ -47,6 +47,7 @@ async function main() {
   assert.match(renewalSettlement, /membership_records/, 'renewal settlement must update package membership');
   assert.match(renewStatus, /renewOrder[\s\S]*queryOrder\(renewOrder\.order_no\)/, 'renewal status must query WeChat to compensate missed callbacks');
   assert.match(renewStatus, /remote\.tradeState === ['"]SUCCESS['"][\s\S]*handleRenewalPaymentSuccess/, 'renewal status must settle the order and membership after a successful query');
+  assert.match(renewStatus, /['"]closed['"][\s\S]*allowClosedRecovery|renewOrder\.payment_status === ['"]closed['"]/, 'renewal status must recover a paid order closed before callback compensation');
   assert.match(renewPage, /toFixed\(2\)/, 'renewal price display must preserve cents');
   assert.match(lawyerPackages, /toFixed\(2\)/, 'onboarding price display must preserve cents');
 

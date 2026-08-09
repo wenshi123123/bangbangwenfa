@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
 
       // 微信回调可能因网络或平台重试延迟而尚未到达；状态查询时主动查单，
       // 并复用与回调完全相同的幂等结算逻辑，确保订单、会员权益和到期时间一致。
-      if (['pending', 'paying'].includes(renewOrder.payment_status)) {
+      if (['pending', 'paying', 'closed'].includes(renewOrder.payment_status)) {
         try {
           const remote = await getWechatPayClient().queryOrder(renewOrder.order_no);
           const remoteAmount = remote.amount;
@@ -56,7 +56,12 @@ export async function GET(request: NextRequest) {
             remoteAmount &&
             remoteAmount.total === renewOrder.package_price
           ) {
-            const settled = await handleRenewalPaymentSuccess(remote.transactionId, renewOrder.order_no, remoteAmount.total);
+            const settled = await handleRenewalPaymentSuccess(
+              remote.transactionId,
+              renewOrder.order_no,
+              remoteAmount.total,
+              renewOrder.payment_status === 'closed',
+            );
             if (!settled.success) console.error('[Lawyer/Pay/Status] 续费查单结算失败:', settled.error);
             if (settled.success) {
               renewOrder.payment_status = 'paid';

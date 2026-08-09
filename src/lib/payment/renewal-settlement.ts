@@ -26,6 +26,7 @@ export async function handleRenewalPaymentSuccess(
   tradeNo: string,
   orderNo: string,
   paidAmount: number,
+  allowClosedRecovery = false,
 ): Promise<{ success: boolean; paidNow?: boolean; error?: string }> {
   const supabase = getSupabaseAdmin();
   const { data: order, error: orderError } = await supabase
@@ -38,7 +39,7 @@ export async function handleRenewalPaymentSuccess(
   if (Number(order.package_price) !== paidAmount) return { success: false, error: '支付金额不一致' };
 
   const alreadyPaid = order.payment_status === 'paid';
-  if (!alreadyPaid && !['pending', 'paying'].includes(order.payment_status)) {
+  if (!alreadyPaid && !['pending', 'paying'].includes(order.payment_status) && !(allowClosedRecovery && order.payment_status === 'closed')) {
     return { success: false, error: '订单状态不允许完成支付' };
   }
 
