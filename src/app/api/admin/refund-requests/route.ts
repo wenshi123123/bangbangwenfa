@@ -58,7 +58,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '已超过支付后 24 小时退款期限' }, { status: 409 });
     }
 
-    const outTradeNo = paymentOrder?.order_no || order.pay_trade_no || order.trade_no || order.order_no;
+    // 续费下单时把 lawyer_renew_orders.order_no 作为微信 out_trade_no；
+    // order.trade_no 保存的是微信 transaction_id，不能拿它调用退款接口。
+    const outTradeNo = refundRequest.order_type === 'lawyer_renewal'
+      ? order.order_no
+      : paymentOrder?.order_no || order.pay_trade_no || order.trade_no || order.order_no;
     const totalAmount = Number(order.service_price || order.package_price || paymentOrder?.amount || 0);
     if (!outTradeNo || !totalAmount) {
       await supabase.from('refund_requests').update({ status: 'failed', failure_reason: '缺少原支付单号或金额', updated_at: new Date().toISOString(), processed_at: new Date().toISOString() }).eq('id', requestId);

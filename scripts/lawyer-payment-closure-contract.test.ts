@@ -6,7 +6,7 @@ const root = process.cwd();
 const source = (file: string) => readFile(path.join(root, file), 'utf8');
 
 async function main() {
-  const [migration, reviewRoute, consultCreate, consultPriceStep, civilPriceStep, renewRoute, renewCallback, renewalSettlement, renewStatus, userOrders, adminOrders, renewPage, lawyerPackages] = await Promise.all([
+  const [migration, reviewRoute, consultCreate, consultPriceStep, civilPriceStep, renewRoute, renewCallback, renewalSettlement, renewStatus, userOrders, adminOrders, renewPage, lawyerPackages, refundRoute] = await Promise.all([
     source('supabase/migrations/20260805090000_lawyer_payment_closure.sql'),
     source('src/app/api/admin/lawyer/review/route.ts'),
     source('src/app/api/consult/create/route.ts'),
@@ -20,6 +20,7 @@ async function main() {
     source('src/app/api/admin/order/list/route.ts'),
     source('src/app/lawyer/renew/page.tsx'),
     source('src/components/lawyer/lawyer-package-step.tsx'),
+    source('src/app/api/admin/refund-requests/route.ts'),
   ]);
 
   assert.match(migration, /lawyer_complimentary_orders/i, 'migration must create auditable complimentary orders');
@@ -51,6 +52,8 @@ async function main() {
   assert.match(renewalSettlement, /allowClosedRecovery \? \['pending', ['"]paying['"], ['"]closed['"]\]/, 'closed renewal recovery must persist paid order state');
   assert.match(renewPage, /toFixed\(2\)/, 'renewal price display must preserve cents');
   assert.match(lawyerPackages, /toFixed\(2\)/, 'onboarding price display must preserve cents');
+
+  assert.match(refundRoute, /order_type === ['"]lawyer_renewal['"][\s\S]*const outTradeNo = order\.order_no/, 'renewal refunds must use the original out_trade_no, not the stored transaction id');
 
   assert.match(userOrders, /lawyer_renew_orders/, 'user orders must include renewal orders');
   assert.match(userOrders, /lawyer_complimentary_orders/, 'user orders must include complimentary orders');
