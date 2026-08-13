@@ -22,6 +22,11 @@ export const metadata: Metadata = {
   },
   description:
     '专业法律咨询服务平台，提供案件分析、法律建议和可执行的行动方案。',
+  icons: {
+    icon: '/bangbang-favicon.png',
+    shortcut: '/bangbang-favicon.png',
+    apple: '/bangbang-favicon.png',
+  },
   keywords: [
     '法律咨询',
     '律师服务',
