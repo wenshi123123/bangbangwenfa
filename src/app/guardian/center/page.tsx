@@ -74,6 +74,7 @@ export default function GuardianCenterPage() {
   const [guardian, setGuardian] = useState<GuardianData | null>(null);
   const [isLoading, setIsLoading] = useState(true); // 合并 loading 和 isChecking
   const [loadError, setLoadError] = useState<string>('');
+  const [partialLoadErrors, setPartialLoadErrors] = useState<string[]>([]);
   const [commissions, setCommissions] = useState<CommissionRecord[]>([]);
   const [invitees, setInvitees] = useState<InviteeRecord[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRecord[]>([]);
@@ -137,6 +138,7 @@ export default function GuardianCenterPage() {
     setRefreshing(true);
     setIsLoading(true);
     setLoadError('');
+    setPartialLoadErrors([]);
     try {
       // Guardian identity is resolved from the authenticated token on the server.
       // Do not use the cached/client guardian id as an authorization input.
@@ -148,6 +150,7 @@ export default function GuardianCenterPage() {
         WithdrawConfig
       >(apiRequest);
       setGuardian(data.profile);
+      setPartialLoadErrors(data.errors || []);
       // 同时更新 localStorage 中的数据
       persistGuardianCache(localStorage, data.profile);
       setCommissions(data.commissions);
@@ -540,6 +543,12 @@ export default function GuardianCenterPage() {
     );
   }
 
+  const partialDataNotice = partialLoadErrors.length > 0 ? (
+    <div className="mx-auto mt-3 max-w-3xl rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      部分数据暂时无法加载：{partialLoadErrors.join('；')}。核心资料仍可正常使用。
+    </div>
+  ) : null;
+
   // 未登录提示
   if (!isLoggedIn) {
     return (
@@ -682,6 +691,8 @@ export default function GuardianCenterPage() {
           </div>
         </div>
       </div>
+
+      {partialDataNotice}
 
       {guardian && (
         <GuardianIdentityHero

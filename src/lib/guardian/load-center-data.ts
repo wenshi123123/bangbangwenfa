@@ -18,6 +18,13 @@ export class GuardianCenterLoadTimeoutError extends Error {
   }
 }
 
+export class GuardianCenterAuthError extends Error {
+  constructor() {
+    super('登录已过期，请重新登录');
+    this.name = 'GuardianCenterAuthError';
+  }
+}
+
 export function persistGuardianCache(
   storage: Pick<Storage, 'setItem'>,
   guardian: GuardianCacheProfile,
@@ -44,6 +51,7 @@ function isSuccessfulResponse(value: unknown): value is {
 }
 
 async function readSuccessfulJson<T>(response: Response): Promise<T> {
+  if (response.status === 401 || response.status === 403) throw new GuardianCenterAuthError();
   if (!response.ok) throw new Error(`请求失败（${response.status}）`);
   const data: unknown = await response.json();
   if (!isSuccessfulResponse(data)) throw new Error('接口返回异常');
@@ -51,6 +59,26 @@ async function readSuccessfulJson<T>(response: Response): Promise<T> {
     throw new Error(typeof data.error === 'string' ? data.error : '接口返回异常');
   }
   return data.data as T;
+}
+
+async function requestWithRetry<T>(
+  request: GuardianApiRequest,
+  url: string,
+  signal: AbortSignal,
+  required = false,
+): Promise<{ value?: T; error?: string }> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return { value: await request(url, { signal }).then(readSuccessfulJson<T>) };
+    } catch (error) {
+      lastError = error;
+      if (required && error instanceof GuardianCenterAuthError) throw error;
+      if (signal.aborted || error instanceof GuardianCenterAuthError || attempt === 1) break;
+    }
+  }
+  if (required && lastError) throw lastError;
+  return { error: lastError instanceof Error ? lastError.message : '接口暂时不可用' };
 }
 
 export async function loadGuardianCenterData<
@@ -85,19 +113,30 @@ export async function loadGuardianCenterData<
     });
 
   const data = Promise.all([
-    request('/api/guardian/profile', { signal: controller.signal }).then(readSuccessfulJson<TProfile>),
-    request('/api/guardian/commissions', { signal: controller.signal }).then(readSuccessfulJson<TCommissions>),
-    request('/api/guardian/invites', { signal: controller.signal }).then(readSuccessfulJson<TInvitees>),
-    request('/api/guardian/withdrawals', { signal: controller.signal }).then(readSuccessfulJson<TWithdrawals>),
-    config,
+    requestWithRetry<TProfile>(request, '/api/guardian/profile', controller.signal, true),
+    requestWithRetry<TCommissions>(request, '/api/guardian/commissions', controller.signal),
+    requestWithRetry<TInvitees>(request, '/api/guardian/invites', controller.signal),
+    requestWithRetry<TWithdrawals>(request, '/api/guardian/withdrawals', controller.signal),
+    config.then((value) => ({ value })),
   ]);
 
   try {
-    const [profile, commissions, invitees, withdrawals, withdrawConfig] = await Promise.race([
+    const [profileResult, commissionsResult, inviteesResult, withdrawalsResult, withdrawConfigResult] = await Promise.race([
       data,
       timeout,
     ]);
-    return { profile, commissions, invitees, withdrawals, withdrawConfig };
+    const profile = profileResult.value as TProfile;
+    const errors = [commissionsResult, inviteesResult, withdrawalsResult]
+      .map((result, index) => result.error ? `${['佣金', '邀请记录', '提现记录'][index]}：${result.error}` : '')
+      .filter(Boolean);
+    return {
+      profile,
+      commissions: (commissionsResult.value || []) as TCommissions,
+      invitees: (inviteesResult.value || []) as TInvitees,
+      withdrawals: (withdrawalsResult.value || []) as TWithdrawals,
+      withdrawConfig: withdrawConfigResult.value,
+      errors,
+    };
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
   }

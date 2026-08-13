@@ -313,7 +313,7 @@ export async function updateOrderStatusAfterPayment(body: string): Promise<Payme
     // - 老链路可能写入 order_no
     const { data: existingOrder, error: queryError } = await supabase
       .from('consult_orders')
-      .select('id, payment_status, openid, pay_trade_no, order_no')
+      .select('id, payment_status, openid, pay_trade_no, order_no, contact_name, contact_phone, service_price, category, service_type')
       .or(`pay_trade_no.eq.${out_trade_no},order_no.eq.${out_trade_no}`)
       .maybeSingle();
 
@@ -331,7 +331,7 @@ export async function updateOrderStatusAfterPayment(body: string): Promise<Payme
       console.log('订单已支付，跳过重复处理:', out_trade_no);
       return { 
         success: true, 
-        order: { order_no: out_trade_no, openid: existingOrder.openid },
+        order: { order_no: out_trade_no, openid: existingOrder.openid, id: existingOrder.id, wasUpdated: false },
         paidNow: false,
       };
     }
@@ -361,7 +361,14 @@ export async function updateOrderStatusAfterPayment(body: string): Promise<Payme
       success: true, 
       order: { 
         order_no: orderNoField, 
-        user_wechat_openid: existingOrder.openid
+        user_wechat_openid: existingOrder.openid,
+        id: existingOrder.id,
+        wasUpdated: true,
+        contact_name: existingOrder.contact_name,
+        contact_phone: existingOrder.contact_phone,
+        service_price: existingOrder.service_price,
+        category: existingOrder.category,
+        service_type: existingOrder.service_type,
       },
       paidNow: true,
     };

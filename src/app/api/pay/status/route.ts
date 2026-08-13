@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { getWechatPayClient } from '@/lib/payment/wechat-pay';
+import { notifyPaidConsultOrderOnce } from '@/lib/notify/payment-paid';
 
 /**
  * 咨询支付状态查询
@@ -92,6 +93,7 @@ export async function GET(request: NextRequest) {
               orderId: order.id,
               transactionId,
             });
+            await notifyPaidConsultOrderOnce(order.id);
           } else {
             console.error('[Pay/Status] 微信查单补偿落库失败:', updateError);
           }

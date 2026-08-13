@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import crypto from 'crypto';
 import { verifyWechatPaySignature } from '@/lib/payment/wechat-cert';
-import { notifyOrder } from '@/lib/notify/webhook';
+import { notifyPaidConsultOrderOnce } from '@/lib/notify/payment-paid';
 
 /**
  * 解密微信支付回调的敏感数据（AES-256-GCM）
@@ -180,16 +180,7 @@ export async function POST(request: NextRequest) {
               } else if (paidOrder) {
                 console.log('订单支付状态更新成功:', order.id);
 
-                await notifyOrder({
-                  type: 'Consult',
-                  userName: order.contact_name || '咨询用户',
-                  phone: order.contact_phone || undefined,
-                  amount: order.service_price,
-                  detail: `${order.category === 'civil' ? '民事' : '刑事'}：${order.case_title || '法律咨询'}`,
-                  orderId: order.order_no || order.pay_trade_no || out_trade_no,
-                  status: 'Paid',
-                  event: 'paid',
-                });
+                await notifyPaidConsultOrderOnce(order.id);
 
                 // 创建守护者分成记录
                 await createGuardianCommission(order.id, transaction_id);

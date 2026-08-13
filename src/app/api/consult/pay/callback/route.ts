@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { updateOrderStatusAfterPayment } from '@/lib/payment/wechat-pay';
 import { verifyWechatPaySignature } from '@/lib/payment/wechat-cert';
 import { sendPaymentSuccessNotification } from '@/lib/wechat-oa';
-import { notifyOrder } from '@/lib/notify/webhook';
+import { notifyPaidConsultOrderOnce } from '@/lib/notify/payment-paid';
 
 export async function POST(req: NextRequest) {
   try {
@@ -84,15 +84,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (result.success && result.paidNow) {
-      await notifyOrder({
-        type: 'Consult',
-        userName: '咨询用户',
-        detail: '法律咨询订单',
-        orderId: result.order?.order_no,
-        status: 'Paid',
-        event: 'paid',
-      });
+    if (result.success && result.paidNow && result.order?.id) {
+      await notifyPaidConsultOrderOnce(result.order.id);
     }
 
     // 统一返回SUCCESS给微信支付系统

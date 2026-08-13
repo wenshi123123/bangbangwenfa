@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+  GuardianCenterAuthError,
   GuardianCenterLoadTimeoutError,
   loadGuardianCenterData,
 } from '../src/lib/guardian/load-center-data';
@@ -54,6 +55,27 @@ void (async () => {
     'independent guardian requests must complete concurrently, not sequentially',
   );
   assert.deepEqual(data.profile, { id: 1, invite_code: 'ABC' });
+
+  const partial = await loadGuardianCenterData(
+    async (url) => {
+      if (url === '/api/guardian/profile') return successfulResponse({ id: 2, invite_code: 'DEF' });
+      if (url === '/api/guardian/commissions') return new Response('failed', { status: 500 });
+      return successfulResponse([]);
+    },
+    50,
+  );
+  assert.deepEqual(partial.commissions, []);
+  assert.match(partial.errors[0], /佣金/);
+
+  await assert.rejects(
+    () => loadGuardianCenterData(
+      async (url) => url === '/api/guardian/profile'
+        ? new Response(JSON.stringify({ success: false, error: '未登录' }), { status: 401 })
+        : successfulResponse([]),
+      50,
+    ),
+    GuardianCenterAuthError,
+  );
 
   let wasAborted = false;
   await assert.rejects(

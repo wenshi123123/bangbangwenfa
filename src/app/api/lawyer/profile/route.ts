@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { normalizePackageIds } from '@/lib/lawyer/package-normalizer';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
 import { decryptFields, encryptFields, LAWYER_SENSITIVE_FIELDS } from '@/lib/crypto/encryption';
@@ -93,13 +94,14 @@ export async function GET(request: NextRequest) {
     // 🔒 解密敏感字段后返回
     const safeData = decryptFields(data, LAWYER_SENSITIVE_FIELDS);
     
-    // 解析 selected_packages（可能是 JSON 字符串）
-    let parsedSelectedPackages: string[] = [];
+    // 解析并归一化 selected_packages（可能是 JSON 字符串）。
+    // 续费产品只代表期限，不能作为新的身份标签返回给前端。
+    let parsedSelectedPackages: unknown = [];
     if (safeData.selected_packages) {
       try {
         parsedSelectedPackages = typeof safeData.selected_packages === 'string'
           ? JSON.parse(safeData.selected_packages)
-          : safeData.selected_packages as string[];
+          : safeData.selected_packages;
       } catch {
         parsedSelectedPackages = [];
       }
@@ -156,7 +158,7 @@ export async function GET(request: NextRequest) {
       _v: 'v3-package-support',
       data: {
         ...safeData,
-        selected_packages: parsedSelectedPackages,
+        selected_packages: normalizePackageIds(parsedSelectedPackages),
         ...extraFields,
         stats: {
           total: total,
