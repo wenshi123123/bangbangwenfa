@@ -7,12 +7,12 @@ export async function GET(request: NextRequest) {
   const startedAt = Date.now();
   const deploymentId = request.headers.get('x-bbwv-deployment-id') || 'absent';
   const diagnostic = (stage: string, details: Record<string, unknown> = {}) => {
-    console.info('[GUARDIAN_PROFILE_DIAG]', {
+    console.info('[GUARDIAN_PROFILE_DIAG]', JSON.stringify({
       stage,
       elapsedMs: Date.now() - startedAt,
       deploymentId,
       ...details,
-    });
+    }));
   };
 
   diagnostic('request-start');
