@@ -4,8 +4,26 @@ import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware
 
 // GET /api/guardian/profile - 获取守护者资料（需要JWT认证）
 export async function GET(request: NextRequest) {
+  const startedAt = Date.now();
+  const deploymentId = request.headers.get('x-bbwv-deployment-id') || 'absent';
+  const diagnostic = (stage: string, details: Record<string, unknown> = {}) => {
+    console.info('[GUARDIAN_PROFILE_DIAG]', {
+      stage,
+      elapsedMs: Date.now() - startedAt,
+      deploymentId,
+      ...details,
+    });
+  };
+
+  diagnostic('request-start');
   try {
     const auth = authenticateRequest(request);
+    diagnostic('auth-complete', {
+      success: auth.success,
+      userType: auth.userType || 'unknown',
+      hasUserId: Boolean(auth.userId),
+      hasGuardianId: Boolean(auth.guardianId),
+    });
     if (!auth.success) {
       return unauthorizedResponse(auth.error);
     }
@@ -19,6 +37,13 @@ export async function GET(request: NextRequest) {
         .select('*')
         .eq('id', auth.guardianId)
         .single();
+
+      diagnostic('database-complete', {
+        lookup: 'guardian-id',
+        hasData: Boolean(guardian),
+        errorCode: error?.code || null,
+        payloadBytes: guardian ? JSON.stringify(guardian).length : 0,
+      });
       
       if (error) {
         if (error.code === 'PGRST116') {
@@ -37,6 +62,13 @@ export async function GET(request: NextRequest) {
         .select('*')
         .eq('user_id', String(auth.userId))
         .single();
+
+      diagnostic('database-complete', {
+        lookup: 'user-id',
+        hasData: Boolean(guardian),
+        errorCode: error?.code || null,
+        payloadBytes: guardian ? JSON.stringify(guardian).length : 0,
+      });
       
       if (error) {
         if (error.code === 'PGRST116') {
@@ -51,6 +83,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: '无法获取用户信息' }, { status: 400 });
     
   } catch (error) {
+    diagnostic('request-error', {
+      error: error instanceof Error ? error.message : 'unknown-error',
+    });
     console.error('获取资料失败:', error);
     return NextResponse.json({ success: false, error: '服务器错误' }, { status: 500 });
   }
@@ -86,4 +121,3 @@ function formatGuardianResponse(guardian: any) {
     }
   });
 }
-
