@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import {
   GuardianCenterAuthError,
-  GuardianCenterLoadTimeoutError,
   loadGuardianCenterData,
 } from '../src/lib/guardian/load-center-data';
 
