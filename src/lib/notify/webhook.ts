@@ -31,9 +31,9 @@ interface OrderInfo {
 /**
  * 发送纯文本消息到 Webhook URL
  */
-async function sendText(content: string): Promise<void> {
+async function sendText(content: string): Promise<boolean> {
   const webhookUrl = process.env[WEBHOOK_URL_KEY];
-  if (!webhookUrl) return;
+  if (!webhookUrl) return false;
 
   try {
     const payload = { msgtype: 'text', text: { content } };
@@ -45,9 +45,12 @@ async function sendText(content: string): Promise<void> {
 
     if (!response.ok) {
       console.warn('[Webhook] send failed:', response.status, await response.text().catch(() => ''));
+      return false;
     }
+    return true;
   } catch (err) {
     console.warn('[Webhook] send error:', err);
+    return false;
   }
 }
 
@@ -91,7 +94,7 @@ function buildOrderMessage(info: OrderInfo): string {
  * 发送订单通知
  * 通知失败不影响业务逻辑
  */
-export async function notifyOrder(info: OrderInfo): Promise<void> {
+export async function notifyOrder(info: OrderInfo): Promise<boolean> {
   const content = buildOrderMessage(info);
-  await sendText(content);
+  return sendText(content);
 }

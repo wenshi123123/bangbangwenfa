@@ -18,6 +18,7 @@ import { useLawyerAuth } from '@/hooks/use-lawyer-auth';
 import { LawyerBottomNav } from '@/components/lawyer/lawyer-bottom-nav';
 import { getVersionedPath } from '@/lib/site';
 import { getLawyerCachedData, invalidateLawyerCachedData } from '@/lib/lawyer/client-data-cache';
+import { getPackageDisplayName, normalizePackageIds, type CanonicalLawyerPackage } from '@/lib/lawyer/package-normalizer';
 
 interface LawyerProfile {
   id: number;
@@ -38,7 +39,7 @@ interface LawyerProfile {
   province?: string;
   city?: string;
   package_type?: string;
-  selected_packages?: string[];
+  selected_packages?: CanonicalLawyerPackage[];
   law_firm?: string;
   license_no?: string;
   member_expires_at: string;
@@ -88,13 +89,6 @@ const serviceTypeMap: Record<string, { label: string; color: string }> = {
 const categoryMap: Record<string, { label: string; color: string; barColor: string }> = {
   criminal: { label: '刑事案件', color: 'text-[#C26565]', barColor: '#C26565' },
   civil: { label: '民事案件', color: 'text-[#5C7A5A]', barColor: '#5C7A5A' },
-};
-
-const packageNameMap: Record<string, string> = {
-  civil_premium: '民事律师（臻选）',
-  criminal_premium: '刑事律师（臻选）',
-  civil: '民事律师（臻选）',
-  criminal: '刑事律师（臻选）',
 };
 
 export default function LawyerPage() {
@@ -591,8 +585,8 @@ export default function LawyerPage() {
                     {/* 套餐标签 */}
                     {Array.isArray(profile?.selected_packages) && profile.selected_packages.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-2.5">
-                        {profile.selected_packages.map((pkg: string) => {
-                          const pkgLabel = packageNameMap[pkg] || pkg;
+                        {normalizePackageIds(profile.selected_packages).map((pkg) => {
+                          const pkgLabel = getPackageDisplayName(pkg);
                           return (
                             <span key={pkg} className="text-[11px] px-2.5 py-0.5 rounded-full bg-white/20 text-white/90 font-medium backdrop-blur-sm border border-white/15">
                               🌟 {pkgLabel}
@@ -730,14 +724,9 @@ export default function LawyerPage() {
                 {/* 已购套餐列表 */}
                 {Array.isArray(profile?.selected_packages) && profile.selected_packages.length > 0 && (
                   <div className="mt-2.5 space-y-1">
-                    {profile.selected_packages.map((pkg: string) => {
-                      const pkgLabel = packageNameMap[pkg] || pkg;
-                      return (
-                        <div key={pkg} className="text-[10px] text-[#5C7A5A] bg-[#5C7A5A]/8 px-2 py-0.5 rounded font-medium">
-                          {pkgLabel}
-                        </div>
-                      );
-                    })}
+                    <div className="text-[10px] text-[#5C7A5A] bg-[#5C7A5A]/8 px-2 py-0.5 rounded font-medium">
+                      {normalizePackageIds(profile.selected_packages).map(getPackageDisplayName).join('、')}
+                    </div>
                   </div>
                 )}
                 <Link href={getVersionedPath('/lawyer/renew')} className="mt-3 inline-block">
