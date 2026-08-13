@@ -481,8 +481,9 @@ async function handlePasswordLogin(
   const localAccount = findLocalTestAccount(account, password);
   if (localAccount && localAccount.role !== 'admin') {
     const userType = localAccount.role;
-    const token = await generateToken({ id: localAccount.id, phone: `1390000${localAccount.id}`, username: account, userType, lawyerId: userType === 'lawyer' ? 'local-test-lawyer' : undefined, status: userType === 'lawyer' ? 'active' : undefined });
-    return attachAuthCookie(NextResponse.json({ success: true, data: { user: { id: localAccount.id, phone: `1390000${localAccount.id}`, username: account, nickname: localAccount.nickname, userType, isGuardian: false, guardianInfo: null, isLawyer: userType === 'lawyer', lawyerInfo: userType === 'lawyer' ? { id: 'local-test-lawyer', name: localAccount.nickname, status: 'active', expireAt: null } : null }, token } }), token);
+    const guardianId = userType === 'guardian' ? 9201 : undefined;
+    const token = await generateToken({ id: localAccount.id, phone: `1390000${localAccount.id}`, username: account, userType, guardianId, lawyerId: userType === 'lawyer' ? 'local-test-lawyer' : undefined, status: userType === 'lawyer' ? 'active' : undefined });
+    return attachAuthCookie(NextResponse.json({ success: true, data: { user: { id: localAccount.id, phone: `1390000${localAccount.id}`, username: account, nickname: localAccount.nickname, userType, isGuardian: userType === 'guardian', guardianInfo: userType === 'guardian' ? { id: guardianId, invite_code: 'GUD-LOCAL2026' } : null, isLawyer: userType === 'lawyer', lawyerInfo: userType === 'lawyer' ? { id: 'local-test-lawyer', name: localAccount.nickname, status: 'active', expireAt: null } : null }, token } }), token);
   }
 
   cleanupAttempts();

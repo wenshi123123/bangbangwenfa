@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
+import { isLocalTestGuardian, LOCAL_TEST_GUARDIAN_PROFILE } from '@/lib/auth/local-test-guardian';
 
 // GET /api/guardian/profile - 获取守护者资料（需要JWT认证）
 export async function GET(request: NextRequest) {
@@ -8,6 +9,10 @@ export async function GET(request: NextRequest) {
     const auth = authenticateRequest(request);
     if (!auth.success) {
       return unauthorizedResponse(auth.error);
+    }
+
+    if (isLocalTestGuardian(auth)) {
+      return formatGuardianResponse(LOCAL_TEST_GUARDIAN_PROFILE);
     }
     
     const supabase = getSupabaseAdmin();
@@ -86,4 +91,3 @@ function formatGuardianResponse(guardian: any) {
     }
   });
 }
-

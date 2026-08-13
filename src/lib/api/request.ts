@@ -104,17 +104,9 @@ export async function apiRequest(
     body: requestBody,
   });
   
-  // 处理 401 未授权响应（Token 过期或无效）
-  if (response.status === 401 && !skipAuth) {
-    clearAuth();
-    // 触发全局事件，通知应用用户需要重新登录
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('auth-expired'));
-    }
-    // 抛出错误终止调用链，避免调用方继续处理已无意义的 response
-    throw new Error('登录已过期，请重新登录');
-  }
-  
+  // 业务接口的单次 401 不能直接清空全局登录状态。
+  // 守护者中心会并发请求多个接口，其中任一接口短暂失败都不代表会话失效；
+  // 会话是否真的过期由 /api/auth/session 在 AuthProvider 中统一确认。
   return response;
 }
 

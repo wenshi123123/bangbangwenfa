@@ -204,6 +204,37 @@ export default function GuardianCenterPage() {
         setIsLoading(false);
         return;
       }
+
+      // Local-only activated guardian fixture. The login endpoint marks this
+      // account with a deterministic invite code, so production users are
+      // never affected by this preview path.
+      try {
+        const savedUserData = JSON.parse(savedUser as string);
+        const localGuardianInfo = savedUserData?.guardianInfo;
+        if (
+          savedUserData?.userType === 'guardian' &&
+          localGuardianInfo?.invite_code === 'GUD-LOCAL2026'
+        ) {
+          const localGuardian = {
+            id: Number(localGuardianInfo.id || 9201),
+            nickname: savedUserData.nickname || '本地测试守护者',
+            avatar_url: null,
+            invite_code: localGuardianInfo.invite_code,
+            total_invites: 0,
+            valid_invites: 0,
+            total_commission: 0,
+            available_commission: 0,
+            withdrawn_commission: 0,
+          };
+          localStorage.setItem('guardian_user', JSON.stringify(localGuardian));
+          setGuardian(localGuardian);
+          generateQRCode(localGuardian.invite_code);
+          await fetchData();
+          return;
+        }
+      } catch (e) {
+        console.error('解析本地用户信息失败:', e);
+      }
       
       // 已登录，继续初始化守护者
       // 先检查 localStorage 中是否已有 guardian_user

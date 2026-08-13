@@ -12,7 +12,6 @@ import {
   getLawyerLoginUrl,
   getLawyerCommitmentUrl,
   getLawyerEntryAgreementUrl,
-  getOnlineLegalServiceAgreementUrl,
   getPrivacyPolicyUrl,
   getUserAgreementUrl,
 } from "@/lib/site";
@@ -22,7 +21,7 @@ const footerLinks = {
     { label: "民事咨询", href: getCivilUrl() },
     { label: "刑事咨询", href: getConsultUrl() },
     { label: "守护者计划", href: getGuardianUrl() },
-    { label: "在线法律服务协议", href: getOnlineLegalServiceAgreementUrl() },
+    { label: "在线法律服务协议", href: "/online-legal-service-agreement" },
   ],
   律师: [
     { label: "律师入驻", href: getLawyerJoinUrl() },

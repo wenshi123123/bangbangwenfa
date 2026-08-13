@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-export type LocalTestRole = 'user' | 'lawyer' | 'admin';
+export type LocalTestRole = 'user' | 'guardian' | 'lawyer' | 'admin';
 
 function enabled() {
   return process.env.NODE_ENV !== 'production' && process.env.DEPLOY_ENV !== 'PROD' && process.env.LOCAL_TEST_ACCOUNTS === 'true';
@@ -17,6 +17,7 @@ export function findLocalTestAccount(account: string, password: string) {
   if (!enabled()) return null;
   const entries: Array<{ role: LocalTestRole; account?: string; password?: string; id: number; nickname: string }> = [
     { role: 'user', account: process.env.LOCAL_TEST_USER_ACCOUNT, password: process.env.LOCAL_TEST_USER_PASSWORD, id: 9101, nickname: process.env.LOCAL_TEST_USER_ACCOUNT || '' },
+    { role: 'guardian', account: process.env.LOCAL_TEST_GUARDIAN_ACCOUNT, password: process.env.LOCAL_TEST_GUARDIAN_PASSWORD, id: 9104, nickname: process.env.LOCAL_TEST_GUARDIAN_ACCOUNT || '' },
     { role: 'lawyer', account: process.env.LOCAL_TEST_LAWYER_ACCOUNT, password: process.env.LOCAL_TEST_LAWYER_PASSWORD, id: 9102, nickname: process.env.LOCAL_TEST_LAWYER_ACCOUNT || '' },
     { role: 'admin', account: process.env.LOCAL_TEST_ADMIN_ACCOUNT, password: process.env.LOCAL_TEST_ADMIN_PASSWORD, id: 9103, nickname: '本地测试管理员' },
   ];
