@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
 import { resolveGuardianId } from '@/lib/auth/guardian-identity';
+import { isLocalTestGuardian, LOCAL_TEST_GUARDIAN_COMMISSIONS } from '@/lib/auth/local-test-guardian';
 
 // GET /api/guardian/commissions - 获取分成记录（需要JWT认证）
 export async function GET(request: NextRequest) {
@@ -10,6 +11,9 @@ export async function GET(request: NextRequest) {
     const auth = authenticateRequest(request);
     if (!auth.success) {
       return unauthorizedResponse(auth.error);
+    }
+    if (isLocalTestGuardian(auth)) {
+      return NextResponse.json({ success: true, data: LOCAL_TEST_GUARDIAN_COMMISSIONS, pagination: { page: 1, limit: 20, total: LOCAL_TEST_GUARDIAN_COMMISSIONS.length, totalPages: 1 } });
     }
     const supabase = getSupabaseAdmin();
     const guardianId = await resolveGuardianId(auth, supabase);

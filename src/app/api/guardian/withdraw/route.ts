@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
 import { resolveGuardianId } from '@/lib/auth/guardian-identity';
+import { isLocalTestGuardian } from '@/lib/auth/local-test-guardian';
 
 // 提现 API 限流：每分钟 5 次
 const WITHDRAW_RATE_LIMIT = 5;
@@ -42,6 +43,9 @@ export async function GET(request: NextRequest) {
     const auth = authenticateRequest(request);
     if (!auth.success) {
       return unauthorizedResponse(auth.error);
+    }
+    if (isLocalTestGuardian(auth) && action === 'check-pending') {
+      return NextResponse.json({ success: true, data: { hasPending: false } });
     }
     const supabase = getSupabaseAdmin();
     const guardianId = await resolveGuardianId(auth, supabase);
@@ -130,6 +134,14 @@ export async function POST(request: NextRequest) {
     const auth = authenticateRequest(request);
     if (!auth.success) {
       return unauthorizedResponse(auth.error);
+    }
+    if (isLocalTestGuardian(auth)) {
+      const body = await request.json().catch(() => ({}));
+      const amount = body?.amount;
+      if (!Number.isInteger(amount) || amount <= 0) {
+        return NextResponse.json({ success: false, error: '缺少提现金额' }, { status: 400 });
+      }
+      return NextResponse.json({ success: true, data: { withdrawalId: 92001, amount, status: 'pending', message: '本地测试：提现申请已模拟提交' } });
     }
     
     const supabase = getSupabaseAdmin();
