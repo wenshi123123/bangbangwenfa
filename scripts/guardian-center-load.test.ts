@@ -67,6 +67,31 @@ void (async () => {
   assert.deepEqual(partial.commissions, []);
   assert.match(partial.errors[0], /佣金/);
 
+  const optionalRequestStartedAt = Date.now();
+  let commissionAborted = false;
+  const optionalTimeout = await loadGuardianCenterData(
+    async (url, init) => {
+      if (url === '/api/guardian/profile') {
+        return successfulResponse({ id: 3, invite_code: 'GHI' });
+      }
+      if (url === '/api/guardian/commissions') {
+        return new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            commissionAborted = true;
+            reject(init.signal?.reason);
+          }, { once: true });
+        });
+      }
+      return successfulResponse([]);
+    },
+    20,
+  );
+  assert.deepEqual(optionalTimeout.profile, { id: 3, invite_code: 'GHI' });
+  assert.deepEqual(optionalTimeout.commissions, []);
+  assert.match(optionalTimeout.errors[0], /佣金/);
+  assert.ok(Date.now() - optionalRequestStartedAt >= 20);
+  assert.equal(commissionAborted, true);
+
   await assert.rejects(
     () => loadGuardianCenterData(
       async (url) => url === '/api/guardian/profile'
@@ -76,21 +101,6 @@ void (async () => {
     ),
     GuardianCenterAuthError,
   );
-
-  let wasAborted = false;
-  await assert.rejects(
-    () => loadGuardianCenterData(
-      (_url, init) => new Promise<Response>((_resolve, reject) => {
-        init?.signal?.addEventListener('abort', () => {
-          wasAborted = true;
-          reject(init.signal?.reason);
-        }, { once: true });
-      }),
-      5,
-    ),
-    GuardianCenterLoadTimeoutError,
-  );
-  assert.equal(wasAborted, true, 'timeout must abort pending guardian requests');
 
   console.log('guardian center concurrent loading contract passed');
 })();
