@@ -168,21 +168,6 @@ export default function GuardianCenterPage() {
       }
     } catch (error) {
       console.error('获取数据失败:', error);
-      // 移动端偶发超时时保留已验证过的本地身份，避免把整个守护者中心
-      // 变成“网络错误”遮罩；用户仍可点击刷新获取最新数据。
-      if (error instanceof GuardianCenterLoadTimeoutError) {
-        try {
-          const cached = JSON.parse(localStorage.getItem('guardian_user') || 'null') as Partial<GuardianData> | null;
-          if (cached?.id && cached.invite_code) {
-            setGuardian((current) => current || cached as GuardianData);
-            setPartialLoadErrors(['最新数据加载超时，当前显示缓存数据，请点击刷新重试']);
-            setLoadError('');
-            return;
-          }
-        } catch {
-          // 缓存损坏时继续显示原始错误。
-        }
-      }
       setLoadError(
         error instanceof GuardianCenterLoadTimeoutError
           ? error.message
