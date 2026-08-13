@@ -64,17 +64,33 @@ async function readSuccessfulJson<T>(response: Response): Promise<T> {
 async function requestWithRetry<T>(
   request: GuardianApiRequest,
   url: string,
-  signal: AbortSignal,
+  timeoutMs: number,
   required = false,
 ): Promise<{ value?: T; error?: string }> {
   let lastError: unknown;
   for (let attempt = 0; attempt < 2; attempt += 1) {
+    const controller = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     try {
-      return { value: await request(url, { signal }).then(readSuccessfulJson<T>) };
+      const response = request(url, { signal: controller.signal }).then(readSuccessfulJson<T>);
+      const timeout = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          const error = new GuardianCenterLoadTimeoutError();
+          controller.abort(error);
+          reject(error);
+        }, timeoutMs);
+      });
+      return { value: await Promise.race([response, timeout]) };
     } catch (error) {
       lastError = error;
       if (required && error instanceof GuardianCenterAuthError) throw error;
-      if (signal.aborted || error instanceof GuardianCenterAuthError || attempt === 1) break;
+      if (
+        error instanceof GuardianCenterLoadTimeoutError
+        || error instanceof GuardianCenterAuthError
+        || attempt === 1
+      ) break;
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
     }
   }
   if (required && lastError) throw lastError;
@@ -91,53 +107,35 @@ export async function loadGuardianCenterData<
   request: GuardianApiRequest,
   timeoutMs = UI_LOAD_TIMEOUT_MS,
 ) {
-  const controller = new AbortController();
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      const error = new GuardianCenterLoadTimeoutError();
-      controller.abort(error);
-      reject(error);
-    }, timeoutMs);
-  });
+  const config = requestWithRetry<unknown>(
+    request,
+    '/api/guardian/withdraw?action=config',
+    timeoutMs,
+  ).then((result) => ({
+    value: result.value as TWithdrawConfig | undefined,
+    error: result.error,
+  }));
 
-  const config = request('/api/guardian/withdraw?action=config', { signal: controller.signal })
-    .then(async (response) => {
-      const data: unknown = await response.json();
-      if (!isSuccessfulResponse(data) || !data.success) return undefined;
-      return data.data as TWithdrawConfig;
-    })
-    .catch((error) => {
-      if (!controller.signal.aborted) console.error('获取提现配置失败', error);
-      return undefined;
-    });
-
-  const data = Promise.all([
-    requestWithRetry<TProfile>(request, '/api/guardian/profile', controller.signal, true),
-    requestWithRetry<TCommissions>(request, '/api/guardian/commissions', controller.signal),
-    requestWithRetry<TInvitees>(request, '/api/guardian/invites', controller.signal),
-    requestWithRetry<TWithdrawals>(request, '/api/guardian/withdrawals', controller.signal),
-    config.then((value) => ({ value })),
+  // Each endpoint owns its timeout. One slow optional report must not abort
+  // the profile request or turn the whole page into a generic network error.
+  const [profileResult, commissionsResult, inviteesResult, withdrawalsResult, withdrawConfigResult] = await Promise.all([
+    requestWithRetry<TProfile>(request, '/api/guardian/profile', timeoutMs, true),
+    requestWithRetry<TCommissions>(request, '/api/guardian/commissions', timeoutMs),
+    requestWithRetry<TInvitees>(request, '/api/guardian/invites', timeoutMs),
+    requestWithRetry<TWithdrawals>(request, '/api/guardian/withdrawals', timeoutMs),
+    config,
   ]);
 
-  try {
-    const [profileResult, commissionsResult, inviteesResult, withdrawalsResult, withdrawConfigResult] = await Promise.race([
-      data,
-      timeout,
-    ]);
-    const profile = profileResult.value as TProfile;
-    const errors = [commissionsResult, inviteesResult, withdrawalsResult]
-      .map((result, index) => result.error ? `${['佣金', '邀请记录', '提现记录'][index]}：${result.error}` : '')
-      .filter(Boolean);
-    return {
-      profile,
-      commissions: (commissionsResult.value || []) as TCommissions,
-      invitees: (inviteesResult.value || []) as TInvitees,
-      withdrawals: (withdrawalsResult.value || []) as TWithdrawals,
-      withdrawConfig: withdrawConfigResult.value,
-      errors,
-    };
-  } finally {
-    if (timeoutId) clearTimeout(timeoutId);
-  }
+  const profile = profileResult.value as TProfile;
+  const errors = [commissionsResult, inviteesResult, withdrawalsResult]
+    .map((result, index) => result.error ? `${['佣金', '邀请记录', '提现记录'][index]}：${result.error}` : '')
+    .filter(Boolean);
+  return {
+    profile,
+    commissions: (commissionsResult.value || []) as TCommissions,
+    invitees: (inviteesResult.value || []) as TInvitees,
+    withdrawals: (withdrawalsResult.value || []) as TWithdrawals,
+    withdrawConfig: withdrawConfigResult.value,
+    errors,
+  };
 }
