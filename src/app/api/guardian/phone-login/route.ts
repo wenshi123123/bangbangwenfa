@@ -5,6 +5,19 @@ import { generateToken } from '@/lib/auth/token';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
 import { randomBytes } from 'crypto';
 
+const AUTH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60;
+
+function attachAuthCookie(response: NextResponse, token: string) {
+  response.cookies.set('token', token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: AUTH_COOKIE_MAX_AGE,
+  });
+  return response;
+}
+
 // 生成邀请码
 function generateInviteCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -132,7 +145,7 @@ export async function POST(request: NextRequest) {
     });
 
     // 返回登录结果
-    return NextResponse.json({ 
+    return attachAuthCookie(NextResponse.json({
       success: true, 
       data: {
         id: guardian!.id,
@@ -148,7 +161,7 @@ export async function POST(request: NextRequest) {
         token
       },
       isNewUser
-    });
+    }), token);
 
   } catch (error) {
     console.error('守护者登录失败:', error);
