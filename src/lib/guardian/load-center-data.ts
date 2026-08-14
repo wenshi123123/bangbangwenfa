@@ -91,39 +91,60 @@ export async function loadGuardianCenterData<
   request: GuardianApiRequest,
   timeoutMs = UI_LOAD_TIMEOUT_MS,
 ) {
-  const controller = new AbortController();
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => {
+  const profileController = new AbortController();
+  const optionalController = new AbortController();
+  const controller = profileController;
+  let profileTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  let optionalTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  const profileTimeout = new Promise<never>((_, reject) => {
+    profileTimeoutId = setTimeout(() => {
       const error = new GuardianCenterLoadTimeoutError();
       controller.abort(error);
+      optionalController.abort(error);
       reject(error);
     }, timeoutMs);
   });
+  const optionalTimeout = new Promise<{
+    value?: undefined;
+    error: string;
+  }[]>((resolve) => {
+    optionalTimeoutId = setTimeout(() => {
+      optionalController.abort(new GuardianCenterLoadTimeoutError());
+      resolve([
+        { error: '数据加载超时' },
+        { error: '数据加载超时' },
+        { error: '数据加载超时' },
+        { value: undefined, error: '数据加载超时' },
+      ]);
+    }, timeoutMs);
+  });
 
-  const config = request('/api/guardian/withdraw?action=config', { signal: controller.signal })
+  const config = request('/api/guardian/withdraw?action=config', { signal: optionalController.signal })
     .then(async (response) => {
       const data: unknown = await response.json();
       if (!isSuccessfulResponse(data) || !data.success) return undefined;
       return data.data as TWithdrawConfig;
     })
     .catch((error) => {
-      if (!controller.signal.aborted) console.error('获取提现配置失败', error);
+      if (!optionalController.signal.aborted) console.error('获取提现配置失败', error);
       return undefined;
     });
 
-  const data = Promise.all([
-    requestWithRetry<TProfile>(request, '/api/guardian/profile', controller.signal, true),
-    requestWithRetry<TCommissions>(request, '/api/guardian/commissions', controller.signal),
-    requestWithRetry<TInvitees>(request, '/api/guardian/invites', controller.signal),
-    requestWithRetry<TWithdrawals>(request, '/api/guardian/withdrawals', controller.signal),
+  const profilePromise = requestWithRetry<TProfile>(request, '/api/guardian/profile', profileController.signal, true);
+  const optionalPromise = Promise.all([
+    requestWithRetry<TCommissions>(request, '/api/guardian/commissions', optionalController.signal),
+    requestWithRetry<TInvitees>(request, '/api/guardian/invites', optionalController.signal),
+    requestWithRetry<TWithdrawals>(request, '/api/guardian/withdrawals', optionalController.signal),
     config.then((value) => ({ value })),
   ]);
 
   try {
-    const [profileResult, commissionsResult, inviteesResult, withdrawalsResult, withdrawConfigResult] = await Promise.race([
-      data,
-      timeout,
+    // The profile is required to identify the guardian; secondary panels must
+    // not block the whole page when one database query is slow.
+    const profileResult = await Promise.race([profilePromise, profileTimeout]);
+    const [commissionsResult, inviteesResult, withdrawalsResult, withdrawConfigResult] = await Promise.race([
+      optionalPromise,
+      optionalTimeout,
     ]);
     const profile = profileResult.value as TProfile;
     const errors = [commissionsResult, inviteesResult, withdrawalsResult]
@@ -138,6 +159,7 @@ export async function loadGuardianCenterData<
       errors,
     };
   } finally {
-    if (timeoutId) clearTimeout(timeoutId);
+    if (profileTimeoutId) clearTimeout(profileTimeoutId);
+    if (optionalTimeoutId) clearTimeout(optionalTimeoutId);
   }
 }

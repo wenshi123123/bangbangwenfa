@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
+import { normalizeGuardianNumber } from '@/lib/guardian/format';
+
+const GUARDIAN_PROFILE_FIELDS = 'id,nickname,avatar_url,invite_code,total_invites,valid_invites,total_commission,available_commission,withdrawn_commission,wechat_qrcode,wechat_account,status,ban_reason,created_at';
 
 // GET /api/guardian/profile - 获取守护者资料（需要JWT认证）
 export async function GET(request: NextRequest) {
@@ -16,7 +19,7 @@ export async function GET(request: NextRequest) {
     if (auth.userType === 'guardian' && auth.guardianId) {
       const { data: guardian, error } = await supabase
         .from('guardian_users')
-        .select('*')
+        .select(GUARDIAN_PROFILE_FIELDS)
         .eq('id', auth.guardianId)
         .single();
       
@@ -34,7 +37,7 @@ export async function GET(request: NextRequest) {
     if (auth.userId) {
       const { data: guardian, error } = await supabase
         .from('guardian_users')
-        .select('*')
+        .select(GUARDIAN_PROFILE_FIELDS)
         .eq('user_id', String(auth.userId))
         .single();
       
@@ -74,11 +77,11 @@ function formatGuardianResponse(guardian: any) {
       nickname: guardian.nickname,
       avatar_url: guardian.avatar_url,
       invite_code: guardian.invite_code,
-      total_invites: guardian.total_invites,
-      valid_invites: guardian.valid_invites,
-      total_commission: guardian.total_commission,
-      available_commission: guardian.available_commission,
-      withdrawn_commission: guardian.withdrawn_commission,
+      total_invites: normalizeGuardianNumber(guardian.total_invites),
+      valid_invites: normalizeGuardianNumber(guardian.valid_invites),
+      total_commission: normalizeGuardianNumber(guardian.total_commission),
+      available_commission: normalizeGuardianNumber(guardian.available_commission),
+      withdrawn_commission: normalizeGuardianNumber(guardian.withdrawn_commission),
       wechat_account: guardian.wechat_qrcode || guardian.wechat_account,
       wechat_qrcode: guardian.wechat_qrcode,
       status: guardian.status,
@@ -86,4 +89,3 @@ function formatGuardianResponse(guardian: any) {
     }
   });
 }
-

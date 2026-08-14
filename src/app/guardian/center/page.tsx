@@ -20,6 +20,7 @@ import { GuardianLoginForm } from '@/components/guardian/guardian-login-form';
 import { GuardianIdentityHero } from '@/components/guardian/guardian-identity-hero';
 import { GuardianShareDrawer } from '@/components/guardian/guardian-share-drawer';
 import { copyTextWithFallback } from '@/lib/browser/copy-to-clipboard';
+import { formatGuardianCents } from '@/lib/guardian/format';
 
 interface WithdrawConfig {
   minAmount: number;      // 最低提现金额（分）
@@ -168,13 +169,15 @@ export default function GuardianCenterPage() {
       }
     } catch (error) {
       console.error('获取数据失败:', error);
-      setLoadError(
-        error instanceof GuardianCenterLoadTimeoutError
+      if (error instanceof GuardianCenterLoadTimeoutError && localStorage.getItem('guardian_user')) {
+        setPartialLoadErrors(['守护者资料加载较慢，已保留本地缓存资料']);
+        return;
+      }
+      setLoadError(error instanceof GuardianCenterLoadTimeoutError
+        ? error.message
+        : error instanceof Error
           ? error.message
-          : error instanceof Error
-            ? error.message
-            : '数据加载失败，请检查网络后重试',
-      );
+          : '数据加载失败，请检查网络后重试');
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -272,7 +275,7 @@ export default function GuardianCenterPage() {
     setTimeout(() => setCompletedShareAction(null), 1600);
   };
 
-  const formatMoney = (cents: number) => (cents / 100).toFixed(2);
+  const formatMoney = formatGuardianCents;
 
   // 计算手续费和实际到账金额
   const calculateWithdraw = (amountYuan: number) => {
