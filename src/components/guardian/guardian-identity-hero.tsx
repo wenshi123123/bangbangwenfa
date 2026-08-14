@@ -4,6 +4,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { HeartHandshake, Share2, Users, WalletCards } from 'lucide-react';
+import { formatGuardianCents } from '@/lib/guardian/format';
 
 export type GuardianHeroData = {
   nickname: string;
@@ -14,10 +15,6 @@ export type GuardianHeroData = {
   totalCommission: number;
   availableCommission: number;
 };
-
-function formatMoney(cents: number) {
-  return (cents / 100).toFixed(2);
-}
 
 export function GuardianIdentityHero({ guardian, onInvite }: {
   guardian: GuardianHeroData;
@@ -62,8 +59,8 @@ export function GuardianIdentityHero({ guardian, onInvite }: {
 
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
           <div className="rounded-xl bg-white/65 px-2 py-3"><p className="text-lg font-semibold text-[#3F3028]">{guardian.validInvites}</p><p className="mt-0.5 text-xs text-[#8C6C59]">完成服务的亲友</p></div>
-          <div className="rounded-xl bg-white/65 px-2 py-3"><p className="text-lg font-semibold text-[#3F6A5A]">¥{formatMoney(guardian.totalCommission)}</p><p className="mt-0.5 text-xs text-[#8C6C59]">累计守护回馈</p></div>
-          <div className="rounded-xl bg-white/65 px-2 py-3"><div className="flex justify-center text-[#A96820]" aria-hidden="true"><WalletCards className="h-4 w-4" /></div><p className="mt-0.5 text-lg font-semibold text-[#3F3028]">¥{formatMoney(guardian.availableCommission)}</p><p className="mt-0.5 text-xs text-[#8C6C59]">可提取回馈</p></div>
+          <div className="rounded-xl bg-white/65 px-2 py-3"><p className="text-lg font-semibold text-[#3F6A5A]">¥{formatGuardianCents(guardian.totalCommission)}</p><p className="mt-0.5 text-xs text-[#8C6C59]">累计守护回馈</p></div>
+          <div className="rounded-xl bg-white/65 px-2 py-3"><div className="flex justify-center text-[#A96820]" aria-hidden="true"><WalletCards className="h-4 w-4" /></div><p className="mt-0.5 text-lg font-semibold text-[#3F3028]">¥{formatGuardianCents(guardian.availableCommission)}</p><p className="mt-0.5 text-xs text-[#8C6C59]">可提取回馈</p></div>
         </div>
       </div>
     </section>

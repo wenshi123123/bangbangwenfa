@@ -67,6 +67,19 @@ void (async () => {
   assert.deepEqual(partial.commissions, []);
   assert.match(partial.errors[0], /佣金/);
 
+  const partialOnSlowOptionalData = await loadGuardianCenterData(
+    async (url, init) => {
+      if (url === '/api/guardian/profile') return successfulResponse({ id: 3, invite_code: 'GHI' });
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true });
+      });
+    },
+    20,
+  );
+  assert.deepEqual(partialOnSlowOptionalData.profile, { id: 3, invite_code: 'GHI' });
+  assert.deepEqual(partialOnSlowOptionalData.commissions, []);
+  assert.match(partialOnSlowOptionalData.errors.join('；'), /超时/);
+
   await assert.rejects(
     () => loadGuardianCenterData(
       async (url) => url === '/api/guardian/profile'
