@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
 import { normalizeGuardianNumber } from '@/lib/guardian/format';
 
-const GUARDIAN_PROFILE_FIELDS = 'id,nickname,avatar_url,invite_code,total_invites,valid_invites,total_commission,available_commission,withdrawn_commission,wechat_qrcode,wechat_account,status,ban_reason,created_at';
+const GUARDIAN_PROFILE_FIELDS = 'id,nickname,avatar_url,invite_code,total_invites,valid_invites,total_commission,available_commission,withdrawn_commission,wechat_account,status,ban_reason,created_at';
 
 // GET /api/guardian/profile - 获取守护者资料（需要JWT认证）
 export async function GET(request: NextRequest) {
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ success: false, error: '查询失败' }, { status: 500 });
       }
       
-      return formatGuardianResponse(guardian);
+      return formatGuardianResponse(supabase, guardian);
     }
     
     // 普通用户查询自己是否是守护者
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ success: false, error: '查询失败' }, { status: 500 });
       }
       
-      return formatGuardianResponse(guardian);
+      return formatGuardianResponse(supabase, guardian);
     }
     
     return NextResponse.json({ success: false, error: '无法获取用户信息' }, { status: 400 });
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
 }
 
 // 格式化守护者响应
-function formatGuardianResponse(guardian: any) {
+async function formatGuardianResponse(supabase: ReturnType<typeof getSupabaseAdmin>, guardian: any) {
   // 检查账号状态
   if (guardian.status === 'banned') {
     return NextResponse.json({ 
@@ -70,6 +70,20 @@ function formatGuardianResponse(guardian: any) {
     }, { status: 403 });
   }
   
+  // Only fetch the row identity to determine whether a QR code exists. This
+  // avoids loading a potentially multi-megabyte base64 value into the profile
+  // response; the actual QR code is fetched by the authorized lazy endpoint.
+  const { data: qrcodeMarker, error: qrcodeMarkerError } = await supabase
+    .from('guardian_users')
+    .select('id')
+    .eq('id', guardian.id)
+    .not('wechat_qrcode', 'is', null)
+    .maybeSingle();
+
+  if (qrcodeMarkerError) {
+    console.warn('检查守护者收款码状态失败:', qrcodeMarkerError.message);
+  }
+
   return NextResponse.json({
     success: true,
     data: {
@@ -82,8 +96,8 @@ function formatGuardianResponse(guardian: any) {
       total_commission: normalizeGuardianNumber(guardian.total_commission),
       available_commission: normalizeGuardianNumber(guardian.available_commission),
       withdrawn_commission: normalizeGuardianNumber(guardian.withdrawn_commission),
-      wechat_account: guardian.wechat_qrcode || guardian.wechat_account,
-      wechat_qrcode: guardian.wechat_qrcode,
+      wechat_account: guardian.wechat_account || null,
+      has_wechat_payment_method: Boolean(guardian.wechat_account || qrcodeMarker),
       status: guardian.status,
       created_at: guardian.created_at
     }

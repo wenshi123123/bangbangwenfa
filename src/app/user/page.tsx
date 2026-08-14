@@ -144,6 +144,17 @@ function UserCenterPageContent() {
     return Date.now() <= new Date(order.paidAt).getTime() + 24 * 60 * 60 * 1000;
   };
 
+  const closeOrderDetail = useCallback(() => {
+    setShowOrderDetail(null);
+    setTargetOrderId(null);
+
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('orderId');
+      router.replace(`${url.pathname}${url.search}${url.hash}`, { scroll: false });
+    }
+  }, [router]);
+
   useEffect(() => {
     if (effectiveUser?.id && effectiveLoggedIn) {
       loadOrders();
@@ -510,19 +521,21 @@ function UserCenterPageContent() {
       </Dialog>
 
       {/* 订单详情弹窗 */}
-      <Dialog open={!!showOrderDetail} onOpenChange={() => setShowOrderDetail(null)}>
+      <Dialog
+        open={!!showOrderDetail}
+        onOpenChange={(open) => {
+          if (!open) closeOrderDetail();
+        }}
+      >
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShoppingCart className="w-5 h-5" />
               订单详情
             </DialogTitle>
-            <button 
-              onClick={() => setShowOrderDetail(null)}
-              className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <DialogDescription className="sr-only">
+              当前订单的支付状态、金额和时间信息
+            </DialogDescription>
           </DialogHeader>
           {showOrderDetail && (
             <div className="space-y-3 pt-2">

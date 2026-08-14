@@ -39,7 +39,7 @@ interface GuardianData {
   available_commission: number;
   withdrawn_commission: number;
   wechat_account?: string;
-  wechat_qrcode?: string;
+  has_wechat_payment_method?: boolean;
   wechat_qrcode_updated_at?: string;
 }
 
@@ -82,6 +82,9 @@ export default function GuardianCenterPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'commissions' | 'invitees' | 'withdrawals'>('overview');
   const [refreshing, setRefreshing] = useState(false);
   const [qrcodeUrl, setQrcodeUrl] = useState<string>('');
+  const [currentWechatQrcode, setCurrentWechatQrcode] = useState<string>('');
+  const [paymentQrcodeLoading, setPaymentQrcodeLoading] = useState(false);
+  const [paymentQrcodeError, setPaymentQrcodeError] = useState('');
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState<string>('');
   const [withdrawLoading, setWithdrawLoading] = useState(false);
@@ -454,10 +457,42 @@ export default function GuardianCenterPage() {
     }
   };
 
+  const loadPaymentQrcode = async () => {
+    setPaymentQrcodeLoading(true);
+    setPaymentQrcodeError('');
+    try {
+      const response = await apiRequest('/api/guardian/payment-qrcode');
+      const result = await response.json();
+      if (!response.ok || !result.success || !result.data?.qrcode) {
+        setPaymentQrcodeError(result.error || '当前收款码暂时无法加载');
+        return;
+      }
+      setCurrentWechatQrcode(result.data.qrcode);
+    } catch (error) {
+      console.error('加载收款码失败:', error);
+      setPaymentQrcodeError('网络错误，请稍后重试');
+    } finally {
+      setPaymentQrcodeLoading(false);
+    }
+  };
+
+  const openBindWechatModal = () => {
+    setShowBindWechatModal(true);
+    setBindError('');
+    setBindCooldown(0);
+    setBindSuccess(false);
+    setWechatQrcode('');
+    setCurrentWechatQrcode('');
+    setPaymentQrcodeError('');
+    if (guardian?.has_wechat_payment_method) {
+      void loadPaymentQrcode();
+    }
+  };
+
   const openWithdrawModal = async () => {
     // 检查是否绑定微信收款码
-    if (!guardian?.wechat_account) {
-      setShowBindWechatModal(true);
+    if (!guardian?.has_wechat_payment_method) {
+      openBindWechatModal();
       return;
     }
     
@@ -516,10 +551,11 @@ export default function GuardianCenterPage() {
         setBindSuccess(true);
         // 更新本地存储中的守护者信息
         if (guardian) {
-          const updatedGuardian = { ...guardian, wechat_account: result.wechat_qrcode || wechatQrcode, wechat_qrcode: result.wechat_qrcode || wechatQrcode };
+          const updatedGuardian = { ...guardian, has_wechat_payment_method: true };
           setGuardian(updatedGuardian);
           persistGuardianCache(localStorage, updatedGuardian);
         }
+        setCurrentWechatQrcode(result.wechat_qrcode || wechatQrcode);
       } else if (result.remainingSeconds) {
         // 冷却期处理
         setBindCooldown(result.remainingSeconds);
@@ -833,7 +869,7 @@ export default function GuardianCenterPage() {
       </div>
       
       {/* 微信收款码绑定入口 */}
-      {(!guardian?.wechat_account && !guardian?.wechat_qrcode && !hasPendingWithdraw) && (
+      {(!guardian?.has_wechat_payment_method && !hasPendingWithdraw) && (
         <div className="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-200">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -843,7 +879,7 @@ export default function GuardianCenterPage() {
               <p className="text-sm font-medium text-amber-800 mb-1">尚未绑定微信收款方式</p>
               <p className="text-xs text-amber-600 mb-3">首次提现前需要绑定您的微信收款码</p>
               <Button 
-                onClick={() => { setShowBindWechatModal(true); setBindError(''); setBindCooldown(0); setBindSuccess(false); }}
+                onClick={openBindWechatModal}
                 variant="outline"
                 className="border-amber-300 text-amber-700 hover:bg-amber-100"
                 size="sm"
@@ -856,7 +892,7 @@ export default function GuardianCenterPage() {
       )}
 
       {/* 已绑定微信收款方式入口（可更换） */}
-      {(guardian?.wechat_account || guardian?.wechat_qrcode) && !hasPendingWithdraw && (
+      {(guardian?.has_wechat_payment_method) && !hasPendingWithdraw && (
         <div className="mt-4 p-4 bg-green-50 rounded-xl border border-green-200">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -866,7 +902,7 @@ export default function GuardianCenterPage() {
               <p className="text-sm font-medium text-green-800 mb-1">已绑定微信收款方式</p>
               <p className="text-xs text-green-600 mb-3">您可以更换微信收款码（每7天限1次）</p>
               <Button 
-                onClick={() => { setShowBindWechatModal(true); setBindError(''); setBindCooldown(0); setBindSuccess(false); }}
+                onClick={openBindWechatModal}
                 variant="outline"
                 className="border-green-300 text-green-700 hover:bg-green-100"
                 size="sm"
@@ -1307,7 +1343,7 @@ export default function GuardianCenterPage() {
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
               <h4 className="text-lg font-bold text-green-600 mb-2">
-                {guardian?.wechat_account || guardian?.wechat_qrcode ? '收款码更换成功' : '绑定成功'}
+                {guardian?.has_wechat_payment_method ? '收款码更换成功' : '绑定成功'}
               </h4>
               <p className="text-sm text-muted-foreground mb-6">
                 现在可以发起提现了
@@ -1329,19 +1365,21 @@ export default function GuardianCenterPage() {
             /* 绑定/更换表单 */
             <div className="space-y-5">
               {/* 已绑定的当前收款码展示 */}
-              {(guardian?.wechat_qrcode || guardian?.wechat_account) && (
+              {guardian?.has_wechat_payment_method && (
                 <div className="bg-green-50 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <CheckCircle className="w-4 h-4 text-green-600" />
                     <span className="text-sm font-semibold text-green-700">当前收款码</span>
                   </div>
-                  <div className="flex justify-center mb-3">
-                    <img
-                      src={guardian.wechat_qrcode || guardian.wechat_account}
-                      alt="当前收款码"
-                      className="w-32 h-32 object-contain rounded-lg border-2 border-green-200"
-                    />
-                  </div>
+                  {paymentQrcodeLoading ? (
+                    <div className="flex justify-center py-12 text-sm text-green-700">正在加载当前收款码...</div>
+                  ) : currentWechatQrcode ? (
+                    <div className="flex justify-center mb-3">
+                      <img src={currentWechatQrcode} alt="当前收款码" className="w-32 h-32 object-contain rounded-lg border-2 border-green-200" />
+                    </div>
+                  ) : paymentQrcodeError ? (
+                    <p className="text-sm text-red-600 text-center mb-3">{paymentQrcodeError}</p>
+                  ) : null}
                   <p className="text-xs text-green-600 text-center">
                     您可以上传新的收款码进行更换（每7天限1次）
                   </p>
@@ -1383,10 +1421,10 @@ export default function GuardianCenterPage() {
                       <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-blue-700">
                         <p className="font-medium mb-1">
-                          {guardian?.wechat_qrcode || guardian?.wechat_account ? '更换收款码' : '为什么要绑定收款码？'}
+                          {guardian?.has_wechat_payment_method ? '更换收款码' : '为什么要绑定收款码？'}
                         </p>
                         <p className="text-blue-600/80">
-                          {guardian?.wechat_qrcode || guardian?.wechat_account
+                          {guardian?.has_wechat_payment_method
                             ? '上传新的收款码图片即可更换，更换后7天内不可再次更换'
                             : '提现资金将直接转入您绑定的微信收款码，方便快捷。'}
                         </p>
@@ -1397,7 +1435,7 @@ export default function GuardianCenterPage() {
                   {/* 二维码上传区域 */}
                   <div>
                     <label className="block text-sm text-muted-foreground mb-2">
-                      {guardian?.wechat_qrcode || guardian?.wechat_account ? '上传新收款码' : '上传微信收款码'}
+                      {guardian?.has_wechat_payment_method ? '上传新收款码' : '上传微信收款码'}
                     </label>
                     <input
                       ref={fileInputRef}
@@ -1437,7 +1475,7 @@ export default function GuardianCenterPage() {
                         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         提交中...
                       </span>
-                    ) : guardian?.wechat_qrcode || guardian?.wechat_account ? '确认更换' : '确认绑定'}
+                    ) : guardian?.has_wechat_payment_method ? '确认更换' : '确认绑定'}
                   </Button>
                 </>
               )}
