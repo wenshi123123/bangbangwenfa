@@ -50,6 +50,10 @@ export async function POST(request: NextRequest) {
 
   try {
     // 申请的选择只能来自服务端的登录用户；请求体与 URL 参数均不参与授权。
+    const body = await request.json().catch(() => ({}));
+    const requestedApplicationId = typeof body.applicationId === 'string' || typeof body.applicationId === 'number'
+      ? String(body.applicationId)
+      : null;
     const { data: applications, error: applicationError } = await supabase
       .from('lawyer_applications')
       .select('id, user_id, package_type, package_price, payment_status, review_status, created_at')
@@ -59,18 +63,36 @@ export async function POST(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(2);
 
+    let applicationCandidates = applications || [];
+    if (requestedApplicationId) {
+      const { data: requestedApplication, error: requestedApplicationError } = await supabase
+        .from('lawyer_applications')
+        .select('id, user_id, package_type, package_price, payment_status, review_status, created_at')
+        .eq('id', requestedApplicationId)
+        .eq('user_id', String(auth.user.id))
+        .maybeSingle();
+      if (requestedApplicationError) {
+        console.error('[Lawyer/Pay/Create] 查询指定申请失败:', requestedApplicationError);
+        return NextResponse.json({ success: false, error: '查询申请失败' }, { status: 500 });
+      }
+      if (!requestedApplication) {
+        return NextResponse.json({ success: false, error: '申请不存在或不属于当前账号', code: 'APPLICATION_NOT_FOUND' }, { status: 404 });
+      }
+      applicationCandidates = [requestedApplication];
+    }
+
     if (applicationError) {
       console.error('[Lawyer/Pay/Create] 查询申请失败:', applicationError);
       return NextResponse.json({ success: false, error: '查询申请失败' }, { status: 500 });
     }
-    if (!applications || applications.length === 0) {
+    if (applicationCandidates.length === 0) {
       return NextResponse.json({ success: false, error: '没有可支付的入驻申请', code: 'NO_PAYABLE_APPLICATION' }, { status: 409 });
     }
-    if (applications.length > 1) {
+    if (applicationCandidates.length > 1) {
       console.error('[Lawyer/Pay/Create] 发现同一用户多条可支付申请，拒绝自动选择:', { userId: auth.user.id });
       return NextResponse.json({ success: false, error: '存在多条待支付申请，请联系客服处理', code: 'MULTIPLE_PAYABLE_APPLICATIONS' }, { status: 409 });
     }
-    const application = applications[0];
+    const application = applicationCandidates[0];
     if (application.payment_status === 'paid') {
       return NextResponse.json({
         success: true,

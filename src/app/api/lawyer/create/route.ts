@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { notifyOrder } from '@/lib/notify/webhook';
+import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware';
 import { LAWYER_ONBOARDING_PACKAGES, validateUploadRequirements } from '@/lib/lawyer/package-config';
 import { loadLawyerPackagePrices } from '@/lib/lawyer/price-config';
 import { resolveUserNickname } from '@/lib/user/resolve-nickname';
@@ -10,6 +11,11 @@ import { resolveUserNickname } from '@/lib/user/resolve-nickname';
  */
 export async function POST(request: NextRequest) {
   try {
+    const auth = authenticateRequest(request);
+    if (!auth.success || !auth.userId) {
+      return unauthorizedResponse(auth.error || '请先登录');
+    }
+
     const body = await request.json();
     const {
       name,
@@ -27,21 +33,16 @@ export async function POST(request: NextRequest) {
       idCardImages,
       educationImages,
       selectedPackages,
-      userId: bodyUserId,
+      applicationMode = 'paid',
+      experienceReason,
     } = body;
-
-    // 🔧 兜底：如果 body 中没有 userId，尝试从 x-user-info header 获取
-    let userId = bodyUserId;
-    if (!userId) {
-      try {
-        const userInfoHeader = request.headers.get('x-user-info');
-        if (userInfoHeader) {
-          const userInfo = JSON.parse(userInfoHeader);
-          userId = userInfo.id;
-        }
-      } catch {
-        // header 解析失败，忽略
-      }
+    const userId = String(auth.userId);
+    const isComplimentaryRequest = applicationMode === 'complimentary';
+    if (!['paid', 'complimentary'].includes(applicationMode)) {
+      return NextResponse.json({ success: false, error: '入驻方式无效' }, { status: 400 });
+    }
+    if (isComplimentaryRequest && (typeof experienceReason !== 'string' || !experienceReason.trim())) {
+      return NextResponse.json({ success: false, error: '请填写免费体验申请理由' }, { status: 400 });
     }
 
     // 验证必填字段
@@ -90,17 +91,21 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = getSupabaseAdmin();
-    let packagePrices;
-    try {
-      packagePrices = await loadLawyerPackagePrices(supabase, selectedPackages);
-    } catch (priceError) {
-      return NextResponse.json(
-        { success: false, error: '律师入驻套餐价格尚未配置，请联系管理员' },
-        { status: 503 },
-      );
+    let packagePrices = new Map<string, { price: number }>();
+    if (!isComplimentaryRequest) {
+      try {
+        packagePrices = await loadLawyerPackagePrices(supabase, selectedPackages);
+      } catch (priceError) {
+        return NextResponse.json(
+          { success: false, error: '律师入驻套餐价格尚未配置，请联系管理员' },
+          { status: 503 },
+        );
+      }
     }
     const packageType = selectedPackages[0];
-    const packagePrice = selectedPackages.reduce((total, packageId) => total + packagePrices.get(packageId)!.price, 0);
+    const packagePrice = isComplimentaryRequest
+      ? 0
+      : selectedPackages.reduce((total, packageId) => total + packagePrices.get(packageId)!.price, 0);
 
     // 检查是否已是正式律师（在 lawyers 表中）
     if (userId) {
@@ -188,6 +193,8 @@ export async function POST(request: NextRequest) {
           payment_status: 'pending',
           user_id: userId,
           review_status: 'pending',
+          approval_mode: isComplimentaryRequest ? 'complimentary_requested' : null,
+          review_remark: isComplimentaryRequest ? experienceReason.trim() : null,
         })
         .select()
         .single();

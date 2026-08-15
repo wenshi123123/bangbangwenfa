@@ -82,7 +82,6 @@ export default function LawyerDetailPage() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showComplimentaryModal, setShowComplimentaryModal] = useState(false);
   const [complimentaryReason, setComplimentaryReason] = useState('');
-  const [complimentaryCode, setComplimentaryCode] = useState('');
   const [complimentaryDays, setComplimentaryDays] = useState('30');
 
   useEffect(() => {
@@ -108,10 +107,11 @@ export default function LawyerDetailPage() {
       alert('请填写拒绝原因');
       return;
     }
-    if (action === 'approve_complimentary' && (!complimentaryReason.trim() || !complimentaryCode || !complimentaryDays)) {
-      alert('请填写赠送体验原因、暗号和有效期');
+    if (action === 'approve_complimentary' && (!complimentaryReason.trim() || !complimentaryDays)) {
+      alert('请填写赠送体验原因和有效期');
       return;
     }
+    if (action === 'approve_complimentary' && !window.confirm('确认向该律师赠送体验资格吗？此操作会生成一笔 ¥0.00 的体验记录。')) return;
 
     setActionLoading(true);
     try {
@@ -124,7 +124,6 @@ export default function LawyerDetailPage() {
           id: id,
           action,
           reason: rejectReason,
-          complimentaryCode,
           complimentaryDays: Number(complimentaryDays),
           ...(action === 'approve_complimentary' ? { reason: complimentaryReason } : {}),
         })
@@ -457,9 +456,8 @@ export default function LawyerDetailPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
             <h3 className="text-lg font-semibold text-slate-800 mb-2">赠送体验开通</h3>
-            <p className="text-sm text-slate-500 mb-4">此操作不会记为已付款，会生成一笔 ¥0.00 的体验订单。</p>
+            <p className="text-sm text-slate-500 mb-4">此操作需要管理员权限，不会记为已付款，会生成一笔 ¥0.00 的体验订单。</p>
             <textarea value={complimentaryReason} onChange={(event) => setComplimentaryReason(event.target.value)} placeholder="请填写赠送原因..." className="w-full h-24 px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none mb-3" />
-            <input type="password" value={complimentaryCode} onChange={(event) => setComplimentaryCode(event.target.value)} placeholder="赠送体验暗号" className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 mb-3" />
             <input type="number" min="1" max="365" value={complimentaryDays} onChange={(event) => setComplimentaryDays(event.target.value)} placeholder="体验天数" className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500" />
             <div className="flex gap-3 mt-4">
               <button onClick={() => setShowComplimentaryModal(false)} className="flex-1 px-4 py-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">取消</button>

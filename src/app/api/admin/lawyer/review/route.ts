@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
 import { getSupabaseAdmin } from '@/storage/database/supabase-client';
 import { requireAdminAuth, adminUnauthorizedResponse } from '@/lib/auth/admin-middleware';
 import { encryptFields, LAWYER_SENSITIVE_FIELDS } from '@/lib/crypto/encryption';
@@ -29,14 +28,6 @@ function selectedMembershipPackages(application: { selected_packages?: unknown; 
   }
   if (packages.length === 0 && application.package_type) packages = [application.package_type];
   return [...new Set(packages.map(normalizeMembershipRecordPackageType))];
-}
-
-function validComplimentaryCode(value: unknown) {
-  const configuredCode = process.env.COMPLIMENTARY_APPROVAL_CODE;
-  if (!configuredCode || typeof value !== 'string') return false;
-  const actual = Buffer.from(value);
-  const expected = Buffer.from(configuredCode);
-  return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
 }
 
 async function sendNotification(supabase: any, userId: string, type: string, content: string, applicationId: string | number) {
@@ -94,9 +85,6 @@ export async function PUT(request: NextRequest) {
       if (!reason) return NextResponse.json({ success: false, error: '请填写赠送体验开通原因' }, { status: 400 });
       if (!Number.isInteger(complimentaryDays) || complimentaryDays < 1 || complimentaryDays > 365) {
         return NextResponse.json({ success: false, error: '体验有效期必须为 1 至 365 天' }, { status: 400 });
-      }
-      if (!validComplimentaryCode(body.complimentaryCode)) {
-        return NextResponse.json({ success: false, error: '赠送体验暗号不正确或尚未配置' }, { status: 403 });
       }
     }
 

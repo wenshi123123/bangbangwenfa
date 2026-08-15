@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Check, Loader2 } from 'lucide-react';
 import { LawyerFormData } from './lawyer-join-wizard';
 import { LAWYER_ONBOARDING_PACKAGES } from '@/lib/lawyer/package-config';
+import { getToken } from '@/lib/api/request';
 
 interface LawyerPackageStepProps {
   formData: LawyerFormData;
@@ -27,6 +28,8 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
+  const [applicationMode, setApplicationMode] = useState<'paid' | 'complimentary'>('paid');
+  const [experienceReason, setExperienceReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [priceError, setPriceError] = useState<string | null>(null);
 
@@ -42,16 +45,14 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
           const packagesData = PACKAGE_CONFIGS.map(config => {
             const priceConfig = result.data.find((p: any) => p.plan_id === config.id);
             const price = Number(priceConfig?.price);
-            if (!Number.isFinite(price)) {
-              throw new Error('律师套餐价格尚未配置');
-            }
             return {
               ...config,
-              price,
-              priceDisplay: (price / 100).toFixed(2),
+              price: Number.isFinite(price) ? price : 0,
+              priceDisplay: Number.isFinite(price) ? (price / 100).toFixed(2) : '体验价',
             };
           });
           setPackages(packagesData);
+          if (packagesData.some((pkg) => pkg.price <= 0)) setPriceError('部分律师套餐价格尚未配置');
         } else {
           setPriceError(result.error || '律师套餐价格暂不可用，请稍后重试');
         }
@@ -85,7 +86,7 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
   };
 
   const handleSubmit = async () => {
-    if (priceError) {
+    if (priceError && applicationMode === 'paid') {
       alert(priceError);
       return;
     }
@@ -93,22 +94,17 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
       alert('请至少选择一个套餐');
       return;
     }
+    if (applicationMode === 'complimentary' && !experienceReason.trim()) {
+      alert('请填写免费体验申请理由');
+      return;
+    }
 
     setIsSubmitting(true);
 
     try {
-      // 获取用户信息（同时用于 header 和 body 中的 userId）
-      const userInfoStr = localStorage.getItem('user_info');
-      let userInfo: { id: number } | null = null;
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (userInfoStr) {
-        try {
-          userInfo = JSON.parse(userInfoStr);
-          headers['x-user-info'] = JSON.stringify({ id: userInfo?.id });
-        } catch (e) {
-          console.error('解析用户信息失败:', e);
-        }
-      }
+      const token = getToken();
+      if (token) headers.Authorization = `Bearer ${token}`;
 
       // 使用第一个选中的套餐作为主套餐
       const primaryPkg = packages.find(p => p.id === selectedPackages[0]);
@@ -118,7 +114,8 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
         method: 'POST',
         headers,
         body: JSON.stringify({
-          userId: userInfo?.id,
+          applicationMode,
+          experienceReason: applicationMode === 'complimentary' ? experienceReason.trim() : undefined,
           name: formData.name,
           gender: formData.gender,
           lawFirm: formData.lawFirm,
@@ -355,13 +352,44 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
         </div>
       </div>
 
+      {/* Application Mode */}
+      <div className="mb-6 rounded-xl border border-green-100 bg-green-50/70 p-4">
+        <h4 className="mb-3 font-semibold text-foreground">选择入驻方式</h4>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => setApplicationMode('paid')}
+            className={`rounded-xl border-2 p-3 text-left ${applicationMode === 'paid' ? 'border-green-500 bg-white' : 'border-transparent bg-white/60'}`}
+          >
+            <span className="block font-medium">正常付费入驻</span>
+            <span className="text-xs text-muted-foreground">提交后进入支付流程</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setApplicationMode('complimentary')}
+            className={`rounded-xl border-2 p-3 text-left ${applicationMode === 'complimentary' ? 'border-amber-500 bg-white' : 'border-transparent bg-white/60'}`}
+          >
+            <span className="block font-medium">申请免费体验</span>
+            <span className="text-xs text-muted-foreground">需要管理员审核，不产生支付</span>
+          </button>
+        </div>
+        {applicationMode === 'complimentary' && (
+          <textarea
+            value={experienceReason}
+            onChange={(event) => setExperienceReason(event.target.value)}
+            placeholder="请说明申请免费体验的原因"
+            className="mt-3 min-h-24 w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm outline-none focus:border-amber-400"
+          />
+        )}
+      </div>
+
       {/* Total */}
       <div className="bg-card rounded-xl p-4 mb-6 border border-border">
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground">应付金额</span>
           <div className="text-right">
             <span className="text-3xl font-bold text-green-600">
-              ¥{selectedPackages.length > 0 ? totalPriceDisplay : '0'}
+              {applicationMode === 'complimentary' ? '无需付款' : `¥${selectedPackages.length > 0 ? totalPriceDisplay : '0'}`}
             </span>
           </div>
         </div>
@@ -378,10 +406,10 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
         </button>
         <button
           onClick={handleSubmit}
-          disabled={isSubmitting || selectedPackages.length === 0 || Boolean(priceError)}
+          disabled={isSubmitting || selectedPackages.length === 0 || (applicationMode === 'paid' && Boolean(priceError))}
           className={`
             flex-[2] py-3 sm:py-4 rounded-xl sm:rounded-2xl font-semibold text-sm sm:text-base transition-all duration-300
-            ${isSubmitting || selectedPackages.length === 0 || priceError
+            ${isSubmitting || selectedPackages.length === 0 || (applicationMode === 'paid' && priceError)
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
               : 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 shadow-lg shadow-green-200'
             }
@@ -392,12 +420,12 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
               <Loader2 className="w-4 h-4 animate-spin" />
               提交中...
             </span>
-          ) : priceError ? (
+          ) : priceError && applicationMode === 'paid' ? (
             '套餐价格暂不可用'
           ) : selectedPackages.length === 0 ? (
             '请选择套餐'
           ) : (
-            `立即支付 ¥${totalPriceDisplay}`
+            applicationMode === 'complimentary' ? '提交免费体验申请' : `立即支付 ¥${totalPriceDisplay}`
           )}
         </button>
       </div>

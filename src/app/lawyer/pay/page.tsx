@@ -4,12 +4,13 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { AlertCircle, ArrowLeft, CheckCircle, Loader2, Smartphone } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 import { getLawyerUrl } from '@/lib/site';
 import { WechatExternalBrowserGuide } from '@/components/payment/wechat-external-browser-guide';
 
 type PaymentContext = {
-  status: 'payable' | 'paid' | 'no_payable_application' | 'manual_review_required';
+  status: 'payable' | 'paid' | 'no_payable_application' | 'manual_review_required' | 'complimentary_pending' | 'application_not_found';
   packageType?: string | null;
   amount?: number;
 };
@@ -37,6 +38,7 @@ function money(amount?: number) {
 
 export default function LawyerPayPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [context, setContext] = useState<PaymentContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [authRequired, setAuthRequired] = useState(false);
@@ -53,7 +55,11 @@ export default function LawyerPayPage() {
   useEffect(() => {
     const loadContext = async () => {
       try {
-        const response = await fetch('/api/lawyer/payment-context', { headers: getPaymentRequestHeaders() });
+        const applicationId = searchParams.get('applicationId');
+        const contextUrl = applicationId
+          ? `/api/lawyer/payment-context?applicationId=${encodeURIComponent(applicationId)}`
+          : '/api/lawyer/payment-context';
+        const response = await fetch(contextUrl, { headers: getPaymentRequestHeaders() });
         const result = await response.json();
         if (response.status === 401) {
           setAuthRequired(true);
@@ -72,7 +78,7 @@ export default function LawyerPayPage() {
       }
     };
     loadContext();
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     setIsWechat(/MicroMessenger/i.test(navigator.userAgent || ''));
@@ -109,7 +115,7 @@ export default function LawyerPayPage() {
       const response = await fetch('/api/lawyer/pay/create', {
         method: 'POST',
         headers: getPaymentRequestHeaders(),
-        body: JSON.stringify({}),
+        body: JSON.stringify({ applicationId: searchParams.get('applicationId') }),
       });
       const result = await response.json();
       if (response.status === 401) {
@@ -158,6 +164,9 @@ export default function LawyerPayPage() {
   if (loading) return shell(<><Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-green-600" /><p>正在加载支付信息...</p></>);
   if (authRequired) return shell(<><AlertCircle className="mx-auto mb-4 h-10 w-10 text-amber-500" /><h1 className="mb-2 text-xl font-bold">请先登录</h1><p className="mb-6 text-sm text-muted-foreground">登录后将继续验证您本人的入驻支付申请。</p><Link href={loginUrl} className="block rounded-xl bg-[#C47353] px-5 py-3 font-semibold text-white">前往登录</Link></>);
   if (paid) return shell(<><CheckCircle className="mx-auto mb-4 h-12 w-12 text-green-600" /><h1 className="mb-2 text-xl font-bold">支付成功，等待平台审核</h1><p className="text-sm text-muted-foreground">申请状态已刷新，页面即将跳转。</p></>);
+  if (context?.status === 'complimentary_pending') return shell(<><CheckCircle className="mx-auto mb-4 h-12 w-12 text-amber-500" /><h1 className="mb-2 text-xl font-bold">免费体验申请已提交</h1><p className="text-sm text-muted-foreground">管理员审核通过后，体验资格会自动开通。此申请无需付款。</p></>);
+  if (context?.status === 'application_not_found') return shell(<><AlertCircle className="mx-auto mb-4 h-10 w-10 text-amber-500" /><h1 className="mb-2 text-xl font-bold">申请与当前账号不匹配</h1><p className="mb-6 text-sm text-muted-foreground">请使用提交申请时的账号登录后重试。</p><Link href="/lawyer/pending" className="block rounded-xl border px-5 py-3 font-semibold">查看申请状态</Link></>);
+  if (context?.status === 'manual_review_required') return shell(<><AlertCircle className="mx-auto mb-4 h-10 w-10 text-amber-500" /><h1 className="mb-2 text-xl font-bold">存在多条待处理申请</h1><p className="mb-6 text-sm text-muted-foreground">请前往申请状态页确认要处理的申请，或联系客服协助。</p><Link href="/lawyer/pending" className="block rounded-xl border px-5 py-3 font-semibold">查看申请状态</Link></>);
   if (!context || context.status !== 'payable') return shell(<><AlertCircle className="mx-auto mb-4 h-10 w-10 text-slate-500" /><h1 className="mb-2 text-xl font-bold">暂无可支付申请</h1><p className="mb-6 text-sm text-muted-foreground">请先提交入驻申请，或查看当前申请审核状态。</p><div className="flex gap-3"><Link href="/lawyer/join/apply" className="flex-1 rounded-xl bg-[#C47353] px-3 py-3 text-sm font-semibold text-white">申请入驻</Link><Link href="/lawyer/pending" className="flex-1 rounded-xl border px-3 py-3 text-sm font-semibold">查看申请状态</Link></div></>);
 
   return shell(<>
