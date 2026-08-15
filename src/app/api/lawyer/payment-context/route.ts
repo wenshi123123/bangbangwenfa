@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   const applicationId = request.nextUrl.searchParams.get('applicationId');
   let applicationsQuery = supabase
     .from('lawyer_applications')
-    .select('id, package_type, package_price, payment_status, review_status, approval_mode, review_remark, created_at')
+    .select('id, package_type, package_price, payment_status, review_status, approval_mode, review_remark, complimentary_reason, complimentary_expires_at, created_at')
     .eq('user_id', String(auth.user!.id));
   if (applicationId) {
     applicationsQuery = applicationsQuery.eq('id', applicationId).limit(1);
@@ -69,6 +69,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: { status: 'complimentary_pending', applicationId: application.id },
+    });
+  }
+  if (application?.approval_mode === 'complimentary' && application.review_status === 'approved') {
+    return NextResponse.json({
+      success: true,
+      data: {
+        status: 'complimentary_active',
+        applicationId: application.id,
+        expiresAt: application.complimentary_expires_at || null,
+        reason: application.complimentary_reason || application.review_remark || null,
+      },
     });
   }
   if (!application) {

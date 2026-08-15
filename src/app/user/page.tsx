@@ -31,8 +31,11 @@ interface Order {
     failure_reason?: string | null;
   } | null;
   reviewStatus?: string;  // 仅律师入驻订单有
+  applicationMode?: 'paid' | 'complimentary';
+  reviewRemark?: string | null;
   createdAt: string;
   paidAt: string | null;
+  expiresAt?: string | null;
 }
 
 function UserCenterPageContent() {
@@ -356,7 +359,9 @@ function UserCenterPageContent() {
                       order.reviewStatus === 'approved' ||
                       order.reviewStatus === 'rejected'
                         ? order.reviewStatus
-                        : order.paymentStatus === 'paid'
+                        : order.applicationMode === 'complimentary'
+                          ? 'pending_review'
+                          : order.paymentStatus === 'paid'
                           ? 'pending_review'
                           : 'pending'
                     )
@@ -557,6 +562,17 @@ function UserCenterPageContent() {
                   </span>
                 </div>
               )}
+              {showOrderDetail.applicationMode === 'complimentary' && showOrderDetail.reviewRemark && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  免费体验理由：{showOrderDetail.reviewRemark}
+                </div>
+              )}
+              {showOrderDetail.type === 'complimentary' && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">有效期至</span>
+                  <span className="text-sm">{showOrderDetail.expiresAt ? new Date(showOrderDetail.expiresAt).toLocaleString() : '以页面显示为准'}</span>
+                </div>
+              )}
               <div className="flex justify-between items-center">
                 <span className="text-gray-500">订单类型</span>
                 <span>
@@ -584,7 +600,9 @@ function UserCenterPageContent() {
                   showOrderDetail.paymentStatus === 'refunded' ? 'bg-gray-100 text-gray-700' :
                   'bg-amber-100 text-amber-700'
                 }`}>
-                  {showOrderDetail.paymentStatus === 'paid' ? '已支付' :
+                  {showOrderDetail.type === 'complimentary' ? '已开通' :
+                   showOrderDetail.applicationMode === 'complimentary' ? '无需付款' :
+                   showOrderDetail.paymentStatus === 'paid' ? '已支付' :
                    showOrderDetail.paymentStatus === 'refunded' ? '已退款' : '待支付'}
                 </span>
               </div>
@@ -641,7 +659,7 @@ function UserCenterPageContent() {
               )}
 
               {/* 待支付订单 - 继续支付按钮 */}
-              {(showOrderDetail.paymentStatus === 'pending' || showOrderDetail.paymentStatus === 'paying') && (
+              {showOrderDetail.applicationMode !== 'complimentary' && (showOrderDetail.paymentStatus === 'pending' || showOrderDetail.paymentStatus === 'paying') && (
                 <div className="pt-2">
                   <Button
                     onClick={() => {

@@ -144,13 +144,14 @@ export async function POST(request: NextRequest) {
 
         if (existingLawyer) {
           return NextResponse.json({
-            success: true,
+            success: false,
+            code: 'LAWYER_ALREADY_ACTIVE',
+            error: '您已是认证律师，请前往律师工作台或续费页面。',
             data: {
-              message: '您已是认证律师，无需重复入驻',
               lawyerId: existingLawyer.id,
               isExisting: true,
             },
-          });
+          }, { status: 409 });
         }
       } catch (checkError) {
         // lawyers 表可能不存在或用户不在其中，继续检查申请表
@@ -162,7 +163,7 @@ export async function POST(request: NextRequest) {
       try {
         const { data: existing } = await supabase
           .from('lawyer_applications')
-          .select('id, payment_status, review_status')
+          .select('id, payment_status, review_status, approval_mode')
           .eq('user_id', userId)
           .order('created_at', { ascending: false })
           .limit(1)
@@ -171,23 +172,23 @@ export async function POST(request: NextRequest) {
         if (existing && isBlockingApplication(existing)) {
           if (existing.payment_status === 'paid' && existing.review_status === 'approved') {
             return NextResponse.json({
-              success: true,
-              data: {
-                applicationId: existing.id,
-                status: 'approved',
-                message: '您的入驻申请已审核通过，请前往登录',
-              },
-            });
+              success: false,
+              code: 'LAWYER_ALREADY_ACTIVE',
+              error: '您已是认证律师，请前往律师工作台或续费页面。',
+              data: { applicationId: existing.id, status: 'approved' },
+            }, { status: 409 });
           }
           
           return NextResponse.json({
-            success: true,
+            success: false,
+            code: 'APPLICATION_PENDING',
+            error: '您已有申请正在审核中，请勿重复提交。',
             data: {
               applicationId: existing.id,
-              status: existing.payment_status,
-              message: '您已有进行中的申请',
+              status: 'pending',
+              applicationMode: existing.approval_mode === 'complimentary_requested' ? 'complimentary' : 'paid',
             },
-          });
+          }, { status: 409 });
         }
       } catch (checkError) {
         console.warn('lawyer_applications 表不存在，跳过重复检查:', checkError);
@@ -233,7 +234,7 @@ export async function POST(request: NextRequest) {
         if (error.code === '23505') {
           const { data: pendingApplication } = await supabase
             .from('lawyer_applications')
-            .select('id, payment_status, review_status')
+            .select('id, payment_status, review_status, approval_mode')
             .eq('user_id', userId)
             .eq('review_status', 'pending')
             .eq('payment_status', 'pending')
@@ -241,14 +242,16 @@ export async function POST(request: NextRequest) {
             .limit(1)
             .maybeSingle();
           if (pendingApplication) {
-            return NextResponse.json({
-              success: true,
+              return NextResponse.json({
+              success: false,
+              code: 'APPLICATION_PENDING',
+              error: '您已有申请正在审核中，请勿重复提交。',
               data: {
                 applicationId: pendingApplication.id,
-                status: pendingApplication.payment_status,
-                message: '您已有进行中的申请',
+                status: 'pending',
+                applicationMode: pendingApplication.approval_mode === 'complimentary_requested' ? 'complimentary' : 'paid',
               },
-            });
+            }, { status: 409 });
           }
         }
         return NextResponse.json(

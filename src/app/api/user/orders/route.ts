@@ -102,6 +102,8 @@ export async function GET(request: NextRequest) {
     } else if (lawyerApplications) {
       // 格式化律师入驻订单
       for (const app of lawyerApplications) {
+        // 已开通的免费体验由 lawyer_complimentary_orders 展示，避免重复；
+        // 审核中的免费申请仍需作为 0 元申请记录展示给用户。
         if (app.approval_mode === 'complimentary') continue;
         let selectedPackages: string[] = [];
         if (app.selected_packages) {
@@ -135,6 +137,8 @@ export async function GET(request: NextRequest) {
           servicePrice: app.package_price || 0,
           paymentStatus: app.payment_status,
           reviewStatus: app.review_status,
+          applicationMode: app.approval_mode === 'complimentary_requested' ? 'complimentary' : 'paid',
+          reviewRemark: app.review_remark || null,
           paidAt: app.paid_at,
           refundAt: app.refund_at,
           name: app.name,
@@ -181,7 +185,7 @@ export async function GET(request: NextRequest) {
     // 4. 赠送体验是零金额开通，不混入付款收入，但用户可在订单中查到。
     const { data: complimentaryOrders, error: complimentaryError } = await supabase
       .from('lawyer_complimentary_orders')
-      .select('id, order_no, reason, expires_at, status, created_at, updated_at')
+      .select('id, application_id, order_no, reason, expires_at, status, created_at, updated_at')
       .eq('user_id', String(userId))
       .order('created_at', { ascending: false });
     if (complimentaryError) {
@@ -199,6 +203,7 @@ export async function GET(request: NextRequest) {
           serviceType: 'complimentary',
           servicePrice: 0,
           paymentStatus: order.status,
+          reviewStatus: 'approved',
           expiresAt: order.expires_at,
           contactName: nickname,
           createdAt: order.created_at,

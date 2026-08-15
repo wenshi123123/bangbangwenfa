@@ -31,14 +31,15 @@ function selectedMembershipPackages(application: { selected_packages?: unknown; 
 }
 
 async function sendNotification(supabase: any, userId: string, type: string, content: string, applicationId: string | number) {
-  await supabase.from('notifications').insert({
+  const { error } = await supabase.from('notifications').insert({
     user_id: userId,
     type,
     title: type === 'lawyer_review_failed' ? '入驻审核未通过' : '入驻审核通过',
     content,
-    related_id: applicationId,
+    data: { applicationId: String(applicationId) },
     is_read: false,
   });
+  if (error) console.error('[LawyerReview] 创建用户通知失败:', error);
 }
 
 export async function GET(request: NextRequest) {
@@ -103,11 +104,10 @@ export async function PUT(request: NextRequest) {
         }
       : { review_status: 'rejected', reviewed_at: now.toISOString(), review_remark: reason || '资料不符合要求' };
 
-    const { data: updatedApplication, error: reviewError } = await supabase
-      .from('lawyer_applications').update(reviewUpdate).eq('id', targetId).select().single();
-    if (reviewError) return NextResponse.json({ success: false, error: reviewError.message }, { status: 500 });
-
     if (!isApproval) {
+      const { data: updatedApplication, error: reviewError } = await supabase
+        .from('lawyer_applications').update(reviewUpdate).eq('id', targetId).select().single();
+      if (reviewError) return NextResponse.json({ success: false, error: reviewError.message }, { status: 500 });
       if (application.user_id) await sendNotification(supabase, application.user_id, 'lawyer_review_failed', `抱歉，您的律师入驻申请未通过：${reason || '资料不符合要求'}`, targetId);
       return NextResponse.json({ success: true, message: '已拒绝申请', data: updatedApplication });
     }
@@ -149,22 +149,49 @@ export async function PUT(request: NextRequest) {
 
     const packages = selectedMembershipPackages(application);
     if (!packages.length) return NextResponse.json({ success: false, error: '申请未包含有效套餐' }, { status: 409 });
-    const { error: membershipError } = await supabase.from('membership_records').insert(packages.map((packageType) => ({
-      lawyer_id: lawyerId, package_type: packageType, status: isComplimentary ? 'trial' : 'active',
-      started_at: now.toISOString(), expires_at: expiresAt.toISOString(), source_type: isComplimentary ? 'complimentary_onboarding' : 'paid_onboarding',
-      source_order_no: isComplimentary ? null : application.order_no || null, is_complimentary: isComplimentary, remark: isComplimentary ? reason : null,
-    })));
-    if (membershipError) return NextResponse.json({ success: false, error: '套餐资格创建失败' }, { status: 500 });
-
-    if (isComplimentary) {
-      const { error: complimentaryError } = await supabase.from('lawyer_complimentary_orders').insert({
-        application_id: targetId, lawyer_id: lawyerId, user_id: effectiveUserId || String(application.user_id || ''),
-        order_no: `COMP${Date.now()}${targetId}`, amount: 0, status: 'completed', reason,
-        code_verified_at: now.toISOString(), expires_at: expiresAt.toISOString(), created_by: String(authResult.adminId || ''),
+    const membershipSourceType = isComplimentary ? 'complimentary_onboarding' : 'paid_onboarding';
+    for (const packageType of packages) {
+      const { data: existingMembership, error: membershipLookupError } = await supabase
+        .from('membership_records')
+        .select('id')
+        .eq('lawyer_id', lawyerId)
+        .eq('package_type', packageType)
+        .eq('source_type', membershipSourceType)
+        .limit(1)
+        .maybeSingle();
+      if (membershipLookupError) return NextResponse.json({ success: false, error: '查询套餐资格失败' }, { status: 500 });
+      if (existingMembership) continue;
+      const { error: membershipError } = await supabase.from('membership_records').insert({
+        lawyer_id: lawyerId, package_type: packageType, status: isComplimentary ? 'trial' : 'active',
+        started_at: now.toISOString(), expires_at: expiresAt.toISOString(), source_type: membershipSourceType,
+        source_order_no: isComplimentary ? null : application.order_no || null, is_complimentary: isComplimentary, remark: isComplimentary ? reason : null,
       });
-      if (complimentaryError) return NextResponse.json({ success: false, error: '赠送体验订单创建失败' }, { status: 500 });
+      if (membershipError) return NextResponse.json({ success: false, error: '套餐资格创建失败' }, { status: 500 });
     }
 
+    if (isComplimentary) {
+      const { data: existingComplimentaryOrder, error: complimentaryLookupError } = await supabase
+        .from('lawyer_complimentary_orders')
+        .select('id')
+        .eq('application_id', targetId)
+        .limit(1)
+        .maybeSingle();
+      if (complimentaryLookupError) return NextResponse.json({ success: false, error: '查询赠送体验订单失败' }, { status: 500 });
+      if (!existingComplimentaryOrder) {
+        const { error: complimentaryError } = await supabase.from('lawyer_complimentary_orders').insert({
+          application_id: targetId, lawyer_id: lawyerId, user_id: effectiveUserId || String(application.user_id || ''),
+          order_no: `COMP${Date.now()}${targetId}`, amount: 0, status: 'completed', reason,
+          code_verified_at: now.toISOString(), expires_at: expiresAt.toISOString(), created_by: String(authResult.adminId || ''),
+        });
+        if (complimentaryError) return NextResponse.json({ success: false, error: '赠送体验订单创建失败' }, { status: 500 });
+      }
+    }
+
+    const { data: updatedApplication, error: reviewError } = await supabase
+      .from('lawyer_applications').update(reviewUpdate).eq('id', targetId).eq('review_status', 'pending').select().single();
+    if (reviewError || !updatedApplication) {
+      return NextResponse.json({ success: false, error: reviewError?.message || '申请状态更新失败，请重试' }, { status: 500 });
+    }
     if (effectiveUserId) await sendNotification(supabase, effectiveUserId, 'lawyer_review_passed', isComplimentary ? '您的律师体验资格已开通。' : '恭喜！您已通过律师入驻审核，可以开始接单服务了。', targetId);
     return NextResponse.json({ success: true, message: isComplimentary ? '已赠送体验开通' : '已通过审核', data: updatedApplication });
   } catch (error) {

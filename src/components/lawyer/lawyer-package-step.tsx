@@ -143,6 +143,13 @@ export function LawyerPackageStep({ formData, onUpdate, onBack }: LawyerPackageS
         // Use a document navigation so WeChat's “open in browser” menu
         // receives the real payment URL, including the application id.
         window.location.assign(`/lawyer/pay?applicationId=${encodeURIComponent(result.data.applicationId)}`);
+      } else if (response.status === 409 && result.code === 'APPLICATION_PENDING') {
+        const pendingId = result.data?.applicationId;
+        const suffix = pendingId ? `?applicationId=${encodeURIComponent(String(pendingId))}` : '';
+        window.location.assign(`/lawyer/pay${suffix}`);
+      } else if (response.status === 409 && result.code === 'LAWYER_ALREADY_ACTIVE') {
+        alert(result.error || '您已开通律师身份，请前往律师工作台或续费。');
+        window.location.assign('/lawyer');
       } else {
         alert(result.error || '提交失败，请重试');
       }
