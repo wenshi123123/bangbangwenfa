@@ -59,13 +59,14 @@ export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
     const targetId = body.applicationId || body.id;
-    const action = body.action as 'approve' | 'approve_complimentary' | 'reject';
+    const action = body.action as 'approve' | 'approve_complimentary' | 'grant_complimentary' | 'reject';
     const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
-    const isComplimentary = action === 'approve_complimentary';
-    const isApproval = action === 'approve' || isComplimentary;
+    const isComplimentary = action === 'approve_complimentary' || action === 'grant_complimentary';
+    const isGrant = action === 'grant_complimentary';
+    const isApproval = action === 'approve' || action === 'approve_complimentary';
 
     if (!targetId || !action) return NextResponse.json({ success: false, error: '缺少必要参数' }, { status: 400 });
-    if (!['approve', 'approve_complimentary', 'reject'].includes(action)) {
+    if (!['approve', 'approve_complimentary', 'grant_complimentary', 'reject'].includes(action)) {
       return NextResponse.json({ success: false, error: '无效的操作' }, { status: 400 });
     }
 
@@ -76,7 +77,10 @@ export async function PUT(request: NextRequest) {
       .eq('id', targetId)
       .maybeSingle();
     if (applicationError || !application) return NextResponse.json({ success: false, error: '申请不存在' }, { status: 404 });
-    if (application.review_status !== 'pending') return NextResponse.json({ success: false, error: '该申请已处理，不能重复审核' }, { status: 409 });
+    if (!isGrant && application.review_status !== 'pending') return NextResponse.json({ success: false, error: '该申请已处理，不能重复审核' }, { status: 409 });
+    if (isGrant && (application.review_status !== 'approved' || application.payment_status !== 'paid')) {
+      return NextResponse.json({ success: false, error: '只有已通过且已付款的申请可以追加赠送体验' }, { status: 409 });
+    }
     if (action === 'approve' && application.payment_status !== 'paid') {
       return NextResponse.json({ success: false, error: '该申请尚未支付；如需免费体验，请使用赠送体验开通。' }, { status: 409 });
     }
@@ -93,11 +97,18 @@ export async function PUT(request: NextRequest) {
     const expiresAt = isComplimentary
       ? new Date(now.getTime() + complimentaryDays * 24 * 60 * 60 * 1000)
       : addMonths(now, ONBOARDING_MONTHS);
-    const reviewUpdate: Record<string, unknown> = isApproval
+    const preservePaidApplication = isComplimentary && application.payment_status === 'paid';
+    const reviewUpdate: Record<string, unknown> = isGrant
+      ? {
+          complimentary_reason: reason,
+          complimentary_code_verified_at: now.toISOString(),
+          complimentary_expires_at: expiresAt.toISOString(),
+        }
+      : isApproval
       ? {
           review_status: 'approved', reviewed_at: now.toISOString(), review_remark: isComplimentary ? reason : null,
           member_starting_at: now.toISOString(), member_expires_at: expiresAt.toISOString(),
-          approval_mode: isComplimentary ? 'complimentary' : 'paid',
+          approval_mode: preservePaidApplication ? 'paid' : isComplimentary ? 'complimentary' : 'paid',
           complimentary_reason: isComplimentary ? reason : null,
           complimentary_code_verified_at: isComplimentary ? now.toISOString() : null,
           complimentary_expires_at: isComplimentary ? expiresAt.toISOString() : null,
@@ -187,8 +198,9 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    const { data: updatedApplication, error: reviewError } = await supabase
-      .from('lawyer_applications').update(reviewUpdate).eq('id', targetId).eq('review_status', 'pending').select().single();
+    const applicationUpdateQuery = supabase.from('lawyer_applications').update(reviewUpdate).eq('id', targetId);
+    if (!isGrant) applicationUpdateQuery.eq('review_status', 'pending');
+    const { data: updatedApplication, error: reviewError } = await applicationUpdateQuery.select().single();
     if (reviewError || !updatedApplication) {
       return NextResponse.json({ success: false, error: reviewError?.message || '申请状态更新失败，请重试' }, { status: 500 });
     }

@@ -53,6 +53,7 @@ interface LawyerApplication {
   review_remark: string | null;
   reviewed_by: string | null;
   reviewed_at: string | null;
+  complimentary_expires_at?: string | null;
   created_at: string;
 }
 
@@ -102,16 +103,16 @@ export default function LawyerDetailPage() {
     fetchDetail();
   }, [id]);
 
-  const handleReview = async (action: 'approve' | 'approve_complimentary' | 'reject') => {
+  const handleReview = async (action: 'approve' | 'approve_complimentary' | 'grant_complimentary' | 'reject') => {
     if (action === 'reject' && !rejectReason.trim()) {
       alert('请填写拒绝原因');
       return;
     }
-    if (action === 'approve_complimentary' && (!complimentaryReason.trim() || !complimentaryDays)) {
+    if ((action === 'approve_complimentary' || action === 'grant_complimentary') && (!complimentaryReason.trim() || !complimentaryDays)) {
       alert('请填写赠送体验原因和有效期');
       return;
     }
-    if (action === 'approve_complimentary' && !window.confirm('确认向该律师赠送体验资格吗？此操作会生成一笔 ¥0.00 的体验记录。')) return;
+    if ((action === 'approve_complimentary' || action === 'grant_complimentary') && !window.confirm('确认向该律师赠送体验资格吗？原付费订单会保留，同时生成一笔 ¥0.00 的体验记录。')) return;
 
     setActionLoading(true);
     try {
@@ -125,7 +126,7 @@ export default function LawyerDetailPage() {
           action,
           reason: rejectReason,
           complimentaryDays: Number(complimentaryDays),
-          ...(action === 'approve_complimentary' ? { reason: complimentaryReason } : {}),
+          ...((action === 'approve_complimentary' || action === 'grant_complimentary') ? { reason: complimentaryReason } : {}),
         })
       });
 
@@ -383,11 +384,11 @@ export default function LawyerDetailPage() {
       </div>
 
       {/* Actions */}
-      {application.review_status === 'pending' && (
+      {(application.review_status === 'pending' || (application.review_status === 'approved' && application.payment_status === 'paid' && !application.complimentary_expires_at)) && (
         <div className="bg-white rounded-xl p-4 sm:p-6 shadow-[0_2px_8px_rgba(61,50,45,0.06)]">
           <h2 className="text-lg font-semibold text-slate-800 mb-4">审核操作</h2>
           <div className="flex flex-wrap gap-3 sm:gap-4">
-            <button
+            {application.review_status === 'pending' && <button
               onClick={() => handleReview('approve')}
               disabled={actionLoading || application.payment_status !== 'paid'}
               className="flex items-center gap-2 px-4 sm:px-6 py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors disabled:opacity-50 text-sm sm:text-base"
@@ -398,23 +399,23 @@ export default function LawyerDetailPage() {
                 <CheckCircle className="w-5 h-5" />
               )}
               批准入驻
-            </button>
-            <button
+            </button>}
+            {(application.review_status === 'pending' || application.review_status === 'approved') && <button
               onClick={() => setShowComplimentaryModal(true)}
               disabled={actionLoading}
               className="flex items-center gap-2 px-4 sm:px-6 py-3 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 transition-colors disabled:opacity-50 text-sm sm:text-base"
             >
               <CheckCircle className="w-5 h-5" />
-              赠送体验开通
-            </button>
-            <button
+              {application.review_status === 'approved' ? '追加赠送体验' : '赠送体验开通'}
+            </button>}
+            {application.review_status === 'pending' && <button
               onClick={() => setShowRejectModal(true)}
               disabled={actionLoading}
               className="flex items-center gap-2 px-4 sm:px-6 py-3 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors disabled:opacity-50 text-sm sm:text-base"
             >
               <XCircle className="w-5 h-5" />
               拒绝入驻
-            </button>
+            </button>}
           </div>
           {application.payment_status !== 'paid' && (
             <p className="mt-3 text-sm text-amber-700">普通入驻必须在付款完成后才能批准；如需免费体验，请使用“赠送体验开通”。</p>
@@ -456,12 +457,12 @@ export default function LawyerDetailPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
             <h3 className="text-lg font-semibold text-slate-800 mb-2">赠送体验开通</h3>
-            <p className="text-sm text-slate-500 mb-4">此操作需要管理员权限，不会记为已付款，会生成一笔 ¥0.00 的体验订单。</p>
+            <p className="text-sm text-slate-500 mb-4">此操作需要管理员权限，会保留原付费订单，并单独生成一笔 ¥0.00 的体验订单。</p>
             <textarea value={complimentaryReason} onChange={(event) => setComplimentaryReason(event.target.value)} placeholder="请填写赠送原因..." className="w-full h-24 px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none mb-3" />
             <input type="number" min="1" max="365" value={complimentaryDays} onChange={(event) => setComplimentaryDays(event.target.value)} placeholder="体验天数" className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500" />
             <div className="flex gap-3 mt-4">
               <button onClick={() => setShowComplimentaryModal(false)} className="flex-1 px-4 py-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">取消</button>
-              <button onClick={() => handleReview('approve_complimentary')} disabled={actionLoading} className="flex-1 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50">确认开通</button>
+              <button onClick={() => handleReview(application.review_status === 'approved' ? 'grant_complimentary' : 'approve_complimentary')} disabled={actionLoading} className="flex-1 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50">确认开通</button>
             </div>
           </div>
         </div>

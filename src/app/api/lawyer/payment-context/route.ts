@@ -49,6 +49,17 @@ export async function GET(request: NextRequest) {
   }
 
   const application = applications?.[0];
+  if (application?.review_status === 'approved' && application.complimentary_expires_at) {
+    return NextResponse.json({
+      success: true,
+      data: {
+        status: 'complimentary_active',
+        applicationId: application.id,
+        expiresAt: application.complimentary_expires_at,
+        reason: application.complimentary_reason || application.review_remark || null,
+      },
+    });
+  }
   if (application?.payment_status === 'paid') {
     return NextResponse.json({
       success: true,
@@ -69,17 +80,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: { status: 'complimentary_pending', applicationId: application.id },
-    });
-  }
-  if (application?.approval_mode === 'complimentary' && application.review_status === 'approved') {
-    return NextResponse.json({
-      success: true,
-      data: {
-        status: 'complimentary_active',
-        applicationId: application.id,
-        expiresAt: application.complimentary_expires_at || null,
-        reason: application.complimentary_reason || application.review_remark || null,
-      },
     });
   }
   if (!application) {

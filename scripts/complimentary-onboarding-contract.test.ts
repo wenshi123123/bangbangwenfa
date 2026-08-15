@@ -10,6 +10,8 @@ const pay = fs.readFileSync('src/app/lawyer/pay/page.tsx', 'utf8');
 assert.match(review, /data:\s*\{\s*applicationId:/, 'notifications must use the production data column');
 assert.match(review, /eq\('application_id', targetId\)/, 'complimentary order creation must be idempotent');
 assert.match(review, /eq\('source_type', membershipSourceType\)/, 'membership creation must be idempotent by source');
+assert.match(review, /action === 'grant_complimentary'/, 'paid lawyers need a separate complimentary grant action');
+assert.match(review, /preservePaidApplication/, 'paid application records must remain paid when granting experience');
 assert.match(create, /code:\s*'APPLICATION_PENDING'/, 'pending applications must return a structured conflict');
 assert.match(create, /code:\s*'LAWYER_ALREADY_ACTIVE'/, 'active lawyers must not submit another application');
 assert.match(context, /status:\s*'complimentary_active'/, 'approved complimentary applications need an active status');

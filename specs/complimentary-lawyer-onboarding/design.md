@@ -6,6 +6,7 @@
 - `approval_mode`: `complimentary_requested | complimentary | paid`
 - `payment_status`: 只表示真实付款，不用于判断免费体验是否开通
 - 免费体验是否生效：`review_status=approved && approval_mode=complimentary && lawyers.status=active`
+- 已付费后追加体验：保留 `approval_mode=paid` 和原付费申请，使用 `complimentary_*` 字段及独立 `lawyer_complimentary_orders` 记录追加体验；不能把付费订单投影成 0 元订单。
 
 ## 2. 接口调整
 
@@ -37,6 +38,7 @@
 `PUT /api/admin/lawyer/review`
 
 - 免费审核使用幂等 upsert。
+- 对已通过且已付款的律师使用 `grant_complimentary` 动作追加体验，不重新审核、不覆盖原付费申请。
 - `lawyer_complimentary_orders.application_id` 必须唯一。
 - 通知关联信息写入 `notifications.data`，不写不存在的列。
 - 任何下游创建失败都返回失败，不发送通过通知；重复重试不得产生重复资格。
