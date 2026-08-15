@@ -58,7 +58,11 @@ export async function GET(request: NextRequest) {
   if (application?.review_status === 'rejected') {
     return NextResponse.json({
       success: true,
-      data: { status: 'no_payable_application' },
+      data: {
+        status: 'application_rejected',
+        applicationId: application.id,
+        reason: application.review_remark || null,
+      },
     });
   }
   if (application?.approval_mode === 'complimentary_requested' && application.review_status === 'pending') {

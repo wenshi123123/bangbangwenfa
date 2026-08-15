@@ -44,10 +44,12 @@ async function main() {
   assert.doesNotMatch(lawyerCreate, /bodyUserId|x-user-info/, 'lawyer application ownership must not trust client user identity');
   assert.match(paymentContext, /applicationId/, 'payment context must accept an application navigation hint');
   assert.match(paymentContext, /eq\('user_id', String\(auth\.user!\.id\)\)/, 'payment context must enforce current-user ownership');
+  assert.match(paymentContext, /application_rejected/, 'payment context must distinguish rejected applications');
   assert.match(paymentContext, /complimentary_pending/, 'payment context must expose pending complimentary applications');
   assert.match(lawyerPackages, /申请免费体验/, 'lawyer onboarding must expose a complimentary application option');
   assert.match(lawyerPackages, /experienceReason/, 'complimentary applications must collect a reason');
   assert.match(lawyerPayPage, /applicationId/, 'payment page must preserve the selected application id');
+  assert.match(lawyerPayPage, /application_rejected/, 'payment page must explain rejected applications');
 
   assert.match(consultCreate, /loadConfiguredPrices/, 'consultation server must read backend price config');
   assert.match(consultCreate, /planId/, 'consultation creation must accept a plan ID');

@@ -10,9 +10,10 @@ import { getLawyerUrl } from '@/lib/site';
 import { WechatExternalBrowserGuide } from '@/components/payment/wechat-external-browser-guide';
 
 type PaymentContext = {
-  status: 'payable' | 'paid' | 'no_payable_application' | 'manual_review_required' | 'complimentary_pending' | 'application_not_found';
+  status: 'payable' | 'paid' | 'no_payable_application' | 'manual_review_required' | 'complimentary_pending' | 'application_not_found' | 'application_rejected';
   packageType?: string | null;
   amount?: number;
+  reason?: string | null;
 };
 
 function getPaymentRequestHeaders(): Record<string, string> {
@@ -166,6 +167,7 @@ export default function LawyerPayPage() {
   if (paid) return shell(<><CheckCircle className="mx-auto mb-4 h-12 w-12 text-green-600" /><h1 className="mb-2 text-xl font-bold">支付成功，等待平台审核</h1><p className="text-sm text-muted-foreground">申请状态已刷新，页面即将跳转。</p></>);
   if (context?.status === 'complimentary_pending') return shell(<><CheckCircle className="mx-auto mb-4 h-12 w-12 text-amber-500" /><h1 className="mb-2 text-xl font-bold">免费体验申请已提交</h1><p className="text-sm text-muted-foreground">管理员审核通过后，体验资格会自动开通。此申请无需付款。</p></>);
   if (context?.status === 'application_not_found') return shell(<><AlertCircle className="mx-auto mb-4 h-10 w-10 text-amber-500" /><h1 className="mb-2 text-xl font-bold">申请与当前账号不匹配</h1><p className="mb-6 text-sm text-muted-foreground">请使用提交申请时的账号登录后重试。</p><Link href="/lawyer/pending" className="block rounded-xl border px-5 py-3 font-semibold">查看申请状态</Link></>);
+  if (context?.status === 'application_rejected') return shell(<><AlertCircle className="mx-auto mb-4 h-10 w-10 text-red-500" /><h1 className="mb-2 text-xl font-bold">该入驻申请未通过</h1><p className="mb-3 text-sm text-muted-foreground">这条申请已经结束，不能继续付款。请根据审核意见修改资料后重新提交。</p>{context.reason && <p className="mb-6 rounded-xl bg-red-50 p-3 text-left text-sm text-red-700">审核意见：{context.reason}</p>}<Link href="/lawyer/join/apply" className="block rounded-xl bg-[#C47353] px-5 py-3 font-semibold text-white">重新申请入驻</Link></>);
   if (context?.status === 'manual_review_required') return shell(<><AlertCircle className="mx-auto mb-4 h-10 w-10 text-amber-500" /><h1 className="mb-2 text-xl font-bold">存在多条待处理申请</h1><p className="mb-6 text-sm text-muted-foreground">请前往申请状态页确认要处理的申请，或联系客服协助。</p><Link href="/lawyer/pending" className="block rounded-xl border px-5 py-3 font-semibold">查看申请状态</Link></>);
   if (!context || context.status !== 'payable') return shell(<><AlertCircle className="mx-auto mb-4 h-10 w-10 text-slate-500" /><h1 className="mb-2 text-xl font-bold">暂无可支付申请</h1><p className="mb-6 text-sm text-muted-foreground">请先提交入驻申请，或查看当前申请审核状态。</p><div className="flex gap-3"><Link href="/lawyer/join/apply" className="flex-1 rounded-xl bg-[#C47353] px-3 py-3 text-sm font-semibold text-white">申请入驻</Link><Link href="/lawyer/pending" className="flex-1 rounded-xl border px-3 py-3 text-sm font-semibold">查看申请状态</Link></div></>);
 
