@@ -7,6 +7,7 @@ import { LawyerUploadStep } from './lawyer-upload-step';
 import { LawyerPackageStep } from './lawyer-package-step';
 import { useAuth } from '@/hooks/use-auth';
 import { getLawyerJoinApplyUrl, getVersionedPath } from '@/lib/site';
+import { getToken } from '@/lib/api/request';
 
 export interface LawyerFormData {
   name: string;
@@ -25,6 +26,7 @@ export interface LawyerFormData {
   educationImages: string[];
   packageType: string;
   packagePrice: number;
+  selectedPackages: string[];
 }
 
 const initialFormData: LawyerFormData = {
@@ -44,17 +46,21 @@ const initialFormData: LawyerFormData = {
   educationImages: [],
   packageType: '',
   packagePrice: 0,
+  selectedPackages: [],
 };
 
 interface LawyerJoinWizardProps {
   onBack?: () => void;
+  sourceApplicationId?: string;
 }
 
-export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
+export function LawyerJoinWizard({ onBack, sourceApplicationId }: LawyerJoinWizardProps) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<LawyerFormData>(initialFormData);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [authGraceExpired, setAuthGraceExpired] = useState(false);
+  const [reapplicationReason, setReapplicationReason] = useState<string | null>(null);
+  const [reapplicationLoading, setReapplicationLoading] = useState(false);
   const { user, isLoggedIn, isLoading } = useAuth();
 
   // 登录检查
@@ -89,6 +95,31 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
       setShowLoginPrompt(true);
     }
   }, [authGraceExpired, isLoggedIn]);
+
+  useEffect(() => {
+    if (!sourceApplicationId || !isLoggedIn) return;
+    const loadReapplication = async () => {
+      setReapplicationLoading(true);
+      try {
+        const token = getToken();
+        const response = await fetch(`/api/lawyer/reapplication?sourceApplicationId=${encodeURIComponent(sourceApplicationId)}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          alert(result.error || '读取原申请失败，请重新填写');
+          return;
+        }
+        setFormData((prev) => ({ ...prev, ...result.data.formData }));
+        setReapplicationReason(result.data.reason || null);
+      } catch {
+        alert('读取原申请失败，请重新填写');
+      } finally {
+        setReapplicationLoading(false);
+      }
+    };
+    loadReapplication();
+  }, [sourceApplicationId, isLoggedIn]);
 
   // 打开登录弹窗
   const handleOpenLogin = () => {
@@ -158,6 +189,7 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
         return (
           <LawyerPackageStep
             formData={formData}
+            onUpdate={updateFormData}
             onBack={handleBack}
           />
         );
@@ -240,6 +272,13 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)' }}>
+      {sourceApplicationId && (
+        <div className="mx-auto max-w-3xl px-4 pt-4">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            {reapplicationLoading ? '正在加载原申请资料…' : <>这是重新申请。原审核意见：{reapplicationReason || '请按要求补充或修改资料'}；提交后会生成新的申请编号。</>}
+          </div>
+        </div>
+      )}
       {/* Top Navigation Bar */}
       <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-green-100/50">
         <div className="container mx-auto px-4 py-3">
@@ -309,8 +348,7 @@ export function LawyerJoinWizard({ onBack }: LawyerJoinWizardProps) {
               90天退款兜底保障
             </h3>
             <p className="text-sm text-green-100">
-              成为臻选律师后，平台若90日内未有派发案件，请于7日内添加客服申请<strong>，可无条件全额退款</strong>；
-              若不选择退款，平台<strong>自动赠送6个月</strong>会员时长。
+              成为臻选律师后，平台若90日内未有派发案件，请于7日内添加客服申请<strong>，可无条件全额退款</strong>
             </p>
           </div>
 

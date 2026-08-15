@@ -5,6 +5,7 @@ import { authenticateRequest, unauthorizedResponse } from '@/lib/auth/middleware
 import { LAWYER_ONBOARDING_PACKAGES, validateUploadRequirements } from '@/lib/lawyer/package-config';
 import { loadLawyerPackagePrices } from '@/lib/lawyer/price-config';
 import { resolveUserNickname } from '@/lib/user/resolve-nickname';
+import { isBlockingApplication } from '@/lib/lawyer/application-state';
 
 /**
  * 律师入驻申请 API
@@ -35,8 +36,15 @@ export async function POST(request: NextRequest) {
       selectedPackages,
       applicationMode = 'paid',
       experienceReason,
+      sourceApplicationId,
     } = body;
     const userId = String(auth.userId);
+    const parsedSourceApplicationId = sourceApplicationId == null || sourceApplicationId === ''
+      ? null
+      : Number(sourceApplicationId);
+    if (parsedSourceApplicationId !== null && !Number.isInteger(parsedSourceApplicationId)) {
+      return NextResponse.json({ success: false, error: '来源申请编号无效' }, { status: 400 });
+    }
     const isComplimentaryRequest = applicationMode === 'complimentary';
     if (!['paid', 'complimentary'].includes(applicationMode)) {
       return NextResponse.json({ success: false, error: '入驻方式无效' }, { status: 400 });
@@ -91,6 +99,24 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = getSupabaseAdmin();
+    let sourceRevisionNo = 0;
+
+    // 重新申请只能从当前用户自己的已拒绝申请发起，旧申请保持只读。
+    if (parsedSourceApplicationId !== null) {
+      const { data: sourceApplication, error: sourceError } = await supabase
+        .from('lawyer_applications')
+        .select('id, user_id, review_status, revision_no')
+        .eq('id', parsedSourceApplicationId)
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (sourceError || !sourceApplication) {
+        return NextResponse.json({ success: false, error: '来源申请不存在或无权访问' }, { status: 404 });
+      }
+      if (sourceApplication.review_status !== 'rejected') {
+        return NextResponse.json({ success: false, error: '只有已拒绝的申请可以重新提交' }, { status: 400 });
+      }
+      sourceRevisionNo = Number(sourceApplication.revision_no) || 1;
+    }
     let packagePrices = new Map<string, { price: number }>();
     if (!isComplimentaryRequest) {
       try {
@@ -142,7 +168,7 @@ export async function POST(request: NextRequest) {
           .limit(1)
           .single();
 
-        if (existing) {
+        if (existing && isBlockingApplication(existing)) {
           if (existing.payment_status === 'paid' && existing.review_status === 'approved') {
             return NextResponse.json({
               success: true,
@@ -195,12 +221,36 @@ export async function POST(request: NextRequest) {
           review_status: 'pending',
           approval_mode: isComplimentaryRequest ? 'complimentary_requested' : null,
           review_remark: isComplimentaryRequest ? experienceReason.trim() : null,
+          ...(parsedSourceApplicationId !== null
+            ? { resubmitted_from_id: parsedSourceApplicationId, revision_no: sourceRevisionNo + 1 }
+            : {}),
         })
         .select()
         .single();
 
       if (error) {
         console.error('创建律师申请失败:', error);
+        if (error.code === '23505') {
+          const { data: pendingApplication } = await supabase
+            .from('lawyer_applications')
+            .select('id, payment_status, review_status')
+            .eq('user_id', userId)
+            .eq('review_status', 'pending')
+            .eq('payment_status', 'pending')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (pendingApplication) {
+            return NextResponse.json({
+              success: true,
+              data: {
+                applicationId: pendingApplication.id,
+                status: pendingApplication.payment_status,
+                message: '您已有进行中的申请',
+              },
+            });
+          }
+        }
         return NextResponse.json(
           { success: false, error: '创建申请失败，请重试' },
           { status: 500 }
@@ -252,6 +302,8 @@ CREATE TABLE IF NOT EXISTS lawyer_applications (
   payment_status VARCHAR(20) DEFAULT 'pending',
   review_status VARCHAR(20) DEFAULT 'pending',
   review_remark TEXT,
+  resubmitted_from_id INTEGER REFERENCES lawyer_applications(id) ON DELETE RESTRICT,
+  revision_no INTEGER NOT NULL DEFAULT 1,
   order_no VARCHAR(100),
   wechat_transaction_id VARCHAR(100),
   paid_at TIMESTAMP WITH TIME ZONE,

@@ -8,6 +8,7 @@ import { getToken } from '@/lib/api/request';
 
 interface LawyerPackageStepProps {
   formData: LawyerFormData;
+  onUpdate: (updates: Partial<LawyerFormData>) => void;
   onBack: () => void;
 }
 
@@ -24,10 +25,10 @@ interface Package {
 // 固定套餐配置（特征和服务内容）
 const PACKAGE_CONFIGS = LAWYER_ONBOARDING_PACKAGES;
 
-export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) {
+export function LawyerPackageStep({ formData, onUpdate, onBack }: LawyerPackageStepProps) {
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
+  const [selectedPackages, setSelectedPackages] = useState<string[]>(formData.selectedPackages || []);
   const [applicationMode, setApplicationMode] = useState<'paid' | 'complimentary'>('paid');
   const [experienceReason, setExperienceReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -76,13 +77,11 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
 
   // 处理套餐选择（自由多选）
   const handlePackageSelect = (pkgId: string) => {
-    if (selectedPackages.includes(pkgId)) {
-      // 取消选择
-      setSelectedPackages(selectedPackages.filter(id => id !== pkgId));
-    } else {
-      // 添加选择
-      setSelectedPackages([...selectedPackages, pkgId]);
-    }
+    const nextPackages = selectedPackages.includes(pkgId)
+      ? selectedPackages.filter(id => id !== pkgId)
+      : [...selectedPackages, pkgId];
+    setSelectedPackages(nextPackages);
+    onUpdate({ selectedPackages: nextPackages, packageType: nextPackages[0] || '' });
   };
 
   const handleSubmit = async () => {
@@ -132,6 +131,7 @@ export function LawyerPackageStep({ formData, onBack }: LawyerPackageStepProps) 
           educationImages: formData.educationImages,
           packageType: primaryPkg?.id || selectedPackages[0],
           selectedPackages: selectedPackages, // 额外传递所有选中的套餐
+          sourceApplicationId: typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('sourceApplicationId') : undefined,
         }),
       });
 
