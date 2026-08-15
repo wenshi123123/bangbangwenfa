@@ -92,7 +92,10 @@ function SuccessContent() {
 
   useEffect(() => {
     fetchOrder();
-  }, [orderId, fetchOrder]);
+    if (!isLawyerPayment || !orderId || paymentConfirmed) return;
+    const timer = window.setInterval(fetchOrder, 3000);
+    return () => window.clearInterval(timer);
+  }, [orderId, fetchOrder, isLawyerPayment, paymentConfirmed]);
 
   if (loading) {
     return (

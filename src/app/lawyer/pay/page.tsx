@@ -179,6 +179,7 @@ export default function LawyerPayPage() {
     {qrCodeValue && <div className="mb-5 inline-block rounded-xl border p-3"><QRCodeSVG value={qrCodeValue} size={200} includeMargin /></div>}
     {h5Url && <button onClick={() => window.location.assign(h5Url)} className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#C47353] px-5 py-3 font-semibold text-white"><Smartphone className="h-5 w-5" />前往微信支付</button>}
     {!qrCodeValue && !h5Url && <button onClick={createPayment} disabled={creatingPayment} className="w-full rounded-xl bg-[#C47353] px-5 py-3 font-semibold text-white disabled:opacity-60">{creatingPayment ? '正在创建订单...' : '确认并支付'}</button>}
+    {(qrCodeValue || h5Url || orderId) && !paid && <p className="mt-3 text-xs text-muted-foreground">支付结果确认中，请勿重复下单。</p>}
     {error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}<button onClick={createPayment} className="ml-2 underline">重新尝试</button></div>}
   </>);
 }

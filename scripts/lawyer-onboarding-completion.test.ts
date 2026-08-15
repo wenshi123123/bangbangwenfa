@@ -27,12 +27,16 @@ async function main() {
   assert.match(lawyerCallback, /status: 'Paid'/, '律师支付成功通知必须标记已支付');
 
   assert.match(lawyerStatus, /getWechatPayClient/, '律师状态接口必须能主动向微信查单');
+  assert.match(lawyerStatus, /paymentOrder\.order_no/, '新律师订单必须按商户订单号查单');
+  assert.match(lawyerStatus, /lawyer_application_payment_orders[\s\S]*status: 'paid'/, '新订单查单成功必须回写订单为已支付');
+  assert.match(lawyerStatus, /payment_status: 'paid'/, '新订单查单成功必须回写申请为已支付');
   assert.match(lawyerStatus, /queryOrder\(application\.order_no\)/, '律师状态接口必须按商户订单号查单');
   assert.match(lawyerStatus, /payment_status: 'paid'/, '查单成功必须回写律师申请为已支付');
   assert.match(lawyerStatus, /notifyOrder\(/, '查单补偿成功后也必须发送支付成功通知');
   assert.match(lawyerPayPage, /支付结果确认中/, '微信内支付成功后必须提示正在确认，而不是卡住');
   assert.match(successPage, /api\/lawyer\/pay\/status/, '律师 H5 回跳成功页必须核验支付状态');
   assert.match(successPage, /尚未完成支付/, '律师 H5 回跳未确认时必须明确显示尚未完成支付');
+  assert.match(successPage, /setInterval\(fetchOrder/, '律师 H5 回跳必须轮询支付状态，不能只查一次');
 
   assert.doesNotMatch(homePage, /首页真实场景图集|真实图片/, '首页轮播不应再显示多余图集文案');
   assert.doesNotMatch(lawyerLayout, />加载中\.\.\.</, '律师工作台切页不应显示整页加载中文字');

@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
     // 新订单优先。订单归属与关联申请归属必须同时匹配当前登录用户。
     const { data: paymentOrder, error: paymentOrderError } = await supabase
       .from('lawyer_application_payment_orders')
-      .select('application_id, user_id, order_no, status, paid_at, wechat_transaction_id, payment_expires_at')
+      .select('application_id, user_id, order_no, amount, status, paid_at, wechat_transaction_id, payment_expires_at')
       .eq('order_no', orderRef)
       .maybeSingle();
     if (paymentOrderError) {
@@ -137,12 +137,63 @@ export async function GET(request: NextRequest) {
       }
       const { data: application, error: applicationError } = await supabase
         .from('lawyer_applications')
-        .select('id, user_id')
+        .select('id, user_id, payment_status, package_price, name, phone, package_type')
         .eq('id', paymentOrder.application_id)
         .maybeSingle();
       if (applicationError || !application) return NextResponse.json({ success: false, error: '订单关联申请不存在' }, { status: 404 });
       if (String(application.user_id) !== String(auth.user.id)) {
         return NextResponse.json({ success: false, error: '无权查看此订单' }, { status: 403 });
+      }
+
+      // 微信回调可能延迟或丢失；用户回到页面时主动查单并补偿落库。
+      if (['creating', 'pending', 'paying'].includes(paymentOrder.status)) {
+        try {
+          const remote = await getWechatPayClient().queryOrder(paymentOrder.order_no);
+          if (
+            remote.tradeState === 'SUCCESS' &&
+            remote.transactionId &&
+            remote.amount?.total === paymentOrder.amount
+          ) {
+            const paidAt = new Date().toISOString();
+            const { data: paidOrder, error: paidOrderError } = await supabase
+              .from('lawyer_application_payment_orders')
+              .update({ status: 'paid', paid_at: paidAt, wechat_transaction_id: remote.transactionId, updated_at: paidAt })
+              .eq('order_no', paymentOrder.order_no)
+              .in('status', ['creating', 'pending', 'paying'])
+              .select('order_no')
+              .maybeSingle();
+            if (paidOrderError) {
+              console.error('[Lawyer/Pay/Status] 新订单查单回写失败:', paidOrderError);
+            } else if (paidOrder) {
+              const { data: paidApplication, error: paidApplicationError } = await supabase
+                .from('lawyer_applications')
+                .update({ payment_status: 'paid', order_no: paymentOrder.order_no, wechat_transaction_id: remote.transactionId, paid_at: paidAt })
+                .eq('id', application.id)
+                .neq('payment_status', 'paid')
+                .select('id')
+                .maybeSingle();
+              if (paidApplicationError) {
+                console.error('[Lawyer/Pay/Status] 新订单申请回写失败:', paidApplicationError);
+              } else if (paidApplication) {
+                await notifyOrder({
+                  type: 'Registration',
+                  userName: await resolveUserNickname(supabase, application.user_id),
+                  phone: application.phone || undefined,
+                  amount: application.package_price,
+                  detail: `套餐：${application.package_type || '律师入驻'}`,
+                  orderId: paymentOrder.order_no,
+                  status: 'Paid',
+                  event: 'paid',
+                });
+              }
+              paymentOrder.status = 'paid';
+              paymentOrder.paid_at = paidAt;
+              paymentOrder.wechat_transaction_id = remote.transactionId;
+            }
+          }
+        } catch (syncError) {
+          console.error('[Lawyer/Pay/Status] 新订单微信查单补偿失败:', syncError);
+        }
       }
       if (paymentOrder.status === 'paying' && paymentOrder.payment_expires_at && new Date(paymentOrder.payment_expires_at).getTime() <= Date.now()) {
         const closedAt = new Date().toISOString();
