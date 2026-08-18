@@ -56,7 +56,7 @@ const categoryMap = {
   civil: { label: '民事案件', color: 'text-blue-600' },
   lawyer_application: { label: '律师入驻订单', color: 'text-violet-600' },
   lawyer_renewal: { label: '律师续费订单', color: 'text-blue-600' },
-  lawyer_complimentary: { label: '赠送体验订单', color: 'text-amber-600' },
+  lawyer_complimentary: { label: '特邀订单', color: 'text-amber-600' },
 };
 
 export const dynamic = 'force-dynamic';
@@ -286,7 +286,7 @@ export default function OrderListPage() {
               <option value="civil">民事案件</option>
               <option value="lawyer_application">律师入驻订单</option>
               <option value="lawyer_renewal">律师续费订单</option>
-              <option value="lawyer_complimentary">赠送体验订单</option>
+              <option value="lawyer_complimentary">特邀订单</option>
             </select>
           </div>
         </div>

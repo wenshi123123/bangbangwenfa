@@ -104,7 +104,7 @@ function getMembershipInfo(status: string, expiresAt: string | null, packageType
     const now = new Date();
     const daysLeft = Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     if (daysLeft <= 0) return { label: '已过期', color: 'bg-red-100 text-red-700', daysLeft, packageLabel };
-    return { label: '体验中', color: 'bg-amber-100 text-amber-700', daysLeft, packageLabel };
+    return { label: '特邀中', color: 'bg-amber-100 text-amber-700', daysLeft, packageLabel };
   }
   const exp = new Date(expiresAt);
   const now = new Date();
@@ -712,7 +712,7 @@ export default function MembersPage() {
                       : 'border-gray-200 text-gray-600 hover:border-gray-300'
                   }`}
                 >
-                  免费体验
+                  特邀资格
                 </button>
               </div>
             </div>

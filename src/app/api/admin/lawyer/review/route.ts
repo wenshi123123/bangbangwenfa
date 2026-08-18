@@ -79,15 +79,15 @@ export async function PUT(request: NextRequest) {
     if (applicationError || !application) return NextResponse.json({ success: false, error: '申请不存在' }, { status: 404 });
     if (!isGrant && application.review_status !== 'pending') return NextResponse.json({ success: false, error: '该申请已处理，不能重复审核' }, { status: 409 });
     if (isGrant && (application.review_status !== 'approved' || application.payment_status !== 'paid')) {
-      return NextResponse.json({ success: false, error: '只有已通过且已付款的申请可以追加赠送体验' }, { status: 409 });
+      return NextResponse.json({ success: false, error: '只有已通过且已付款的申请可以追加特邀资格' }, { status: 409 });
     }
     if (action === 'approve' && application.payment_status !== 'paid') {
-      return NextResponse.json({ success: false, error: '该申请尚未支付；如需免费体验，请使用赠送体验开通。' }, { status: 409 });
+      return NextResponse.json({ success: false, error: '该申请尚未支付；如需特邀资格，请使用开通特邀资格。' }, { status: 409 });
     }
 
     const complimentaryDays = Number(body.complimentaryDays);
     if (isComplimentary) {
-      if (!reason) return NextResponse.json({ success: false, error: '请填写赠送体验开通原因' }, { status: 400 });
+      if (!reason) return NextResponse.json({ success: false, error: '请填写特邀开通原因' }, { status: 400 });
       if (!Number.isInteger(complimentaryDays) || complimentaryDays < 1 || complimentaryDays > 365) {
         return NextResponse.json({ success: false, error: '体验有效期必须为 1 至 365 天' }, { status: 400 });
       }
@@ -187,14 +187,14 @@ export async function PUT(request: NextRequest) {
         .eq('application_id', targetId)
         .limit(1)
         .maybeSingle();
-      if (complimentaryLookupError) return NextResponse.json({ success: false, error: '查询赠送体验订单失败' }, { status: 500 });
+      if (complimentaryLookupError) return NextResponse.json({ success: false, error: '查询特邀记录失败' }, { status: 500 });
       if (!existingComplimentaryOrder) {
         const { error: complimentaryError } = await supabase.from('lawyer_complimentary_orders').insert({
           application_id: targetId, lawyer_id: lawyerId, user_id: effectiveUserId || String(application.user_id || ''),
           order_no: `COMP${Date.now()}${targetId}`, amount: 0, status: 'completed', reason,
           code_verified_at: now.toISOString(), expires_at: expiresAt.toISOString(), created_by: String(authResult.adminId || ''),
         });
-        if (complimentaryError) return NextResponse.json({ success: false, error: '赠送体验订单创建失败' }, { status: 500 });
+        if (complimentaryError) return NextResponse.json({ success: false, error: '特邀记录创建失败' }, { status: 500 });
       }
     }
 
@@ -205,7 +205,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: false, error: reviewError?.message || '申请状态更新失败，请重试' }, { status: 500 });
     }
     if (effectiveUserId) await sendNotification(supabase, effectiveUserId, 'lawyer_review_passed', isComplimentary ? '您的律师体验资格已开通。' : '恭喜！您已通过律师入驻审核，可以开始接单服务了。', targetId);
-    return NextResponse.json({ success: true, message: isComplimentary ? '已赠送体验开通' : '已通过审核', data: updatedApplication });
+    return NextResponse.json({ success: true, message: isComplimentary ? '特邀资格已开通' : '已通过审核', data: updatedApplication });
   } catch (error) {
     console.error('审核操作失败:', error);
     return NextResponse.json({ success: false, error: '服务器错误' }, { status: 500 });

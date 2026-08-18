@@ -109,10 +109,10 @@ export default function LawyerDetailPage() {
       return;
     }
     if ((action === 'approve_complimentary' || action === 'grant_complimentary') && (!complimentaryReason.trim() || !complimentaryDays)) {
-      alert('请填写赠送体验原因和有效期');
+      alert('请填写特邀原因和有效期');
       return;
     }
-    if ((action === 'approve_complimentary' || action === 'grant_complimentary') && !window.confirm('确认向该律师赠送体验资格吗？原付费订单会保留，同时生成一笔 ¥0.00 的体验记录。')) return;
+    if ((action === 'approve_complimentary' || action === 'grant_complimentary') && !window.confirm('确认向该律师开通特邀资格吗？原付费订单会保留，同时生成一笔 ¥0.00 的特邀记录。')) return;
 
     setActionLoading(true);
     try {
@@ -406,7 +406,7 @@ export default function LawyerDetailPage() {
               className="flex items-center gap-2 px-4 sm:px-6 py-3 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 transition-colors disabled:opacity-50 text-sm sm:text-base"
             >
               <CheckCircle className="w-5 h-5" />
-              {application.review_status === 'approved' ? '追加赠送体验' : '赠送体验开通'}
+              {application.review_status === 'approved' ? '追加特邀资格' : '开通特邀资格'}
             </button>}
             {application.review_status === 'pending' && <button
               onClick={() => setShowRejectModal(true)}
@@ -418,7 +418,7 @@ export default function LawyerDetailPage() {
             </button>}
           </div>
           {application.payment_status !== 'paid' && (
-            <p className="mt-3 text-sm text-amber-700">普通入驻必须在付款完成后才能批准；如需免费体验，请使用“赠送体验开通”。</p>
+            <p className="mt-3 text-sm text-amber-700">普通入驻必须在付款完成后才能批准；如需特邀资格，请使用“开通特邀资格”。</p>
           )}
         </div>
       )}
@@ -456,9 +456,9 @@ export default function LawyerDetailPage() {
       {showComplimentaryModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-slate-800 mb-2">赠送体验开通</h3>
-            <p className="text-sm text-slate-500 mb-4">此操作需要管理员权限，会保留原付费订单，并单独生成一笔 ¥0.00 的体验订单。</p>
-            <textarea value={complimentaryReason} onChange={(event) => setComplimentaryReason(event.target.value)} placeholder="请填写赠送原因..." className="w-full h-24 px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none mb-3" />
+            <h3 className="text-lg font-semibold text-slate-800 mb-2">开通特邀资格</h3>
+            <p className="text-sm text-slate-500 mb-4">此操作需要管理员权限，会保留原付费订单，并单独生成一笔 ¥0.00 的特邀记录。</p>
+            <textarea value={complimentaryReason} onChange={(event) => setComplimentaryReason(event.target.value)} placeholder="请填写特邀原因..." className="w-full h-24 px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none mb-3" />
             <input type="number" min="1" max="365" value={complimentaryDays} onChange={(event) => setComplimentaryDays(event.target.value)} placeholder="体验天数" className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500" />
             <div className="flex gap-3 mt-4">
               <button onClick={() => setShowComplimentaryModal(false)} className="flex-1 px-4 py-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">取消</button>

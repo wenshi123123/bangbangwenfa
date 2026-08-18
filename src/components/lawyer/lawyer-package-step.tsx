@@ -94,7 +94,7 @@ export function LawyerPackageStep({ formData, onUpdate, onBack }: LawyerPackageS
       return;
     }
     if (applicationMode === 'complimentary' && !experienceReason.trim()) {
-      alert('请填写免费体验申请理由');
+      alert('请填写特邀申请理由');
       return;
     }
 
@@ -376,7 +376,7 @@ export function LawyerPackageStep({ formData, onUpdate, onBack }: LawyerPackageS
             onClick={() => setApplicationMode('complimentary')}
             className={`rounded-xl border-2 p-3 text-left ${applicationMode === 'complimentary' ? 'border-amber-500 bg-white' : 'border-transparent bg-white/60'}`}
           >
-            <span className="block font-medium">申请免费体验</span>
+            <span className="block font-medium">申请特邀入驻</span>
             <span className="text-xs text-muted-foreground">需要管理员审核，不产生支付</span>
           </button>
         </div>
@@ -384,7 +384,7 @@ export function LawyerPackageStep({ formData, onUpdate, onBack }: LawyerPackageS
           <textarea
             value={experienceReason}
             onChange={(event) => setExperienceReason(event.target.value)}
-            placeholder="请说明申请免费体验的原因"
+            placeholder="请说明申请特邀入驻的原因"
             className="mt-3 min-h-24 w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm outline-none focus:border-amber-400"
           />
         )}
@@ -432,7 +432,7 @@ export function LawyerPackageStep({ formData, onUpdate, onBack }: LawyerPackageS
           ) : selectedPackages.length === 0 ? (
             '请选择套餐'
           ) : (
-            applicationMode === 'complimentary' ? '提交免费体验申请' : `立即支付 ¥${totalPriceDisplay}`
+            applicationMode === 'complimentary' ? '提交特邀申请' : `立即支付 ¥${totalPriceDisplay}`
           )}
         </button>
       </div>

@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
         contact_name: nicknameByUserId.get(String(order.user_id)) || '匿名用户',
         contact_phone: null,
         case_type: 'lawyer_complimentary',
-        case_title: '律师赠送体验开通',
+        case_title: '律师特邀资格开通',
         service_type: 'complimentary',
         service_price: Number(order.amount || 0),
         payment_status: order.status || 'completed',

@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '入驻方式无效' }, { status: 400 });
     }
     if (isComplimentaryRequest && (typeof experienceReason !== 'string' || !experienceReason.trim())) {
-      return NextResponse.json({ success: false, error: '请填写免费体验申请理由' }, { status: 400 });
+      return NextResponse.json({ success: false, error: '请填写特邀申请理由' }, { status: 400 });
     }
 
     // 验证必填字段

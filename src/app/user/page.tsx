@@ -387,7 +387,7 @@ function UserCenterPageContent() {
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-blue-50 text-blue-600">律师续费</span>
                         )}
                         {order.type === 'complimentary' && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-amber-50 text-amber-700">赠送体验</span>
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-amber-50 text-amber-700">特邀</span>
                         )}
                         <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs ${status.color}`}>
                           <StatusIcon className="w-3 h-3" />
@@ -564,7 +564,7 @@ function UserCenterPageContent() {
               )}
               {showOrderDetail.applicationMode === 'complimentary' && showOrderDetail.reviewRemark && (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                  免费体验理由：{showOrderDetail.reviewRemark}
+                  特邀理由：{showOrderDetail.reviewRemark}
                 </div>
               )}
               {showOrderDetail.type === 'complimentary' && (
