@@ -11,9 +11,10 @@ interface PriceStepProps {
     caseType: string;
     description: string;
     services: string[];
-    contactPhone?: string;
   };
   onBack: () => void;
+  embedded?: boolean;
+  canSubmit?: () => boolean;
 }
 
 interface PriceConfig {
@@ -25,7 +26,7 @@ interface PriceConfig {
 // 只显示这三个咨询套餐
 const CONSULT_PLANS = ['basic', 'standard', 'advanced'];
 
-export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
+export function CivilPriceStep({ formData, onBack, embedded = false, canSubmit }: PriceStepProps) {
   const [selectedPlan, setSelectedPlan] = useState<string>('standard');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [prices, setPrices] = useState<PriceConfig[]>([]);
@@ -70,6 +71,7 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
   const currentPlan = consultationPlans.find(p => p.id === selectedPlan);
 
   const handleSubmit = async () => {
+    if (canSubmit && !canSubmit()) return;
     setIsSubmitting(true);
     setSubmitError(null);
     
@@ -80,7 +82,6 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
           category: 'civil',
           caseType: formData.caseType,
           caseDescription: formData.description,
-          contactPhone: formData.contactPhone || '',
           serviceType: formData.services,
           planId: selectedPlan,
           openid: localStorage.getItem('oa_openid') || undefined,
@@ -120,9 +121,9 @@ export function CivilPriceStep({ formData, onBack }: PriceStepProps) {
     <div className="animate-fade-in">
       {/* Header */}
       <div className="text-center mb-4 sm:mb-6 md:mb-8">
-        <div className="inline-flex items-center gap-2 px-2.5 sm:px-3 sm:px-4 py-1 sm:py-1.5 sm:py-2 rounded-full bg-[#FAF7F2] border border-[rgba(196,115,83,0.2)] mb-2 sm:mb-3 md:mb-4">
+        {!embedded && <div className="inline-flex items-center gap-2 px-2.5 sm:px-3 sm:px-4 py-1 sm:py-1.5 sm:py-2 rounded-full bg-[#FAF7F2] border border-[rgba(196,115,83,0.2)] mb-2 sm:mb-3 md:mb-4">
           <span className="text-xs sm:text-sm font-medium text-[#C47353]">Step 4 / 4</span>
-        </div>
+        </div>}
         <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-foreground mb-1 sm:mb-2">
           确认并支付
         </h2>

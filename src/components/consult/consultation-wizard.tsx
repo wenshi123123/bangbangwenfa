@@ -74,14 +74,14 @@ export function ConsultationWizard({ onBack }: ConsultationWizardProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isLoggedIn, isLoading } = useAuth();
-  const [step, setStep] = useState(1);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     caseType: '',
     description: '',
     services: [] as string[],
-    contactPhone: '', // 第二步填写的手机号
   });
+  const [validationErrors, setValidationErrors] = useState({ caseType: false, description: false, services: false });
+  const [activeStep, setActiveStep] = useState(1);
 
   // 获取邀请码
   useEffect(() => {
@@ -99,17 +99,48 @@ export function ConsultationWizard({ onBack }: ConsultationWizardProps) {
     
   }, [searchParams]);
 
-  const handleBack = () => {
-    if (step === 1) {
-      if (onBack) {
-        onBack();
-      } else {
-        router.push('/');
-      }
-    } else {
-      setStep(step - 1);
-    }
+  const scrollToStep = (stepNumber: number) => {
+    document.getElementById(`consult-step-${stepNumber}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setActiveStep(stepNumber);
   };
+
+  const handleBack = () => {
+    if (onBack) onBack();
+    else router.push('/');
+  };
+
+  const validateBeforeSubmit = () => {
+    const nextErrors = {
+      caseType: !formData.caseType,
+      description: !formData.description.trim(),
+      services: !formData.services.includes('consult'),
+    };
+    setValidationErrors(nextErrors);
+    const firstInvalidStep = nextErrors.caseType ? 1 : nextErrors.description ? 2 : nextErrors.services ? 3 : null;
+    if (firstInvalidStep) {
+      window.requestAnimationFrame(() => {
+        const summary = document.getElementById('consult-error-summary');
+        summary?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        summary?.focus({ preventScroll: true });
+      });
+      return false;
+    }
+    return true;
+  };
+
+  useEffect(() => {
+    const updateActiveStep = () => {
+      const sections = [1, 2, 3, 4].map((stepNumber) => ({
+        stepNumber,
+        top: document.getElementById(`consult-step-${stepNumber}`)?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY,
+      }));
+      const current = sections.filter((section) => section.top <= 190).at(-1);
+      if (current) setActiveStep(current.stepNumber);
+    };
+    window.addEventListener('scroll', updateActiveStep, { passive: true });
+    updateActiveStep();
+    return () => window.removeEventListener('scroll', updateActiveStep);
+  }, []);
 
   // 未登录提示
   if (!isLoading && !isLoggedIn) {
@@ -149,87 +180,70 @@ export function ConsultationWizard({ onBack }: ConsultationWizardProps) {
     );
   }
 
-  const renderStep = () => {
-    switch (step) {
-      case 1:
-        return (
-          <CaseTypeStep
-            selected={formData.caseType}
-            onSelect={(id) => setFormData({ ...formData, caseType: id })}
-            onNext={() => setStep(2)}
-          />
-        );
-      case 2:
-        return (
-          <DescriptionStep
-            value={formData.description}
-            contactPhone={formData.contactPhone}
-            onChange={(description) => setFormData({ ...formData, description })}
-            onContactPhoneChange={(contactPhone) => setFormData({ ...formData, contactPhone })}
-            onNext={() => setStep(3)}
-            onBack={handleBack}
-          />
-        );
-      case 3:
-        return (
-          <ServiceStep
-            selected={formData.services}
-            onToggle={(id) => {
-              const newServices = formData.services.includes(id)
-                ? formData.services.filter(s => s !== id)
-                : [...formData.services, id];
-              setFormData({ ...formData, services: newServices });
-            }}
-            onNext={() => setStep(4)}
-            onBack={handleBack}
-          />
-        );
-      case 4:
-        return (
-          <PriceStep
-            formData={formData}
-            inviteCode={inviteCode}
-            onBack={handleBack}
-          />
-        );
-      default:
-        return null;
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-hero py-8 md:py-12">
-      <div className="container mx-auto px-4 max-w-2xl">
-        {/* Back Button */}
-        <button 
-          onClick={handleBack}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8 group"
-        >
-          <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
-          <span>{step === 1 ? '返回首页' : '上一步'}</span>
-        </button>
-
-        {/* Progress Bar */}
-        <div className="bg-white/50 border-b border-[rgba(196,115,83,0.2)]/50 -mx-4 sm:mx-0">
-          <div className="container mx-auto px-4 py-3">
-            <div className="flex gap-1">
-              {[1, 2, 3, 4].map((s) => (
-                <div
-                  key={s}
-                  className={`h-1.5 flex-1 rounded-full transition-colors ${
-                    s <= step ? 'bg-[#C47353]' : 'bg-[#FAF7F2]'
-                  }`}
-                />
-              ))}
-            </div>
+    <div className="min-h-screen bg-gradient-hero">
+      <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-[rgba(196,115,83,0.15)]">
+        <div className="container mx-auto max-w-3xl px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <button onClick={handleBack} className="flex items-center gap-2 text-[#C47353] hover:text-[#A85D40] transition-colors">
+              <ArrowLeft className="h-4 w-4" />
+              <span className="font-medium">返回</span>
+            </button>
+            <span className="text-sm font-medium text-[#3D322D]">刑事咨询 · 共 4 项</span>
           </div>
-        </div>
-
-        {/* Step Content */}
-        <div className="bg-card rounded-xl p-6 md:p-8 shadow-[0_8px_24px_rgba(196,115,83,0.06)] border border-border/50">
-          {renderStep()}
+          <nav aria-label="咨询流程步骤" className="grid grid-cols-4 gap-2 mt-3">
+            {[
+              { id: 1, label: '案件类型', complete: Boolean(formData.caseType) },
+              { id: 2, label: '案情描述', complete: Boolean(formData.description.trim()) },
+              { id: 3, label: '服务选择', complete: formData.services.includes('consult') },
+              { id: 4, label: '确认支付', complete: false },
+            ].map((item) => (
+              <button key={item.id} type="button" onClick={() => scrollToStep(item.id)} aria-current={activeStep === item.id ? 'step' : undefined}
+                className={`min-w-0 text-left text-[10px] sm:text-xs transition-colors ${activeStep === item.id ? 'text-[#A85D40] font-semibold' : item.complete ? 'text-[#6E9A7C]' : 'text-[#8C7B6E]'}`}>
+                <span className={`mb-1 block h-1.5 rounded-full ${item.complete ? 'bg-[#6E9A7C]' : activeStep === item.id ? 'bg-[#C47353]' : 'bg-[#F2E8E0]'}`} />
+                <span className="block truncate">{item.complete ? '✓ ' : `${item.id}. `}{item.label}</span>
+              </button>
+            ))}
+          </nav>
         </div>
       </div>
+
+      <main className="container mx-auto max-w-3xl px-4 py-5 sm:py-8 pb-12">
+        <header className="text-center mb-5 sm:mb-7">
+          <p className="text-xs font-semibold tracking-[0.16em] text-[#C47353]">CRIMINAL CONSULTATION</p>
+          <h1 className="mt-2 text-2xl sm:text-3xl font-serif text-[#3D322D]">把情况说清楚，下一步更明确</h1>
+          <p className="mt-2 text-sm text-[#8C7B6E]">按顺序完成 4 项信息，可随时回到上方修改</p>
+        </header>
+        {(validationErrors.caseType || validationErrors.description || validationErrors.services) && (
+          <section id="consult-error-summary" tabIndex={-1} role="alert" aria-live="assertive" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 focus:outline-none focus:ring-2 focus:ring-red-300">
+            <h2 className="font-semibold">请先完成以下必填信息</h2>
+            <ul className="mt-1 list-inside list-disc">
+              {validationErrors.caseType && <li><button type="button" className="underline underline-offset-2" onClick={() => scrollToStep(1)}>选择案件类型</button></li>}
+              {validationErrors.description && <li><button type="button" className="underline underline-offset-2" onClick={() => scrollToStep(2)}>填写案情描述</button></li>}
+              {validationErrors.services && <li><button type="button" className="underline underline-offset-2" onClick={() => scrollToStep(3)}>选择必选咨询服务</button></li>}
+            </ul>
+          </section>
+        )}
+        <div className="space-y-4 sm:space-y-5">
+          <section id="consult-step-1" className="scroll-mt-32 rounded-2xl border border-[rgba(196,115,83,0.15)] bg-white p-4 sm:p-6 md:p-8 shadow-[0_8px_24px_rgba(196,115,83,0.06)]">
+            <CaseTypeStep embedded selected={formData.caseType} showError={validationErrors.caseType && !formData.caseType}
+              onSelect={(id) => { setFormData({ ...formData, caseType: id }); setValidationErrors({ ...validationErrors, caseType: false }); }} onNext={() => scrollToStep(2)} />
+          </section>
+          <section id="consult-step-2" className="scroll-mt-32 rounded-2xl border border-[rgba(196,115,83,0.15)] bg-white p-4 sm:p-6 md:p-8 shadow-[0_8px_24px_rgba(196,115,83,0.06)]">
+            <DescriptionStep embedded value={formData.description} showError={validationErrors.description && !formData.description.trim()}
+              onChange={(description) => { setFormData({ ...formData, description }); if (description.trim()) setValidationErrors({ ...validationErrors, description: false }); }}
+              onNext={() => scrollToStep(3)} onBack={() => scrollToStep(1)} />
+          </section>
+          <section id="consult-step-3" className="scroll-mt-32 rounded-2xl border border-[rgba(196,115,83,0.15)] bg-white p-4 sm:p-6 md:p-8 shadow-[0_8px_24px_rgba(196,115,83,0.06)]">
+            <ServiceStep embedded selected={formData.services} showError={validationErrors.services && !formData.services.includes('consult')}
+              onToggle={(id) => { const services = formData.services.includes(id) ? formData.services.filter((service) => service !== id) : [...formData.services, id]; setFormData({ ...formData, services }); if (services.includes('consult')) setValidationErrors({ ...validationErrors, services: false }); }}
+              onNext={() => scrollToStep(4)} onBack={() => scrollToStep(2)} />
+          </section>
+          <section id="consult-step-4" className="scroll-mt-32 rounded-2xl border border-[rgba(196,115,83,0.15)] bg-white p-4 sm:p-6 md:p-8 shadow-[0_8px_24px_rgba(196,115,83,0.06)]">
+            <PriceStep embedded formData={formData} inviteCode={inviteCode} onBack={() => scrollToStep(3)} canSubmit={validateBeforeSubmit} />
+          </section>
+        </div>
+      </main>
     </div>
   );
 }

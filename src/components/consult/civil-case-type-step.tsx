@@ -11,6 +11,8 @@ interface CaseTypeStepProps {
   selected: string;
   onSelect: (id: string) => void;
   onNext: () => void;
+  embedded?: boolean;
+  showError?: boolean;
 }
 
 const caseTypes: CaseType[] = [
@@ -23,16 +25,16 @@ const caseTypes: CaseType[] = [
   { id: 'other', name: '其他', icon: '📋', description: '其他民事纠纷类型' },
 ];
 
-export function CivilCaseTypeStep({ selected, onSelect, onNext }: CaseTypeStepProps) {
+export function CivilCaseTypeStep({ selected, onSelect, onNext, embedded = false, showError = false }: CaseTypeStepProps) {
   const selectedType = caseTypes.find(t => t.id === selected);
 
   return (
     <div className="animate-fade-in">
       {/* Header */}
       <div className="text-center mb-6 sm:mb-8">
-        <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#FAF7F2] border border-[rgba(196,115,83,0.2)] mb-3 sm:mb-4">
+        {!embedded && <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#FAF7F2] border border-[rgba(196,115,83,0.2)] mb-3 sm:mb-4">
           <span className="text-xs sm:text-sm font-medium text-[#C47353]">Step 1 / 4</span>
-        </div>
+        </div>}
         <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2">
           请选择案件类型
         </h2>
@@ -40,6 +42,8 @@ export function CivilCaseTypeStep({ selected, onSelect, onNext }: CaseTypeStepPr
           选择您所涉及的民事纠纷类型
         </p>
       </div>
+
+      {showError && <p role="alert" className="text-sm text-red-600 mb-3">请选择一个案件类型。</p>}
 
       {/* Case Type Grid */}
       <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6 md:mb-8">
@@ -70,7 +74,7 @@ export function CivilCaseTypeStep({ selected, onSelect, onNext }: CaseTypeStepPr
       </div>
 
       {/* Next Button */}
-      <button
+      {!embedded && <button
         onClick={onNext}
         disabled={PREVIEW_MODE ? false : !selected}
         className={`
@@ -82,7 +86,7 @@ export function CivilCaseTypeStep({ selected, onSelect, onNext }: CaseTypeStepPr
         `}
       >
         {selected ? '下一步，描述案情' : '请先选择案件类型'}
-      </button>
+      </button>}
     </div>
   );
 }

@@ -9,32 +9,27 @@ import { useState } from 'react';
 
 interface DescriptionStepProps {
   value: string;
-  contactPhone?: string;
   onChange: (value: string) => void;
-  onContactPhoneChange?: (value: string) => void;
   onNext: () => void;
   onBack: () => void;
+  embedded?: boolean;
+  showError?: boolean;
 }
 
 const placeholderText = `一句话描述遇到的困难，律师比ai更能解决你的焦虑`;
 
-export function CivilDescriptionStep({ value, contactPhone = '', onChange, onContactPhoneChange, onNext, onBack }: DescriptionStepProps) {
+export function CivilDescriptionStep({ value, onChange, onNext, onBack, embedded = false, showError = false }: DescriptionStepProps) {
   const [isFocused, setIsFocused] = useState(false);
-  const [phoneFocused, setPhoneFocused] = useState(false);
   const charCount = value.length;
   const minChars = 1; // 取消最低字数限制
-
-  // 验证手机号格式（11位数字）
-  const isValidPhone = !contactPhone || /^\d{11}$/.test(contactPhone);
-  const canProceed = charCount >= minChars && (!contactPhone || isValidPhone);
 
   return (
     <div className="animate-fade-in">
       {/* Header */}
       <div className="text-center mb-6 sm:mb-8">
-        <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#FAF7F2] border border-[rgba(196,115,83,0.2)] mb-3 sm:mb-4">
+        {!embedded && <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#FAF7F2] border border-[rgba(196,115,83,0.2)] mb-3 sm:mb-4">
           <span className="text-xs sm:text-sm font-medium text-[#C47353]">Step 2 / 4</span>
-        </div>
+        </div>}
         <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2">
           请描述纠纷情况
         </h2>
@@ -43,33 +38,7 @@ export function CivilDescriptionStep({ value, contactPhone = '', onChange, onCon
         </p>
       </div>
 
-      {/* Phone Input - 移到案情描述上方 */}
-      {onContactPhoneChange && (
-        <div className="mb-4 sm:mb-6">
-          <label className="block text-sm font-medium text-foreground mb-2">
-            手机号码（必填）
-          </label>
-          <div className={`
-            relative rounded-xl sm:rounded-xl border-2 transition-all duration-300 overflow-hidden
-            ${phoneFocused ? 'border-[#C47353] shadow-[0_4px_16px_rgba(61,50,45,0.08)]' : 'border-border'}
-            ${contactPhone && !isValidPhone ? 'border-red-400' : ''}
-          `}>
-            <input
-              type="tel"
-              value={contactPhone}
-              onChange={(e) => onContactPhoneChange(e.target.value)}
-              onFocus={() => setPhoneFocused(true)}
-              onBlur={() => setPhoneFocused(false)}
-              placeholder="我们可通过此号码联系您"
-              className="w-full p-3 sm:p-4 bg-card focus:outline-none text-foreground placeholder:text-muted-foreground/60 text-sm sm:text-base"
-              maxLength={11}
-            />
-          </div>
-          {contactPhone && !isValidPhone && (
-            <p className="text-xs text-red-500 mt-1">请输入11位手机号码</p>
-          )}
-        </div>
-      )}
+      {showError && <p id="civil-description-error" role="alert" className="text-sm text-red-600 mb-3">请填写案情描述（至少 1 字）。</p>}
 
       {/* Textarea */}
       <div className="mb-4 sm:mb-6">
@@ -78,6 +47,8 @@ export function CivilDescriptionStep({ value, contactPhone = '', onChange, onCon
           ${isFocused ? 'border-[#C47353] shadow-[0_4px_16px_rgba(61,50,45,0.08)]' : 'border-border'}
         `}>
           <textarea
+            aria-invalid={showError}
+            aria-describedby={showError ? 'civil-description-error' : undefined}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onFocus={() => setIsFocused(true)}
@@ -111,7 +82,7 @@ export function CivilDescriptionStep({ value, contactPhone = '', onChange, onCon
       </div>
 
       {/* Navigation Buttons */}
-      <div className="flex gap-2 sm:gap-3">
+      {!embedded && <div className="flex gap-2 sm:gap-3">
         <button
           onClick={onBack}
           className="flex-1 py-3 sm:py-4 rounded-xl sm:rounded-xl font-semibold text-sm sm:text-base md:text-lg border-2 border-border bg-card hover:bg-muted transition-all duration-300"
@@ -120,10 +91,10 @@ export function CivilDescriptionStep({ value, contactPhone = '', onChange, onCon
         </button>
         <button
           onClick={onNext}
-          disabled={PREVIEW_MODE ? false : !canProceed}
+          disabled={PREVIEW_MODE ? false : charCount < minChars}
           className={`
             flex-[2] py-3 sm:py-4 rounded-xl sm:rounded-xl font-semibold text-sm sm:text-base md:text-lg transition-all duration-300
-            ${(canProceed || PREVIEW_MODE) 
+            ${(charCount >= minChars || PREVIEW_MODE)
               ? 'bg-gradient-to-r from-[#C47353] to-[#A85D40] text-white hover:from-[#A85D40] hover:to-[#8B3E2A] shadow-[0_4px_16px_rgba(61,50,45,0.08)]' 
               : 'bg-gray-100 text-gray-400 cursor-not-allowed'
             }
@@ -131,7 +102,7 @@ export function CivilDescriptionStep({ value, contactPhone = '', onChange, onCon
         >
           下一步，选择服务
         </button>
-      </div>
+      </div>}
     </div>
   );
 }

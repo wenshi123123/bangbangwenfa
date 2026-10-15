@@ -12,6 +12,8 @@ interface ServiceStepProps {
   onToggle: (id: string) => void;
   onNext: () => void;
   onBack: () => void;
+  embedded?: boolean;
+  showError?: boolean;
 }
 
 const consultServices: ServiceType[] = [
@@ -56,7 +58,7 @@ const delegateServices: ServiceType[] = [
   },
 ];
 
-export function CivilServiceStep({ selected, onToggle, onNext, onBack }: ServiceStepProps) {
+export function CivilServiceStep({ selected, onToggle, onNext, onBack, embedded = false, showError = false }: ServiceStepProps) {
   const hasConsult = selected.includes('consult');
   const hasDelegate = selected.some(id => ['mediate', 'draft', 'litigate'].includes(id));
 
@@ -137,13 +139,15 @@ export function CivilServiceStep({ selected, onToggle, onNext, onBack }: Service
     <div className="animate-fade-in">
       {/* Header */}
       <div className="text-center mb-4 sm:mb-6 md:mb-8">
-        <div className="inline-flex items-center gap-2 px-2.5 sm:px-3 sm:px-4 py-1 sm:py-1.5 sm:py-2 rounded-full bg-[#FAF7F2] border border-[rgba(196,115,83,0.2)] mb-2 sm:mb-3 md:mb-4">
+        {!embedded && <div className="inline-flex items-center gap-2 px-2.5 sm:px-3 sm:px-4 py-1 sm:py-1.5 sm:py-2 rounded-full bg-[#FAF7F2] border border-[rgba(196,115,83,0.2)] mb-2 sm:mb-3 md:mb-4">
           <span className="text-xs sm:text-sm font-medium text-[#C47353]">Step 3 / 4</span>
-        </div>
+        </div>}
         <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-foreground mb-1 sm:mb-2">
           选择服务类型
         </h2>
       </div>
+
+      {showError && !hasConsult && <p role="alert" className="text-sm text-red-600 mb-3">咨询服务为必选项，请选择后继续。</p>}
 
       {/* 委托服务（可选，可多选） */}
       <div className="mb-3 sm:mb-4">
@@ -211,7 +215,7 @@ export function CivilServiceStep({ selected, onToggle, onNext, onBack }: Service
       )}
 
       {/* Navigation Buttons */}
-      <div className="flex gap-2 sm:gap-3">
+      {!embedded && <div className="flex gap-2 sm:gap-3">
         <button
           onClick={onBack}
           className="flex-1 py-3 sm:py-4 rounded-xl sm:rounded-xl font-semibold text-sm sm:text-base md:text-lg border-2 border-border bg-card hover:bg-muted transition-all duration-300"
@@ -231,7 +235,7 @@ export function CivilServiceStep({ selected, onToggle, onNext, onBack }: Service
         >
           下一步，确认支付
         </button>
-      </div>
+      </div>}
     </div>
   );
 }
