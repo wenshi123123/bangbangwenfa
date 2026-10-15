@@ -4,34 +4,27 @@ import { useState } from 'react';
 
 interface DescriptionStepProps {
   value: string;
-  contactPhone?: string;
   onChange: (value: string) => void;
-  onContactPhoneChange?: (value: string) => void;
   onNext: () => void;
   onBack: () => void;
+  embedded?: boolean;
+  showError?: boolean;
 }
 
 const placeholderText = `一句话讲述现在的遭遇，律师对你的每一次询问，都是辩护的依据`;
 
-export function DescriptionStep({ value, contactPhone = '', onChange, onContactPhoneChange, onNext, onBack }: DescriptionStepProps) {
+export function DescriptionStep({ value, onChange, onNext, onBack, embedded = false, showError = false }: DescriptionStepProps) {
   const [isFocused, setIsFocused] = useState(false);
   const charCount = value.length;
   const minChars = 1;
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.replace(/\D/g, '').slice(0, 11);
-    onContactPhoneChange?.(val);
-  };
-
-  const isValidPhone = contactPhone.length === 11;
 
   return (
     <div className="animate-fade-in">
       {/* Header */}
       <div className="text-center mb-6 sm:mb-8">
-        <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#FAF7F2] border border-[rgba(196,115,83,0.2)] mb-3 sm:mb-4">
+        {!embedded && <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#FAF7F2] border border-[rgba(196,115,83,0.2)] mb-3 sm:mb-4">
           <span className="text-xs sm:text-sm font-medium text-[#C47353]">Step 2 / 4</span>
-        </div>
+        </div>}
         <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2">
           请描述案情
         </h2>
@@ -40,40 +33,7 @@ export function DescriptionStep({ value, contactPhone = '', onChange, onContactP
         </p>
       </div>
 
-      {/* 手机号输入 */}
-      <div className="mb-4 sm:mb-6">
-        <label className="block text-sm font-medium text-foreground mb-2">
-          手机号码 <span className="text-red-500">*</span>
-        </label>
-        <div className={`
-          relative rounded-xl sm:rounded-xl border-2 transition-all duration-300 overflow-hidden
-          ${contactPhone && !isValidPhone ? 'border-red-400' : isFocused ? 'border-[#C47353] shadow-[0_4px_16px_rgba(196,115,83,0.15)]' : 'border-border'}
-        `}>
-          <input
-            type="tel"
-            value={contactPhone}
-            onChange={handlePhoneChange}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            placeholder="请输入您的手机号码"
-            className="w-full h-12 sm:h-14 px-4 bg-card focus:outline-none text-foreground placeholder:text-muted-foreground/60 text-sm sm:text-base"
-          />
-          {contactPhone && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              {isValidPhone ? (
-                <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              ) : (
-                <span className="text-xs text-red-500">{contactPhone.length}/11</span>
-              )}
-            </div>
-          )}
-        </div>
-        {contactPhone && !isValidPhone && (
-          <p className="text-xs text-red-500 mt-1">请输入11位手机号码</p>
-        )}
-      </div>
+      {showError && <p id="criminal-description-error" role="alert" className="text-sm text-red-600 mb-3">请填写案情描述（至少 1 字）。</p>}
 
       {/* Textarea */}
       <div className="mb-4 sm:mb-6">
@@ -82,6 +42,8 @@ export function DescriptionStep({ value, contactPhone = '', onChange, onContactP
           ${isFocused ? 'border-[#C47353] shadow-[0_4px_16px_rgba(196,115,83,0.15)]' : 'border-border'}
         `}>
           <textarea
+            aria-invalid={showError}
+            aria-describedby={showError ? 'criminal-description-error' : undefined}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onFocus={() => setIsFocused(true)}
@@ -115,7 +77,7 @@ export function DescriptionStep({ value, contactPhone = '', onChange, onContactP
       </div>
 
       {/* Navigation Buttons */}
-      <div className="flex gap-2 sm:gap-3">
+      {!embedded && <div className="flex gap-2 sm:gap-3">
         <button
           onClick={onBack}
           className="flex-1 py-3 sm:py-4 rounded-xl sm:rounded-xl font-semibold text-sm sm:text-base md:text-lg border-2 border-border bg-card hover:bg-muted transition-all duration-300"
@@ -124,10 +86,10 @@ export function DescriptionStep({ value, contactPhone = '', onChange, onContactP
         </button>
         <button
           onClick={onNext}
-          disabled={charCount < minChars || !isValidPhone}
+          disabled={charCount < minChars}
           className={`
             flex-[2] py-3 sm:py-4 rounded-xl sm:rounded-xl font-semibold text-sm sm:text-base md:text-lg transition-all duration-300
-            ${charCount >= minChars && isValidPhone
+            ${charCount >= minChars
               ? 'bg-gradient-to-r from-[#C47353] to-[#A85D40] text-white hover:from-[#8B3E2A] hover:to-[#6B2E1E] shadow-[0_4px_16px_rgba(196,115,83,0.2)]' 
               : 'bg-gray-100 text-gray-400 cursor-not-allowed'
             }
@@ -135,7 +97,7 @@ export function DescriptionStep({ value, contactPhone = '', onChange, onContactP
         >
           下一步，选择服务
         </button>
-      </div>
+      </div>}
     </div>
   );
 }

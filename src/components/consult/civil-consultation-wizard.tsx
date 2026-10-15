@@ -7,7 +7,6 @@ import { CivilCaseTypeStep } from './civil-case-type-step';
 import { CivilDescriptionStep } from './civil-description-step';
 import { CivilServiceStep } from './civil-service-step';
 import { CivilPriceStep } from './civil-price-step';
-import { apiRequest } from '@/lib/api/request';
 import { useAuth } from '@/hooks/use-auth';
 
 export interface CaseType {
@@ -27,13 +26,6 @@ export interface ServiceType {
   badge?: string;
 }
 
-// 价格配置接口
-interface PriceConfig {
-  plan_id: string;
-  plan_name: string;
-  price: number;
-}
-
 // 导出 services 数据供其他组件使用
 export const services: ServiceType[] = [
   { id: 'consult', name: '咨询类', icon: '💬', price: '待评估', description: '在线咨询解答', isConsult: true },
@@ -50,15 +42,13 @@ export function CivilConsultationWizard({ onBack }: CivilConsultationWizardProps
   const router = useRouter();
   const { isLoggedIn, isLoading } = useAuth();
   const [authLoadTimedOut, setAuthLoadTimedOut] = useState(false);
-  const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     caseType: '',
     description: '',
     services: [] as string[],
-    contactPhone: '',
   });
-  const [priceConfigs, setPriceConfigs] = useState<PriceConfig[]>([]);
-  const [pricesLoading, setPricesLoading] = useState(true);
+  const [validationErrors, setValidationErrors] = useState({ caseType: false, description: false, services: false });
+  const [activeStep, setActiveStep] = useState(1);
 
   useEffect(() => {
     if (!isLoading) {
@@ -69,35 +59,48 @@ export function CivilConsultationWizard({ onBack }: CivilConsultationWizardProps
     return () => window.clearTimeout(timer);
   }, [isLoading]);
 
-  // 获取价格配置
-  useEffect(() => {
-    const fetchPrices = async () => {
-      try {
-        const response = await apiRequest('/api/price?category=civil', { skipAuth: true });
-        const result = await response.json();
-        if (result.success) {
-          setPriceConfigs(result.data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch price configs:', error);
-      } finally {
-        setPricesLoading(false);
-      }
-    };
-    fetchPrices();
-  }, []);
+  const scrollToStep = (stepNumber: number) => {
+    document.getElementById(`consult-step-${stepNumber}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setActiveStep(stepNumber);
+  };
 
   const handleBack = () => {
-    if (step === 1) {
-      if (onBack) {
-        onBack();
-      } else {
-        router.push('/');
-      }
-    } else {
-      setStep(step - 1);
-    }
+    if (onBack) onBack();
+    else router.push('/');
   };
+
+  const validateBeforeSubmit = () => {
+    const nextErrors = {
+      caseType: !formData.caseType,
+      description: !formData.description.trim(),
+      services: !formData.services.includes('consult'),
+    };
+    setValidationErrors(nextErrors);
+    const firstInvalidStep = nextErrors.caseType ? 1 : nextErrors.description ? 2 : nextErrors.services ? 3 : null;
+    if (firstInvalidStep) {
+      window.requestAnimationFrame(() => {
+        const summary = document.getElementById('consult-error-summary');
+        summary?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        summary?.focus({ preventScroll: true });
+      });
+      return false;
+    }
+    return true;
+  };
+
+  useEffect(() => {
+    const updateActiveStep = () => {
+      const sections = [1, 2, 3, 4].map((stepNumber) => ({
+        stepNumber,
+        top: document.getElementById(`consult-step-${stepNumber}`)?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY,
+      }));
+      const current = sections.filter((section) => section.top <= 190).at(-1);
+      if (current) setActiveStep(current.stepNumber);
+    };
+    window.addEventListener('scroll', updateActiveStep, { passive: true });
+    updateActiveStep();
+    return () => window.removeEventListener('scroll', updateActiveStep);
+  }, []);
 
   // 未登录提示
   if ((!isLoading || authLoadTimedOut) && !isLoggedIn) {
@@ -137,93 +140,70 @@ export function CivilConsultationWizard({ onBack }: CivilConsultationWizardProps
     );
   }
 
-  const renderStep = () => {
-    switch (step) {
-      case 1:
-        return (
-          <CivilCaseTypeStep
-            selected={formData.caseType}
-            onSelect={(id) => setFormData({ ...formData, caseType: id })}
-            onNext={() => setStep(2)}
-          />
-        );
-      case 2:
-        return (
-          <CivilDescriptionStep
-            value={formData.description}
-            contactPhone={formData.contactPhone}
-            onChange={(value) => setFormData({ ...formData, description: value })}
-            onContactPhoneChange={(contactPhone) => setFormData({ ...formData, contactPhone })}
-            onNext={() => setStep(3)}
-            onBack={handleBack}
-          />
-        );
-      case 3:
-        return (
-          <CivilServiceStep
-            selected={formData.services}
-            onToggle={(id) => {
-              const newServices = formData.services.includes(id)
-                ? formData.services.filter(s => s !== id)
-                : [...formData.services, id];
-              setFormData({ ...formData, services: newServices });
-            }}
-            onNext={() => setStep(4)}
-            onBack={handleBack}
-          />
-        );
-      case 4:
-        return (
-          <CivilPriceStep
-            formData={formData}
-            onBack={handleBack}
-          />
-        );
-      default:
-        return null;
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#FAF7F2]">
-      {/* Top Navigation Bar */}
-      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-[rgba(196,115,83,0.15)]">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={handleBack}
-              className="flex items-center gap-2 text-[#C47353] hover:text-[#A85D40] transition-colors"
-            >
+      <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-[rgba(196,115,83,0.15)]">
+        <div className="container mx-auto px-4 py-3 max-w-3xl">
+          <div className="flex items-center justify-between gap-3">
+            <button onClick={handleBack} className="flex items-center gap-2 text-[#C47353] hover:text-[#A85D40] transition-colors">
               <ArrowLeft className="w-5 h-5" />
               <span className="font-medium">返回</span>
             </button>
-            <div className="text-sm text-muted-foreground">
-              民事案件咨询 · 第 {step} 步 / 共 4 步
-            </div>
+            <span className="text-sm font-medium text-[#3D322D]">民事咨询 · 共 4 项</span>
           </div>
-        </div>
-      </div>
-
-      {/* Progress Bar */}
-      <div className="bg-white/50 border-b border-[rgba(196,115,83,0.15)]">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex gap-1">
-            {[1, 2, 3, 4].map((s) => (
-              <div
-                key={s}
-                className={`h-1.5 flex-1 rounded-full transition-colors ${
-                  s <= step ? 'bg-[#C47353]' : 'bg-[#FAF7F2]'
-                }`}
-              />
+          <nav aria-label="咨询流程步骤" className="grid grid-cols-4 gap-2 mt-3">
+            {[
+              { id: 1, label: '案件类型', complete: Boolean(formData.caseType) },
+              { id: 2, label: '案情描述', complete: Boolean(formData.description.trim()) },
+              { id: 3, label: '服务选择', complete: formData.services.includes('consult') },
+              { id: 4, label: '确认支付', complete: false },
+            ].map((item) => (
+              <button key={item.id} type="button" onClick={() => scrollToStep(item.id)} aria-current={activeStep === item.id ? 'step' : undefined}
+                className={`min-w-0 text-left text-[10px] sm:text-xs transition-colors ${activeStep === item.id ? 'text-[#A85D40] font-semibold' : item.complete ? 'text-[#6E9A7C]' : 'text-[#8C7B6E]'}`}>
+                <span className={`mb-1 block h-1.5 rounded-full ${item.complete ? 'bg-[#6E9A7C]' : activeStep === item.id ? 'bg-[#C47353]' : 'bg-[#F2E8E0]'}`} />
+                <span className="block truncate">{item.complete ? '✓ ' : `${item.id}. `}{item.label}</span>
+              </button>
             ))}
-          </div>
+          </nav>
         </div>
       </div>
 
-      {/* Step Content */}
-      <div className="container mx-auto px-4 py-8">
-        {renderStep()}
-      </div>
+      <main className="container mx-auto max-w-3xl px-4 py-5 sm:py-8 pb-12">
+        <header className="text-center mb-5 sm:mb-7">
+          <p className="text-xs font-semibold tracking-[0.16em] text-[#C47353]">CIVIL CONSULTATION</p>
+          <h1 className="mt-2 text-2xl sm:text-3xl font-serif text-[#3D322D]">把情况说清楚，下一步更明确</h1>
+          <p className="mt-2 text-sm text-[#8C7B6E]">按顺序完成 4 项信息，可随时回到上方修改</p>
+        </header>
+        {(validationErrors.caseType || validationErrors.description || validationErrors.services) && (
+          <section id="consult-error-summary" tabIndex={-1} role="alert" aria-live="assertive" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 focus:outline-none focus:ring-2 focus:ring-red-300">
+            <h2 className="font-semibold">请先完成以下必填信息</h2>
+            <ul className="mt-1 list-inside list-disc">
+              {validationErrors.caseType && <li><button type="button" className="underline underline-offset-2" onClick={() => scrollToStep(1)}>选择案件类型</button></li>}
+              {validationErrors.description && <li><button type="button" className="underline underline-offset-2" onClick={() => scrollToStep(2)}>填写案情描述</button></li>}
+              {validationErrors.services && <li><button type="button" className="underline underline-offset-2" onClick={() => scrollToStep(3)}>选择必选咨询服务</button></li>}
+            </ul>
+          </section>
+        )}
+        <div className="space-y-4 sm:space-y-5">
+          <section id="consult-step-1" className="scroll-mt-32 rounded-2xl border border-[rgba(196,115,83,0.15)] bg-white p-4 sm:p-6 md:p-8 shadow-[0_8px_24px_rgba(196,115,83,0.06)]">
+            <CivilCaseTypeStep embedded selected={formData.caseType} showError={validationErrors.caseType && !formData.caseType}
+              onSelect={(id) => { setFormData({ ...formData, caseType: id }); setValidationErrors({ ...validationErrors, caseType: false }); }} onNext={() => scrollToStep(2)} />
+          </section>
+          <section id="consult-step-2" className="scroll-mt-32 rounded-2xl border border-[rgba(196,115,83,0.15)] bg-white p-4 sm:p-6 md:p-8 shadow-[0_8px_24px_rgba(196,115,83,0.06)]">
+            <CivilDescriptionStep embedded value={formData.description} showError={validationErrors.description && !formData.description.trim()}
+              onChange={(value) => { setFormData({ ...formData, description: value }); if (value.trim()) setValidationErrors({ ...validationErrors, description: false }); }}
+              onNext={() => scrollToStep(3)} onBack={() => scrollToStep(1)} />
+          </section>
+          <section id="consult-step-3" className="scroll-mt-32 rounded-2xl border border-[rgba(196,115,83,0.15)] bg-white p-4 sm:p-6 md:p-8 shadow-[0_8px_24px_rgba(196,115,83,0.06)]">
+            <CivilServiceStep embedded selected={formData.services} showError={validationErrors.services && !formData.services.includes('consult')}
+              onToggle={(id) => { const services = formData.services.includes(id) ? formData.services.filter((service) => service !== id) : [...formData.services, id]; setFormData({ ...formData, services }); if (services.includes('consult')) setValidationErrors({ ...validationErrors, services: false }); }}
+              onNext={() => scrollToStep(4)} onBack={() => scrollToStep(2)} />
+          </section>
+          <section id="consult-step-4" className="scroll-mt-32 rounded-2xl border border-[rgba(196,115,83,0.15)] bg-white p-4 sm:p-6 md:p-8 shadow-[0_8px_24px_rgba(196,115,83,0.06)]">
+            <CivilPriceStep embedded formData={formData} onBack={() => scrollToStep(3)} canSubmit={validateBeforeSubmit} />
+          </section>
+        </div>
+      </main>
     </div>
   );
 }

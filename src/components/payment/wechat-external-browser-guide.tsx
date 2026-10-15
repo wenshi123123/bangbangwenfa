@@ -29,10 +29,12 @@ export function WechatExternalBrowserGuide({ className }: WechatExternalBrowserG
         </div>
         <h1 className="font-serif text-xl font-semibold text-[#3D322D]">请在浏览器打开后继续支付</h1>
         <p className="mt-3 text-sm leading-7 text-[#6E5A4F]">
-          本平台专用微信官方H5页面支付，为避免订单异常
-          请点击微信右上角“…” ，建议选择“QQ浏览器/夸克等浏览器”，再继续完成支付（部分浏览器可能出现兼容显示，仍能够正常支付）。
+          平台采用微信官方H5浏览器支付通道，请点击右上角「…」，选择「在浏览器打开」，再继续支付。
         </p>
-        <p className="mt-2 text-xs leading-5 text-[#8C7B6E]">订单全程可溯源，帮帮有保障。</p>
+        <p className="mt-2 text-sm leading-6 text-[#6E5A4F]">
+          如打开后页面渲染异常，请将浏览器更新至最新版本。
+        </p>
+        <p className="mt-2 text-xs leading-5 text-[#8C7B6E]">订单全程可溯源，帮帮全程有保障</p>
         <Button
           type="button"
           onClick={copyPaymentLink}

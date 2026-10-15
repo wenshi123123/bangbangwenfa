@@ -14,6 +14,8 @@ interface PriceStepProps {
   };
   inviteCode?: string | null;
   onBack: () => void;
+  embedded?: boolean;
+  canSubmit?: () => boolean;
 }
 
 interface PricePlan {
@@ -29,13 +31,14 @@ const planFeatures: Record<string, string[]> = {
   advanced: ['一对一深度咨询', '完整分析报告', '可执行行动方案', '3次追加提问'],
 };
 
-export function PriceStep({ formData, inviteCode, onBack }: PriceStepProps) {
+export function PriceStep({ formData, inviteCode, onBack, embedded = false, canSubmit }: PriceStepProps) {
   const [selectedPlan, setSelectedPlan] = useState<string>('standard');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [plans, setPlans] = useState<PricePlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [detailPlan, setDetailPlan] = useState<ServicePlanDialogPlan | null>(null);
+  const priceCategory = 'criminal';
 
   // 从 API 加载价格配置
   useEffect(() => {
@@ -46,10 +49,9 @@ export function PriceStep({ formData, inviteCode, onBack }: PriceStepProps) {
         
         if (result.success && result.data) {
           // 转换数据库数据为前端格式
-          const category = formData.caseType === 'civil' ? 'civil' : 'criminal';
           const categoryPlans = result.data.filter(
             (p: { category: string; plan_id: string; plan_name: string; price: number }) => 
-              p.category === category
+              p.category === priceCategory
           );
           
           if (categoryPlans.length > 0) {
@@ -73,7 +75,7 @@ export function PriceStep({ formData, inviteCode, onBack }: PriceStepProps) {
     };
     
     fetchPrices();
-  }, [formData.caseType]);
+  }, [priceCategory]);
 
   const hasConsult = formData.services.includes('consult');
   const hasDelegate = formData.services.some(id => ['meet', 'court', 'full'].includes(id));
@@ -82,6 +84,7 @@ export function PriceStep({ formData, inviteCode, onBack }: PriceStepProps) {
   const currentPlan = plans.find(p => p.id === selectedPlan);
   
   const handleSubmit = async () => {
+    if (canSubmit && !canSubmit()) return;
     setIsSubmitting(true);
     setSubmitError(null);
     
@@ -121,9 +124,9 @@ export function PriceStep({ formData, inviteCode, onBack }: PriceStepProps) {
     <div className="animate-fade-in">
       {/* Header */}
       <div className="text-center mb-4 sm:mb-6 md:mb-8">
-        <div className="inline-flex items-center gap-2 px-2.5 sm:px-3 sm:px-4 py-1 sm:py-1.5 sm:py-2 rounded-full bg-[#FAF7F2] border border-[rgba(196,115,83,0.2)] mb-2 sm:mb-3 md:mb-4">
+        {!embedded && <div className="inline-flex items-center gap-2 px-2.5 sm:px-3 sm:px-4 py-1 sm:py-1.5 sm:py-2 rounded-full bg-[#FAF7F2] border border-[rgba(196,115,83,0.2)] mb-2 sm:mb-3 md:mb-4">
           <span className="text-xs sm:text-sm font-medium text-[#C47353]">Step 4 / 4</span>
-        </div>
+        </div>}
         <h2 className="text-lg sm:text-xl md:text-3xl font-bold text-foreground mb-1 sm:mb-2">
           确认并支付
         </h2>
