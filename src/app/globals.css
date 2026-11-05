@@ -768,23 +768,256 @@
 .delay-600 { animation-delay: 600ms; }
 .delay-700 { animation-delay: 700ms; }
 
-/* ========== Hero Content Stagger Animation ========== */
-/* 纯 CSS 驱动的子元素依次入场，替代 React titlePhase state */
-.hero-content > * {
-    opacity: 0;
-    transform: translateY(30px);
-    animation: heroEntrance 1.2s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+/* ========== Homepage Hero Narrative Entrance ========== */
+.hero-title-line,
+.hero-copy-line {
+  display: block;
 }
-.hero-content > *:nth-child(1) { animation-delay: 0.3s; }
-.hero-content > *:nth-child(2) { animation-delay: 0.5s; }
-.hero-content > *:nth-child(3) { animation-delay: 0.7s; }
-.hero-content > *:nth-child(4) { animation-delay: 0.9s; }
 
-@keyframes heroEntrance {
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+.hero-title-ai,
+.hero-title-bridge,
+.hero-title-lawyer {
+  display: inline-block;
+}
+
+.hero-title-ai {
+  opacity: 0;
+  animation: heroTitleRise 700ms cubic-bezier(0.2, 0.72, 0.25, 1) 80ms forwards;
+}
+
+.hero-title-bridge {
+  opacity: 0;
+  animation: heroBridgeReveal 650ms cubic-bezier(0.2, 0.72, 0.25, 1) 350ms forwards;
+}
+
+.hero-title-lawyer {
+  position: relative;
+  opacity: 0;
+  clip-path: inset(0 100% 0 0);
+  animation: heroLawyerReveal 780ms cubic-bezier(0.22, 0.75, 0.2, 1) 550ms forwards;
+}
+
+.hero-title-lawyer::after {
+  position: absolute;
+  right: 0;
+  bottom: 4%;
+  left: 0;
+  height: 5%;
+  content: "";
+  border-radius: 999px;
+  background: rgba(196, 115, 83, 0.25);
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: heroUnderlineSweep 600ms ease-out 1050ms forwards;
+}
+
+.hero-copy-line,
+.hero-promise,
+.consult-entry-grid {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: heroDetailRise 550ms ease-out forwards;
+}
+
+.hero-copy-line-first { animation-delay: 1020ms; }
+.hero-copy-line-second { animation-delay: 1180ms; }
+.hero-promise { animation-delay: 1430ms; }
+.consult-entry-grid { animation-delay: 1600ms; }
+
+@keyframes heroTitleRise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+    filter: blur(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes heroBridgeReveal {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes heroLawyerReveal {
+  0% {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+    transform: scale(1.02);
+  }
+  75% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    transform: scale(1.015);
+  }
+  100% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    transform: scale(1);
+  }
+}
+
+@keyframes heroUnderlineSweep {
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes heroDetailRise {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========== Editorial Consultation Entries ========== */
+.consult-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  text-align: left;
+}
+
+.consult-entry {
+  --entry-accent: #c47353;
+  --entry-accent-dark: #a85d40;
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 92px;
+  padding: 15px 14px;
+  overflow: hidden;
+  color: #3d322d;
+  text-decoration: none;
+  border: 1px solid rgba(196, 115, 83, 0.28);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.46);
+  transition:
+    color 260ms ease,
+    border-color 260ms ease,
+    box-shadow 260ms ease,
+    transform 260ms ease;
+}
+
+.consult-entry-criminal {
+  --entry-accent: #6e4030;
+  --entry-accent-dark: #593326;
+  border-color: rgba(110, 64, 48, 0.28);
+}
+
+.consult-entry::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  content: "";
+  background: var(--entry-accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 420ms cubic-bezier(0.2, 0.72, 0.22, 1);
+}
+
+.consult-entry:hover,
+.consult-entry:focus-visible {
+  color: #fff;
+  border-color: var(--entry-accent);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--entry-accent) 22%, transparent);
+  transform: translateY(-2px);
+}
+
+.consult-entry:hover::before,
+.consult-entry:focus-visible::before,
+.consult-entry:active::before {
+  transform: scaleX(1);
+}
+
+.consult-entry:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--entry-accent) 38%, transparent);
+  outline-offset: 3px;
+}
+
+.consult-entry:active {
+  transform: translateY(0) scale(0.99);
+}
+
+.consult-entry-copy,
+.consult-entry-arrow {
+  position: relative;
+  z-index: 1;
+}
+
+.consult-entry-copy strong,
+.consult-entry-copy small {
+  display: block;
+}
+
+.consult-entry-copy strong {
+  margin-bottom: 4px;
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+
+.consult-entry-copy small {
+  color: #8c7b6e;
+  font-size: 10px;
+  line-height: 1.5;
+  transition: color 260ms ease;
+}
+
+.consult-entry-arrow {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  color: var(--entry-accent);
+  border: 1px solid color-mix(in srgb, var(--entry-accent) 28%, transparent);
+  border-radius: 50%;
+  transition:
+    color 260ms ease,
+    background-color 260ms ease,
+    border-color 260ms ease,
+    transform 260ms ease;
+}
+
+.consult-entry:hover .consult-entry-copy small,
+.consult-entry:focus-visible .consult-entry-copy small,
+.consult-entry:active .consult-entry-copy small {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.consult-entry:hover .consult-entry-arrow,
+.consult-entry:focus-visible .consult-entry-arrow,
+.consult-entry:active .consult-entry-arrow {
+  color: var(--entry-accent-dark);
+  border-color: #fff;
+  background: #fff;
+  transform: translateX(3px) rotate(-45deg);
+}
+
+@media (max-width: 639px) {
+  .consult-entry-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .consult-entry {
+    min-height: 82px;
+    padding: 13px 15px;
+  }
 }
 
 /* Ripple Effect Button - 涟漪点击效果 */

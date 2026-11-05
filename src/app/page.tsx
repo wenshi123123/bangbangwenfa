@@ -365,34 +365,53 @@ export default function Home() {
                         {/* 左侧内容 */}
                         <div className="hero-content text-center md:text-left">
                             <h1 className="font-serif text-[clamp(2rem,6vw,3.8rem)] font-normal text-[#3D322D] leading-[1.25] mb-6">
-                                AI千问
-                                <br />不如<span className="text-[#C47353]">律师一言</span>
+                                <span className="hero-title-line">
+                                    <span className="hero-title-ai" data-hero-motion="ai">AI千问</span>
+                                </span>
+                                <span className="hero-title-line">
+                                    <span className="hero-title-bridge">不如</span>
+                                    <span className="hero-title-lawyer text-[#C47353]">律师一言</span>
+                                </span>
                             </h1>
                             <p className="font-sans text-[15px] text-[#8C7B6E] leading-[1.9] mb-4">
-                                AI 很好，但承担不了责任。<br />
-                                AI 的答案错了，它随时可以更改。<br />
-                                你按照错的答案去做了，你一辈子无法撤回。
+                                <span className="hero-copy-line hero-copy-line-first">AI 可以帮你做很多事。</span>
+                                <span className="hero-copy-line hero-copy-line-second">但有些事，需要有人为你认真把关。</span>
                             </p>
                             {/* Slogan 承诺 */}
-                            <p className="font-sans text-[13px] text-[#C47353] leading-[1.8] mb-4">
+                            <p className="hero-promise font-sans text-[13px] text-[#C47353] leading-[1.8] mb-5">
                                 <span className="font-medium">180秒</span>极速应答 ·
                                 超<span className="font-medium">30分钟</span>费用减半 ·
                                 超<span className="font-medium">3小时</span>费用全免
                             </p>
-                            <div className="flex gap-3.5 flex-wrap justify-center md:justify-start">
-                                <Button
-                                    asChild
-                                    className="h-12 bg-[#C47353] hover:bg-[#A85D40] text-white font-sans text-[14px] font-medium rounded-full px-9 tracking-[0.02em] shadow-md transition-all"
+                            <div className="consult-entry-grid">
+                                <Link
+                                    prefetch={false}
+                                    href={getCivilUrl()}
+                                    data-consult-entry="civil"
+                                    className="consult-entry consult-entry-civil"
                                 >
-                                    <Link prefetch={false} href={getCivilUrl()}>民事咨询 <ArrowRight className="ml-1.5 h-4 w-4" /></Link>
-                                </Button>
-                                <Button
-                                    asChild
-                                    variant="outline"
-                                    className="h-12 border-[#C47353] text-[#C47353] hover:bg-[#C47353] hover:text-white font-sans text-[14px] font-medium rounded-full px-9 tracking-[0.02em]"
+                                    <span className="consult-entry-copy">
+                                        <strong>民事咨询</strong>
+                                        <small>合同、婚姻、债务与日常权益</small>
+                                    </span>
+                                    <span className="consult-entry-arrow" aria-hidden="true">
+                                        <ArrowRight className="h-4 w-4" />
+                                    </span>
+                                </Link>
+                                <Link
+                                    prefetch={false}
+                                    href={getConsultUrl()}
+                                    data-consult-entry="criminal"
+                                    className="consult-entry consult-entry-criminal"
                                 >
-                                    <Link prefetch={false} href={getConsultUrl()}>刑事咨询 <ArrowRight className="ml-1.5 h-4 w-4" /></Link>
-                                </Button>
+                                    <span className="consult-entry-copy">
+                                        <strong>刑事咨询</strong>
+                                        <small>拘留、取保、辩护与刑事风险</small>
+                                    </span>
+                                    <span className="consult-entry-arrow" aria-hidden="true">
+                                        <ArrowRight className="h-4 w-4" />
+                                    </span>
+                                </Link>
                             </div>
                         </div>
 
@@ -472,10 +491,10 @@ export default function Home() {
                         <p className="font-sans text-[11px] tracking-[0.12em] uppercase text-[#8C7B6E]">How It Works</p>
                     </ScrollReveal>
                     <ScrollReveal className="text-center mb-2">
-                        <h2 className="font-serif text-[clamp(1.5rem,4vw,2.2rem)] font-normal text-[#3D322D] leading-[1.3]">四步，找到对的人</h2>
+                        <h2 className="font-serif text-[clamp(1.5rem,4vw,2.2rem)] font-normal text-[#3D322D] leading-[1.3]">四步，从问题到方案</h2>
                     </ScrollReveal>
                     <ScrollReveal className="text-center mb-14">
-                        <p className="font-sans text-[15px] text-[#8C7B6E] leading-[1.6]">简单四步，快速对接专业律师</p>
+                        <p className="font-sans text-[15px] text-[#8C7B6E] leading-[1.6]">从说清纠纷到律师交付，每一步都清楚、可追溯</p>
                     </ScrollReveal>
 
                     <ScrollReveal className="flex items-center justify-center gap-2 mb-12">
@@ -487,23 +506,24 @@ export default function Home() {
                     <div className="grid grid-cols-2 md:grid-cols-4 max-w-5xl mx-auto">
                         {[{
                             num: "一",
-                            title: "选咨询类型",
-                            desc: "民事、刑事、商事，一键选择"
+                            title: "说清你的纠纷",
+                            desc: "用一句话，讲清发生了什么"
                         }, {
                             num: "二",
-                            title: "描述你的问题",
-                            desc: "文字、语音、图片，自由描述"
+                            title: "选择解决方式",
+                            desc: "按你的目标，选择合适的解决方案"
                         }, {
                             num: "三",
-                            title: "智能匹配律师",
-                            desc: "查看资质、评分，自主匹配"
+                            title: "律师交付意见",
+                            desc: "给出针对性的法律意见和下一步行动建议"
                         }, {
                             num: "四",
-                            title: "完成支付",
-                            desc: "安全支付，即刻开始咨询"
+                            title: "平台全程保障",
+                            desc: "订单全程留痕，服务质量由帮帮问法保障"
                         }].map(
                             (item, index) => <ScrollReveal key={item.num} delay={index * 100} direction="up">
                                 <div
+                                    data-service-step={item.num}
                                     className="text-center px-5 py-8 border-l-0 md:border-l border-[rgba(196,115,83,0.2)] first:border-none cursor-default transition-[background,transform] duration-250 hover:bg-[rgba(196,115,83,0.04)] hover:-translate-y-1">
                                     <div className="font-serif text-[28px] font-normal text-[#C47353] opacity-35 leading-none mb-4">{item.num}</div>
                                     <h3 className="font-serif text-[1.05rem] font-normal text-[#3D322D] mb-2.5 leading-[1.4] hover:text-[#C47353] transition-colors duration-250">{item.title}</h3>
